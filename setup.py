@@ -1,7 +1,8 @@
-from distutils.core import setup
+from setuptools import setup
+
 setup(
     name = 'volkswagencarnet',
-    version = '0.3.2',
+    version = '1.0.0',
     description = 'Communicate with Volkswagen Carnet',
     author = 'Robin Ostlund',
     author_email = 'me@robinostlund.name',
@@ -11,5 +12,7 @@ setup(
     provides=["volkswagencarnet"],
     install_requires=[
         'requests',
+        'datetime',
+        'urllib'
     ],
 )
