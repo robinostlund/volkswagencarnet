@@ -9,10 +9,12 @@ from requests import Session, RequestException
 from datetime import timedelta, datetime
 from urllib.parse import urlsplit, urljoin
 from functools import partial
+from json import dumps as to_json
+from collections import OrderedDict
 
 version_info >= (3, 0) or exit('Python 3 required')
 
-__version__ = '1.0.0'
+__version__ = '2.0.1'
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -27,15 +29,22 @@ def _obj_parser(obj):
             pass
     return obj
 
+class TimeoutRequestsSession(Session):
+    def request(self, *args, **kwargs):
+        if kwargs.get('timeout') is None:
+            kwargs['timeout'] = 60
+        return super(TimeoutRequestsSession, self).request(*args, **kwargs)
+
 class Connection(object):
     """ Connection to Volkswagen Carnet """
     def __init__(self, username, password):
         """ Initialize """
-        self._session = Session()
+        self._session = TimeoutRequestsSession()
         self._session_headers = { 'Accept': 'application/json, text/plain, */*', 'Content-Type': 'application/json;charset=UTF-8', 'User-Agent': 'Mozilla/5.0 (Linux; Android 6.0.1; D5803 Build/23.5.A.1.291; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/63.0.3239.111 Mobile Safari/537.36' }
         self._session_base = 'https://www.volkswagen-car-net.com/'
         self._session_auth_headers = {'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8', 'User-Agent': 'Mozilla/5.0 (Linux; Android 6.0.1; D5803 Build/23.5.A.1.291; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/63.0.3239.111 Mobile Safari/537.36'}
         self._session_auth_base = 'https://security.volkswagen.com'
+        self._session_guest_language_id = 'se'
 
         self._session_auth_ref_url = False
         self._session_auth_username = username
@@ -68,6 +77,9 @@ class Connection(object):
 
         def extract_state(req):
             return re_authstate.search(req).group(1)
+
+        def extract_guest_language_id(req):
+            return req.split('_')[1].lower()
 
         # Request landing page and get CSFR:
         req = self._session.get(self._session_base + '/portal/en_GB/web/guest/home')
@@ -151,6 +163,13 @@ class Connection(object):
         # We have a new CSRF
         csrf = extract_csrf(req)
 
+        # Request country code
+        req = self._session.get(self._session_base + '/portal/en_GB/web/guest/complete-login/-/mainnavigation/get-countries')
+        if req.status_code != 200:
+            return ""
+        cookie = self._session.cookies.get_dict()
+        self._session_guest_language_id = extract_guest_language_id(cookie.get('GUEST_LANGUAGE_ID', {}))
+
         # Update headers for requests
         self._session_headers["Referer"] = ref_url3
         self._session_headers["X-CSRF-Token"] = csrf
@@ -161,7 +180,8 @@ class Connection(object):
         try:
             url = urljoin(rel or self._session_auth_ref_url, ref)
             _LOGGER.debug('Request for %s', url)
-            res = method(url, headers = self._session_headers, timeout=TIMEOUT.seconds)
+            #res = method(url, headers = self._session_headers, timeout=TIMEOUT.seconds)
+            res = method(url, headers=self._session_headers)
             res.raise_for_status()
             res = res.json(object_hook=_obj_parser)
             _LOGGER.debug('Received %s', res)
@@ -188,6 +208,7 @@ class Connection(object):
             _LOGGER.info('Updating')
             if not self._state or reset:
                 _LOGGER.info('Querying vehicles')
+                owners_verification = self.get('/portal/group/%s/edit-profile/-/profile/get-vehicles-owners-verification' % self._session_guest_language_id)
 
                 loaded_cars = self.get('-/mainnavigation/get-fully-loaded-cars')
 
@@ -232,6 +253,7 @@ class Connection(object):
         """Return vehicle for given vin."""
         return next((vehicle for vehicle in self.vehicles if vehicle.vin.lower() == vin.lower()), None)
 
+
 class Vehicle(object):
     def __init__(self, conn, vin, data):
         self.data = data
@@ -240,18 +262,14 @@ class Vehicle(object):
 
     def get(self, query):
         """Perform a query to the online service."""
-        #self._connection._login()
         rel = self._connection._session_base + self.data.get('dashboardUrl') + '/'
         req = self._connection.get(query, rel)
-        #self._connection._logout()
         return req
 
     def post(self, query, **data):
         """Perform a query to the online service."""
-        #self._connection._login()
         rel = self._connection._session_base + self.data.get('dashboardUrl') + '/'
         req = self._connection.post(query, rel, **data)
-        #self._connection._logout()
         return req
 
     def call(self, method, **data):
@@ -274,43 +292,102 @@ class Vehicle(object):
             check = check[0] + check[1]
             return datetime.strptime(check, '%d.%m.%Y%H:%M').strftime("%Y-%m-%d %H:%M:%S")
 
-
     @property
     def service_inspection(self):
         """Return time left for service inspection"""
-        check = self.data.get('vehicle-details', {}).get('serviceInspectionData', {})
-        if check:
-            return check
+        if self.service_inspection_supported:
+            check = self.data.get('vehicle-details', {}).get('serviceInspectionData', {})
+            if check:
+                return check
 
     @property
-    def image(self):
-        """Return picture"""
-        return self.data.get('imageUrl')
+    def service_inspection_supported(self):
+        check = self.data.get('vehicle-details', {}).get('serviceInspectionData', {})
+        if check:
+            return True
+
+    @property
+    def battery_level(self):
+        """Return battery level"""
+        if self.battery_level_supported:
+            battery = int(self.data.get('emanager', {}).get('rbc', {}).get('status', {}).get('batteryPercentage', {}))
+            if battery: return battery
+
+    @property
+    def battery_level_supported(self):
+        if self.charging_supported:
+            return True
+
+    @property
+    def parking_light(self):
+        """Return true if parking light is on"""
+        if self.parking_light_supported:
+            check = self.data.get('vsr', {}).get('carRenderData', {}).get('parkingLights', {})
+            if check != 2:
+                return True
+
+    @property
+    def parking_light_supported(self):
+        """Return true if parking light is supported"""
+        check = self.data.get('vsr', {}).get('carRenderData',{}).get('parkingLights', {})
+        if check:
+            return True
 
     @property
     def distance(self):
-        return int(self.data.get('vehicle-details',{}).get('distanceCovered').replace('.', ''))
+        if self.distance_supported:
+            return int(self.data.get('vehicle-details',{}).get('distanceCovered').replace('.', ''))
 
+    @property
+    def distance_supported(self):
+        """Return true if distance is supported"""
+        check = self.data.get('vehicle-details',{}).get('distanceCovered')
+        if check: return True
+
+    @property
+    def position(self):
+        """Return  position."""
+        if self.position_supported:
+            return self.data.get('position')
 
     @property
     def position_supported(self):
         """Return true if vehichle has position."""
-        return self.data.get('position')
+        check = self.data.get('position', {}).get('lng', {})
+        if check: return True
 
     @property
-    def climatisation_supported(self):
-        """Return true if vehichle has heater."""
-        check = self.data.get('emanager', {}).get('rpc', {}).get('climaterActionState', {})
-        if check == 'AVAILABLE':
-            return True
+    def model(self):
+        """Return model"""
+        if self.model_supported:
+            return self.data.get('model')
 
     @property
-    def window_heater_supported(self):
-        """Return true if vehichle has heater."""
-        if self.climatisation_supported:
-            check = self.data.get('emanager', {}).get('rpc', {}).get('status',{}).get('windowHeatingAvailable', {})
-            if check:
-                return True
+    def model_supported(self):
+        check = self.data.get('model')
+        if check: return True
+
+    @property
+    def model_year(self):
+        """Return model year"""
+        if self.model_year_supported:
+            return self.data.get('modelYear', {})
+
+    @property
+    def model_year_supported(self):
+        check = self.data.get('modelYear', {})
+        if check: return True
+
+    @property
+    def model_image(self):
+        """Return model image"""
+        if self.model_image_supported:
+            return self.data.get('imageUrl', {})
+
+    @property
+    def model_image_supported(self):
+        check = self.data.get('imageUrl', {})
+        if check: return True
 
     @property
     def charging_supported(self):
@@ -320,34 +397,93 @@ class Vehicle(object):
             return True
 
     @property
-    def charging_time_left(self):
-        if self.charging_supported:
-            hours = self.data.get('emanager', {}).get('rbc', {}).get('status', {}).get('chargingRemaningHour', {})
-            minutes = self.data.get('emanager', {}).get('rbc', {}).get('status', {}).get('chargingRemaningMinute', {})
-            if hours and minutes:
-                return (int(hours) * 60) + int(minutes)
+    def electric_range(self):
+        if self.electric_range_supported:
+            return self.data.get('emanager', {}).get('rbc', {}).get('status', {}).get('electricRange', {})
 
     @property
-    def window_state_supported(self):
+    def electric_range_supported(self):
+        check = self.data.get('emanager', {}).get('rbc', {}).get('status', {}).get('electricRange', {})
+        if isinstance(check, int):
+            return True
+
+    @property
+    def external_power(self):
+        """Return true if external power is connected."""
+        if self.external_power_supported:
+            check = self.data.get('emanager', {}).get('rbc', {}).get('status', {}).get('pluginState', {})
+            if check == 'CONNECTED':
+                return True
+            else:
+                return False
+
+    @property
+    def external_power_supported(self):
+        """External power supported."""
+        if self.charging_supported:
+            check = self.data.get('emanager', {}).get('rbc', {}).get('status', {}).get('pluginState', {})
+            if check: return True
+
+    @property
+    def climatisation_supported(self):
+        """Return true if vehichle has heater."""
+        check = self.data.get('emanager', {}).get('rpc', {}).get('climaterActionState', {})
+        if check == 'AVAILABLE': return True
+
+    @property
+    def window_heater_supported(self):
+        """Return true if vehichle has heater."""
+        if self.climatisation_supported:
+            check = self.data.get('emanager', {}).get('rpc', {}).get('status',{}).get('windowHeatingAvailable', {})
+            if check: return True
+
+    @property
+    def window_supported(self):
         """Return true if window state is supported"""
         check = self.data.get('vsr', {}).get('windowstateSupported', {})
         if check:
             return True
 
     @property
-    def parking_ligth_state_supported(self):
-        """Return true if parking light is supported"""
-        check = self.data.get('carRenderData', {}).get('parkingLights', {})
-        if check:
+    def charging_time_left(self):
+        if self.charging_supported:
+            if self.external_power:
+                hours = self.data.get('emanager', {}).get('rbc', {}).get('status', {}).get('chargingRemaningHour', {})
+                minutes = self.data.get('emanager', {}).get('rbc', {}).get('status', {}).get('chargingRemaningMinute', {})
+                if hours and minutes:
+                    return (int(hours) * 60) + int(minutes)
+
+    @property
+    def charging_time_left_supported(self):
+        if self.charging_supported:
             return True
 
     @property
+    def door_locked(self):
+        if self.door_locked_supported:
+            lock_data = self.data.get('vsr', {}).get('lockData', {})
+            vehicle_locked = True
+            for lock in lock_data:
+                if lock_data[lock] != 2:
+                    vehicle_locked = False
+            return vehicle_locked
+
+    @property
+    def door_locked_supported(self):
+        check = self.data.get('vsr', {}).get('lockData', {})
+        if len(check) > 0:
+            return True
+
+    # states
+    @property
     def is_parking_lights_on(self):
         """Parking light state"""
-        if self.parking_ligth_state_supported:
+        if self.parking_light_supported:
             state = self.data.get('carRenderData', {}).get('parkingLights', {})
             if state != 2:
                 return True
+            else:
+                return False
 
     @property
     def is_doors_locked(self):
@@ -359,39 +495,50 @@ class Vehicle(object):
                 state = False
         return state
 
-    @property
-    def is_external_power_connected(self):
-        """Lock status."""
-        if self.charging_supported:
-            check = self.data.get('emanager', {}).get('rpc', {}).get('status', {}).get('pluginState', {})
-            if check == 'CONNECTED':
-                return True
 
     @property
     def is_climatisation_on(self):
         """Return status of climatisation."""
-        status = self.data.get('emanager', {}).get('rpc', {}).get('status',{}).get('climatisationState', {})
-        if status == 'ON':
-            return True
+        if self.climatisation_supported:
+            status = self.data.get('emanager', {}).get('rpc', {}).get('status',{}).get('climatisationState', {})
+            if status == 'ON':
+                return True
+            else:
+                return False
 
     @property
     def is_window_heater_on(self):
         """Return status of window heater."""
-        status_front = self.data.get('emanager', {}).get('rpc', {}).get('status', {}).get('windowHeatingStateFront', {})
-        if status_front == 'ON':
-            return True
+        if self.window_heater_supported:
+            ret = False
+            status_front = self.data.get('emanager', {}).get('rpc', {}).get('status', {}).get('windowHeatingStateFront', {})
+            if status_front == 'ON':
+                ret = True
 
-        status_rear = self.data.get('emanager', {}).get('rpc', {}).get('status', {}).get('windowHeatingStateReart', {})
-        if status_rear == 'ON':
-            return True
+            status_rear = self.data.get('emanager', {}).get('rpc', {}).get('status', {}).get('windowHeatingStateReart', {})
+            if status_rear == 'ON':
+                ret = True
+            return ret
 
     @property
     def is_charging_on(self):
         """Return status of charging."""
-        status = self.data.get('emanager', {}).get('rbc', {}).get('status', {}).get('chargingState', {})
-        if status == 'CHARGING':
-            return True
+        if self.charging_supported:
+            status = self.data.get('emanager', {}).get('rbc', {}).get('status', {}).get('chargingState', {})
+            if status == 'CHARGING':
+                return True
+            else:
+                return False
 
+    @property
+    def is_request_in_progress(self):
+        check = self.data.get('vsr', {}).get('requestStatus', {})
+        if check == 'REQUEST_IN_PROGRESS':
+            return True
+        else:
+            return False
+
+    # actions
     def start_climatisation(self):
         """Turn on/off climatisation."""
         if self.climatisation_supported:
@@ -435,4 +582,13 @@ class Vehicle(object):
             _LOGGER.error('No charging support.')
 
     def __str__(self):
-        return self.vin.lower()
+        return self.vin
+
+    @property
+    def json(self):
+        def serialize(obj):
+            if isinstance(obj, datetime):
+                return obj.isoformat()
+        return to_json(
+            OrderedDict(sorted(self.data.items())),
+            indent=4, default=serialize)
