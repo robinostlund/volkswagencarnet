@@ -14,7 +14,7 @@ from collections import OrderedDict
 
 version_info >= (3, 0) or exit('Python 3 required')
 
-__version__ = '2.0.7'
+__version__ = '2.0.9'
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -458,6 +458,28 @@ class Vehicle(object):
             return True
 
     @property
+    def combustion_range(self):
+        if self.combustion_range_supported:
+            return self.data.get('emanager', {}).get('rbc', {}).get('status', {}).get('combustionRange', {})
+
+    @property
+    def combustion_range_supported(self):
+        check = self.data.get('emanager', {}).get('rbc', {}).get('status', {}).get('combustionRange', {})
+        if isinstance(check, int):
+            return True
+
+    @property
+    def fuel_level(self):
+        if self.fuel_level_supported:
+            return self.data.get('vsr', {}).get('fuelLevel', {})
+
+    @property
+    def fuel_level_supported(self):
+        check = self.data.get('vsr', {}).get('fuelLevel', {})
+        if isinstance(check, int):
+            return True
+
+    @property
     def external_power(self):
         """Return true if external power is connected."""
         if self.external_power_supported:
@@ -544,7 +566,6 @@ class Vehicle(object):
             if check[lock] != 2:
                 state = False
         return state
-
 
     @property
     def is_climatisation_on(self):
