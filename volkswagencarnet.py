@@ -14,7 +14,7 @@ from collections import OrderedDict
 
 version_info >= (3, 0) or exit('Python 3 required')
 
-__version__ = '2.0.12'
+__version__ = '2.0.13'
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -342,6 +342,16 @@ class Vehicle(object):
             return True
 
     @property
+    def climatisation_without_external_power(self):
+        if self.climatisation_without_external_power_supported:
+            return self.data.get('emanager', {}).get('rpc', {}).get('settings',{}).get('climatisationWithoutHVPower', {})
+
+    @property
+    def climatisation_without_external_power_supported(self):
+        if self.climatisation_supported:
+            return True
+
+    @property
     def service_inspection(self):
         """Return time left for service inspection"""
         if self.service_inspection_supported:
@@ -523,7 +533,8 @@ class Vehicle(object):
     def climatisation_supported(self):
         """Return true if vehichle has heater."""
         check = self.data.get('emanager', {}).get('rpc', {}).get('climaterActionState', {})
-        if check == 'AVAILABLE': return True
+        if check == 'AVAILABLE' or check == 'NO_PLUGIN':
+            return True
 
     @property
     def window_heater_supported(self):
