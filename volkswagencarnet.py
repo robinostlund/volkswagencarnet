@@ -14,7 +14,7 @@ from collections import OrderedDict
 
 version_info >= (3, 0) or exit('Python 3 required')
 
-__version__ = '2.0.1'
+__version__ = '2.0.5'
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -56,6 +56,11 @@ class Connection(object):
         self._state = {}
 
     def _login(self):
+        """ Reset session in case we would like to login again """
+        self._session = TimeoutRequestsSession()
+        self._session_headers = { 'Accept': 'application/json, text/plain, */*', 'Content-Type': 'application/json;charset=UTF-8', 'User-Agent': 'Mozilla/5.0 (Linux; Android 6.0.1; D5803 Build/23.5.A.1.291; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/63.0.3239.111 Mobile Safari/537.36' }
+        self._session_auth_headers = {'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8', 'User-Agent': 'Mozilla/5.0 (Linux; Android 6.0.1; D5803 Build/23.5.A.1.291; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/63.0.3239.111 Mobile Safari/537.36'}
+
         # Regular expressions to extract data
         re_csrf = re.compile('<meta name="_csrf" content="([^"]*)"/>')
         re_redurl = re.compile('<redirect url="([^"]*)"></redirect>')
@@ -192,7 +197,6 @@ class Connection(object):
 
     def _logout(self):
         self.post('-/logout/revoke')
-        del(self._session)
 
     def get(self, ref, rel=None):
         """Perform a get query to the online service."""
@@ -205,9 +209,12 @@ class Connection(object):
     def update(self, reset=False):
         """Update status."""
         try:
-            _LOGGER.info('Updating')
+            if not self.validate_login:
+                _LOGGER.warning('Session expired, creating new login session to carnet.')
+                self._login()
+            _LOGGER.debug('Updating vehicle status from carnet')
             if not self._state or reset:
-                _LOGGER.info('Querying vehicles')
+                _LOGGER.debug('Querying vehicles')
                 owners_verification = self.get('/portal/group/%s/edit-profile/-/profile/get-vehicles-owners-verification' % self._session_guest_language_id)
 
                 loaded_cars = self.get('-/mainnavigation/get-fully-loaded-cars')
@@ -218,15 +225,24 @@ class Connection(object):
 
             for vin, vehicle in self._state.items():
                 rel = self._session_base + vehicle['dashboardUrl'] + '/'
-                # request update
-                update_request = self.post('-/vsr/request-vsr', rel, dummy='data')
-                if update_request.get('errorCode') != '0':
-                    _LOGGER.debug('Failed to request vehicle update')
 
-                vehicle_emanager = self.get('-/emanager/get-emanager', rel)
-                vehicle_location = self.get('-/cf/get-location', rel)
-                vehicle_details = self.get('-/vehicle-info/get-vehicle-details', rel)
+                # fetch vehicle status data
                 vehicle_data = self.get('-/vsr/get-vsr', rel)
+
+                # request update of vehicle status data if not in progress
+                if vehicle_data.get('vehicleStatusData', {}).get('requestStatus', {}) != 'REQUEST_IN_PROGRESS':
+                    update_request = self.post('-/vsr/request-vsr', rel, dummy='data')
+                    if update_request.get('errorCode') != '0':
+                        _LOGGER.error('Failed to request vehicle update')
+                    else:
+                        vehicle_data = self.get('-/vsr/get-vsr', rel)
+
+                # fetch vehicle emanage data
+                vehicle_emanager = self.get('-/emanager/get-emanager', rel)
+                # fetch vehicle location data
+                vehicle_location = self.get('-/cf/get-location', rel)
+                # fetch vehicle details data
+                vehicle_details = self.get('-/vehicle-info/get-vehicle-details', rel)
 
                 if vehicle_emanager.get('errorCode') == '0':
                     self._state[vin]['emanager'] = vehicle_emanager['EManager']
@@ -241,18 +257,28 @@ class Connection(object):
 
             return True
         except (IOError, OSError) as error:
-            _LOGGER.warning('Could not query server: %s', error)
+            _LOGGER.warning('Could not update information from carnet: %s', error)
 
+    def vehicle(self, vin):
+        """Return vehicle for given vin."""
+        return next((vehicle for vehicle in self.vehicles if vehicle.vin.lower() == vin.lower()), None)
 
     @property
     def vehicles(self):
         """Return vehicle state."""
         return (Vehicle(self, vin, data) for vin, data in self._state.items())
 
-    def vehicle(self, vin):
-        """Return vehicle for given vin."""
-        return next((vehicle for vehicle in self.vehicles if vehicle.vin.lower() == vin.lower()), None)
-
+    @property
+    def validate_login(self):
+        try:
+            messages = self.get('-/msgc/get-new-messages')
+            if messages.get('errorCode', {}) == '0':
+                return True
+            else:
+                return False
+        except (IOError, OSError) as error:
+            _LOGGER.warning('Could not validate login: %s', error)
+            return False
 
 class Vehicle(object):
     def __init__(self, conn, vin, data):
@@ -275,6 +301,9 @@ class Vehicle(object):
     def call(self, method, **data):
         """Make remote method call."""
         try:
+            if not self._connection.validate_login:
+                _LOGGER.warning('Session expired, logging in again to carnet.')
+                self._connection._login()
             res = self.post(method, **data)
             if res.get('errorCode') != '0':
                 _LOGGER.warning('Failed to execute')
@@ -287,10 +316,31 @@ class Vehicle(object):
     @property
     def last_connected(self):
         """Return when vehicle was last connected to carnet"""
+        if self.last_connected_supported:
+            last_connected = self.data.get('vehicle-details', {}).get('lastConnectionTimeStamp', {})
+            if last_connected:
+                last_connected = last_connected[0] + last_connected[1]
+                return datetime.strptime(last_connected, '%d.%m.%Y%H:%M').strftime("%Y-%m-%d %H:%M:%S")
+
+    @property
+    def last_connected_supported(self):
+        """Return when vehicle was last connected to carnet"""
         check = self.data.get('vehicle-details', {}).get('lastConnectionTimeStamp', {})
         if check:
-            check = check[0] + check[1]
-            return datetime.strptime(check, '%d.%m.%Y%H:%M').strftime("%Y-%m-%d %H:%M:%S")
+            return True
+
+    @property
+    def climatisation_target_temperature(self):
+        if self.climatisation_supported:
+            temperature = self.data.get('emanager', {}).get('rpc', {}).get('settings',{}).get('targetTemperature', {})
+            if temperature:
+                return temperature
+
+    @property
+    def climatisation_target_temperature_supported(self):
+        if self.climatisation_supported:
+            return True
+
 
     @property
     def service_inspection(self):
@@ -590,5 +640,4 @@ class Vehicle(object):
             if isinstance(obj, datetime):
                 return obj.isoformat()
         return to_json(
-            OrderedDict(sorted(self.data.items())),
-            indent=4, default=serialize)
+            OrderedDict(sorted(self.data.items())), indent=4, default=serialize)
