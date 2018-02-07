@@ -14,7 +14,7 @@ from collections import OrderedDict
 
 version_info >= (3, 0) or exit('Python 3 required')
 
-__version__ = '2.0.9'
+__version__ = '2.0.10'
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -360,12 +360,24 @@ class Vehicle(object):
     def battery_level(self):
         """Return battery level"""
         if self.battery_level_supported:
-            battery = int(self.data.get('emanager', {}).get('rbc', {}).get('status', {}).get('batteryPercentage', {}))
-            if battery: return battery
+            return self.data.get('emanager', {}).get('rbc', {}).get('status', {}).get('batteryPercentage', {})
 
     @property
     def battery_level_supported(self):
-        if self.charging_supported:
+        check = self.data.get('emanager', {}).get('rbc', {}).get('status', {}).get('batteryPercentage', {})
+        if isinstance(check, int):
+            return True
+
+    @property
+    def charge_max_ampere(self):
+        """Return charge max ampere"""
+        if self.charge_max_ampere_supported:
+            return self.data.get('emanager', {}).get('rbc', {}).get('settings', {}).get('chargerMaxCurrent', {})
+
+    @property
+    def charge_max_ampere_supported(self):
+        check = self.data.get('emanager', {}).get('rbc', {}).get('settings', {}).get('chargerMaxCurrent', {})
+        if isinstance(check, int):
             return True
 
     @property
@@ -375,6 +387,8 @@ class Vehicle(object):
             check = self.data.get('vsr', {}).get('carRenderData', {}).get('parkingLights', {})
             if check != 2:
                 return True
+            else:
+                return False
 
     @property
     def parking_light_supported(self):
