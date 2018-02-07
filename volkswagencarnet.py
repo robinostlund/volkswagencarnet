@@ -14,7 +14,7 @@ from collections import OrderedDict
 
 version_info >= (3, 0) or exit('Python 3 required')
 
-__version__ = '2.0.6'
+__version__ = '2.0.7'
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -592,42 +592,48 @@ class Vehicle(object):
     def start_climatisation(self):
         """Turn on/off climatisation."""
         if self.climatisation_supported:
-            self.call('-/emanager/trigger-climatisation', triggerAction=True, electricClima=True)
+            if not self.call('-/emanager/trigger-climatisation', triggerAction=True, electricClima=True):
+                _LOGGER.warning('Failed to start climatisation')
         else:
             _LOGGER.error('No climatization support.')
 
     def stop_climatisation(self):
         """Turn on/off climatisation."""
         if self.climatisation_supported:
-            self.call('-/emanager/trigger-climatisation', triggerAction=False, electricClima=True)
+            if not self.call('-/emanager/trigger-climatisation', triggerAction=False, electricClima=True):
+                _LOGGER.warning('Failed to stop climatisation')
         else:
             _LOGGER.error('No climatization support.')
 
     def start_window_heater(self):
         """Turn on/off window heater."""
         if self.climatisation_supported:
-            self.call('-/emanager/trigger-climatisation', triggerAction=True)
+            if not self.call('-/emanager/trigger-windowheating', triggerAction=True):
+                _LOGGER.warning('Failed to start window heater')
         else:
             _LOGGER.error('No climatization support.')
 
     def stop_window_heater(self):
         """Turn on/off window heater."""
         if self.climatisation_supported:
-            self.call('-/emanager/trigger-windowheating', triggerAction=False)
+            if not self.call('-/emanager/trigger-windowheating', triggerAction=False):
+                _LOGGER.warning('Failed to stop window heater')
         else:
             _LOGGER.error('No window heating support.')
 
     def start_charging(self):
         """Turn on/off window heater."""
         if self.climatisation_supported:
-            self.call('-/emanager/charge-battery', triggerAction=True, batteryPercent='100')
+            if not self.call('-/emanager/charge-battery', triggerAction=True, batteryPercent='100'):
+                _LOGGER.warning('Failed to start charging')
         else:
             _LOGGER.error('No charging support.')
 
     def stop_charging(self):
         """Turn on/off window heater."""
         if self.climatisation_supported:
-            self.call('-/emanager/charge-battery', triggerAction=False, batteryPercent='99')
+            if not self.call('-/emanager/charge-battery', triggerAction=False, batteryPercent='99'):
+                _LOGGER.warning('Failed to stop charging')
         else:
             _LOGGER.error('No charging support.')
 
