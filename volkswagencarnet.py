@@ -14,7 +14,7 @@ from collections import OrderedDict
 
 version_info >= (3, 0) or exit('Python 3 required')
 
-__version__ = '2.0.10'
+__version__ = '2.0.11'
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -341,7 +341,6 @@ class Vehicle(object):
         if self.climatisation_supported:
             return True
 
-
     @property
     def service_inspection(self):
         """Return time left for service inspection"""
@@ -394,7 +393,7 @@ class Vehicle(object):
     def parking_light_supported(self):
         """Return true if parking light is supported"""
         check = self.data.get('vsr', {}).get('carRenderData',{}).get('parkingLights', {})
-        if check:
+        if isinstance(check, int):
             return True
 
     @property
@@ -480,6 +479,16 @@ class Vehicle(object):
     def combustion_range_supported(self):
         check = self.data.get('emanager', {}).get('rbc', {}).get('status', {}).get('combustionRange', {})
         if isinstance(check, int):
+            return True
+
+    @property
+    def total_range(self):
+        if self.total_range_supported:
+            return self.electric_range + self.combustion_range
+
+    @property
+    def total_range_supported(self):
+        if self.combustion_range_supported and self.electric_range_supported:
             return True
 
     @property
