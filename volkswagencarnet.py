@@ -14,7 +14,7 @@ from collections import OrderedDict
 
 version_info >= (3, 0) or exit('Python 3 required')
 
-__version__ = '2.0.11'
+__version__ = '2.0.12'
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -595,7 +595,7 @@ class Vehicle(object):
         """Return status of climatisation."""
         if self.climatisation_supported:
             status = self.data.get('emanager', {}).get('rpc', {}).get('status',{}).get('climatisationState', {})
-            if status == 'ON':
+            if status == 'HEATING':
                 return True
             else:
                 return False
@@ -609,7 +609,7 @@ class Vehicle(object):
             if status_front == 'ON':
                 ret = True
 
-            status_rear = self.data.get('emanager', {}).get('rpc', {}).get('status', {}).get('windowHeatingStateReart', {})
+            status_rear = self.data.get('emanager', {}).get('rpc', {}).get('status', {}).get('windowHeatingStateRear', {})
             if status_rear == 'ON':
                 ret = True
             return ret
