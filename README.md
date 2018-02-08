@@ -7,11 +7,11 @@ No licence, public domain, no guarantees, feel free to use for anything. Please 
 
 Python Client can be found here: 
 
-https://github.com/robinostlund/volkswagen-carnet-client
+https://github.com/robinostlund/volkswagencarnet-client
 
 Homeassistant Platform can be found here: 
 
-https://github.com/robinostlund/homeassistant-volkswagen-carnet
+https://github.com/robinostlund/homeassistant-volkswagencarnet
 
 
 Installation
