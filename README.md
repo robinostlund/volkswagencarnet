@@ -2,7 +2,17 @@
 Volkswagen Carnet
 ============================================================
 Retrieve statistics about your Volkswagen from the Volkswagen Carnet online service
+
 No licence, public domain, no guarantees, feel free to use for anything. Please contribute improvements/bugfixes etc.
+
+Python Client can be found here: 
+
+https://github.com/robinostlund/volkswagen-carnet-client
+
+Homeassistant Platform can be found here: 
+
+https://github.com/robinostlund/homeassistant-volkswagen-carnet
+
 
 Installation
 --------------

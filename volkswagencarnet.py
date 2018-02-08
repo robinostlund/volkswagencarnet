@@ -3,6 +3,7 @@
 """Communicate with Volkswagen Carnet."""
 
 import re
+import time
 import logging
 from sys import version_info
 from requests import Session, RequestException
@@ -14,7 +15,7 @@ from collections import OrderedDict
 
 version_info >= (3, 0) or exit('Python 3 required')
 
-__version__ = '2.0.13'
+__version__ = '2.0.14'
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -86,100 +87,104 @@ class Connection(object):
         def extract_guest_language_id(req):
             return req.split('_')[1].lower()
 
-        # Request landing page and get CSFR:
-        req = self._session.get(self._session_base + '/portal/en_GB/web/guest/home')
-        if req.status_code != 200:
-            return ""
-        csrf = extract_csrf(req)
+        try:
+            # Request landing page and get CSFR:
+            req = self._session.get(self._session_base + '/portal/en_GB/web/guest/home')
+            if req.status_code != 200:
+                return ""
+            csrf = extract_csrf(req)
 
-        # Request login page and get CSRF
-        self._session_auth_headers['Referer'] = self._session_base + 'portal'
-        self._session_auth_headers["X-CSRF-Token"] = csrf
-        req = self._session.post(self._session_base + 'portal/web/guest/home/-/csrftokenhandling/get-login-url', headers = self._session_auth_headers)
-        if req.status_code != 200:
-            return ""
-        response_data = req.json()
-        lg_url = response_data.get("loginURL").get("path")
+            # Request login page and get CSRF
+            self._session_auth_headers['Referer'] = self._session_base + 'portal'
+            self._session_auth_headers["X-CSRF-Token"] = csrf
+            req = self._session.post(self._session_base + 'portal/web/guest/home/-/csrftokenhandling/get-login-url', headers = self._session_auth_headers)
+            if req.status_code != 200:
+                return ""
+            response_data = req.json()
+            lg_url = response_data.get("loginURL").get("path")
 
-        # no redirect so we can get values we look for
-        req = self._session.get(lg_url, allow_redirects=False, headers = self._session_auth_headers)
-        if req.status_code != 302:
-            return ""
-        ref_url = req.headers.get("location")
+            # no redirect so we can get values we look for
+            req = self._session.get(lg_url, allow_redirects=False, headers = self._session_auth_headers)
+            if req.status_code != 302:
+                return ""
+            ref_url = req.headers.get("location")
 
-        # now get actual login page and get session id and ViewState
-        req = self._session.get(ref_url, headers = self._session_auth_headers)
-        if req.status_code != 200:
-            return ""
+            # now get actual login page and get session id and ViewState
+            req = self._session.get(ref_url, headers = self._session_auth_headers)
+            if req.status_code != 200:
+                return ""
 
-        view_state = extract_view_state(req)
+            view_state = extract_view_state(req)
 
-        # login with user details
-        self._session_auth_headers["Faces-Request"] = "partial/ajax"
-        self._session_auth_headers["Referer"] = ref_url
-        self._session_auth_headers["X-CSRF-Token"] = ''
+            # login with user details
+            self._session_auth_headers["Faces-Request"] = "partial/ajax"
+            self._session_auth_headers["Referer"] = ref_url
+            self._session_auth_headers["X-CSRF-Token"] = ''
 
-        post_data = {
-            'loginForm': 'loginForm',
-            'loginForm:email': self._session_auth_username,
-            'loginForm:password': self._session_auth_password,
-            'loginForm:j_idt19': '',
-            'javax.faces.ViewState': view_state,
-            'javax.faces.source': 'loginForm:submit',
-            'javax.faces.partial.event': 'click',
-            'javax.faces.partial.execute': 'loginForm:submit loginForm',
-            'javax.faces.partial.render': 'loginForm',
-            'javax.faces.behavior.event': 'action',
-            'javax.faces.partial.ajax': 'true'
-        }
+            post_data = {
+                'loginForm': 'loginForm',
+                'loginForm:email': self._session_auth_username,
+                'loginForm:password': self._session_auth_password,
+                'loginForm:j_idt19': '',
+                'javax.faces.ViewState': view_state,
+                'javax.faces.source': 'loginForm:submit',
+                'javax.faces.partial.event': 'click',
+                'javax.faces.partial.execute': 'loginForm:submit loginForm',
+                'javax.faces.partial.render': 'loginForm',
+                'javax.faces.behavior.event': 'action',
+                'javax.faces.partial.ajax': 'true'
+            }
 
-        req = self._session.post(self._session_auth_base + '/ap-login/jsf/login.jsf', data = post_data, headers = self._session_auth_headers)
-        if req.status_code != 200:
-            return ""
-        ref_url = extract_redirect_url(req).replace('&amp;', '&')
+            req = self._session.post(self._session_auth_base + '/ap-login/jsf/login.jsf', data = post_data, headers = self._session_auth_headers)
+            if req.status_code != 200:
+                return ""
+            ref_url = extract_redirect_url(req).replace('&amp;', '&')
 
-        # redirect to link from login and extract state and code values
-        req = self._session.get(ref_url, allow_redirects=False, headers = self._session_auth_headers)
-        if req.status_code != 302:
-            return ""
-        ref_url2 = req.headers.get("location")
+            # redirect to link from login and extract state and code values
+            req = self._session.get(ref_url, allow_redirects=False, headers = self._session_auth_headers)
+            if req.status_code != 302:
+                return ""
+            ref_url2 = req.headers.get("location")
 
-        code = extract_code(ref_url2)
-        state = extract_state(ref_url2)
+            code = extract_code(ref_url2)
+            state = extract_state(ref_url2)
 
-        # load ref page
-        req = self._session.get(ref_url2, headers = self._session_auth_headers)
-        if req.status_code != 200:
-            return ""
+            # load ref page
+            req = self._session.get(ref_url2, headers = self._session_auth_headers)
+            if req.status_code != 200:
+                return ""
 
-        self._session_auth_headers["Faces-Request"] = ""
-        self._session_auth_headers["Referer"] = ref_url2
-        post_data = {
-            '_33_WAR_cored5portlet_code': code,
-            '_33_WAR_cored5portlet_landingPageUrl': ''
-        }
-        req = self._session.post(self._session_base + urlsplit(ref_url2).path + '?p_auth=' + state + '&p_p_id=33_WAR_cored5portlet&p_p_lifecycle=1&p_p_state=normal&p_p_mode=view&p_p_col_id=column-1&p_p_col_count=1&_33_WAR_cored5portlet_javax.portlet.action=getLoginStatus', data = post_data, allow_redirects = False, headers = self._session_auth_headers)
-        if req.status_code != 302:
-            return ""
+            self._session_auth_headers["Faces-Request"] = ""
+            self._session_auth_headers["Referer"] = ref_url2
+            post_data = {
+                '_33_WAR_cored5portlet_code': code,
+                '_33_WAR_cored5portlet_landingPageUrl': ''
+            }
+            req = self._session.post(self._session_base + urlsplit(ref_url2).path + '?p_auth=' + state + '&p_p_id=33_WAR_cored5portlet&p_p_lifecycle=1&p_p_state=normal&p_p_mode=view&p_p_col_id=column-1&p_p_col_count=1&_33_WAR_cored5portlet_javax.portlet.action=getLoginStatus', data = post_data, allow_redirects = False, headers = self._session_auth_headers)
+            if req.status_code != 302:
+                return ""
 
-        ref_url3 = req.headers.get("location")
-        req = self._session.get(ref_url3, headers = self._session_auth_headers)
+            ref_url3 = req.headers.get("location")
+            req = self._session.get(ref_url3, headers = self._session_auth_headers)
 
-        # We have a new CSRF
-        csrf = extract_csrf(req)
+            # We have a new CSRF
+            csrf = extract_csrf(req)
 
-        # Request country code
-        req = self._session.get(self._session_base + '/portal/en_GB/web/guest/complete-login/-/mainnavigation/get-countries')
-        if req.status_code != 200:
-            return ""
-        cookie = self._session.cookies.get_dict()
-        self._session_guest_language_id = extract_guest_language_id(cookie.get('GUEST_LANGUAGE_ID', {}))
+            # Request country code
+            req = self._session.get(self._session_base + '/portal/en_GB/web/guest/complete-login/-/mainnavigation/get-countries')
+            if req.status_code != 200:
+                return ""
+            cookie = self._session.cookies.get_dict()
+            self._session_guest_language_id = extract_guest_language_id(cookie.get('GUEST_LANGUAGE_ID', {}))
 
-        # Update headers for requests
-        self._session_headers["Referer"] = ref_url3
-        self._session_headers["X-CSRF-Token"] = csrf
-        self._session_auth_ref_url = ref_url3 + '/'
-        return True
+            # Update headers for requests
+            self._session_headers["Referer"] = ref_url3
+            self._session_headers["X-CSRF-Token"] = csrf
+            self._session_auth_ref_url = ref_url3 + '/'
+            return True
+        except Exception as error:
+            #_LOGGER.error('Failed to login to carnet, %s' % error)
+            return False
 
     def _request(self, method, ref, rel=None):
         try:
@@ -225,6 +230,9 @@ class Connection(object):
 
             for vin, vehicle in self._state.items():
                 rel = self._session_base + vehicle['dashboardUrl'] + '/'
+
+                # load car details
+                #self.get('-/mainnavigation/load-car-details/%s' % vin)
 
                 # fetch vehicle status data
                 vehicle_data = self.get('-/vsr/get-vsr', rel)
@@ -307,9 +315,10 @@ class Vehicle(object):
             res = self.post(method, **data)
             if res.get('errorCode') != '0':
                 _LOGGER.warning('Failed to execute')
+                return False
             else:
                 _LOGGER.debug('Message delivered')
-                return True
+                return res
         except RequestException as error:
             _LOGGER.warning('Failure to execute: %s', error)
 
@@ -362,6 +371,20 @@ class Vehicle(object):
     @property
     def service_inspection_supported(self):
         check = self.data.get('vehicle-details', {}).get('serviceInspectionData', {})
+        if check:
+            return True
+
+    @property
+    def oil_inspection(self):
+        """Return time left for service inspection"""
+        if self.service_inspection_supported:
+            check = self.data.get('vehicle-details', {}).get('oilInspectionData', {})
+            if check:
+                return check
+
+    @property
+    def oil_inspection_supported(self):
+        check = self.data.get('vehicle-details', {}).get('oilInspectionData', {})
         if check:
             return True
 
@@ -491,14 +514,16 @@ class Vehicle(object):
         if isinstance(check, int):
             return True
 
-    @property
-    def total_range(self):
-        if self.total_range_supported:
-            return self.electric_range + self.combustion_range
 
     @property
-    def total_range_supported(self):
-        if self.combustion_range_supported and self.electric_range_supported:
+    def combined_range(self):
+        if self.combustion_range_supported:
+            return self.data.get('emanager', {}).get('rbc', {}).get('status', {}).get('combinedRange', {})
+
+    @property
+    def combined_range_supported(self):
+        check = self.data.get('emanager', {}).get('rbc', {}).get('status', {}).get('combinedRange', {})
+        if isinstance(check, int):
             return True
 
     @property
@@ -647,50 +672,79 @@ class Vehicle(object):
     def start_climatisation(self):
         """Turn on/off climatisation."""
         if self.climatisation_supported:
-            if not self.call('-/emanager/trigger-climatisation', triggerAction=True, electricClima=True):
+            resp = self.call('-/emanager/trigger-climatisation', triggerAction=True, electricClima=True)
+            if not resp:
                 _LOGGER.warning('Failed to start climatisation')
+            else:
+                return resp
         else:
             _LOGGER.error('No climatization support.')
 
     def stop_climatisation(self):
         """Turn on/off climatisation."""
         if self.climatisation_supported:
-            if not self.call('-/emanager/trigger-climatisation', triggerAction=False, electricClima=True):
+            resp = self.call('-/emanager/trigger-climatisation', triggerAction=False, electricClima=True)
+            if not resp:
                 _LOGGER.warning('Failed to stop climatisation')
+            else:
+                return resp
         else:
             _LOGGER.error('No climatization support.')
 
     def start_window_heater(self):
         """Turn on/off window heater."""
-        if self.climatisation_supported:
-            if not self.call('-/emanager/trigger-windowheating', triggerAction=True):
+        if self.window_heater_supported:
+            resp = self.call('-/emanager/trigger-windowheating', triggerAction=True)
+            if not resp:
                 _LOGGER.warning('Failed to start window heater')
+            else:
+                return resp
         else:
             _LOGGER.error('No climatization support.')
 
     def stop_window_heater(self):
         """Turn on/off window heater."""
-        if self.climatisation_supported:
-            if not self.call('-/emanager/trigger-windowheating', triggerAction=False):
+        if self.window_heater_supported:
+            resp = self.call('-/emanager/trigger-windowheating', triggerAction=False)
+            if not resp:
                 _LOGGER.warning('Failed to stop window heater')
         else:
             _LOGGER.error('No window heating support.')
 
     def start_charging(self):
         """Turn on/off window heater."""
-        if self.climatisation_supported:
-            if not self.call('-/emanager/charge-battery', triggerAction=True, batteryPercent='100'):
+        if self.charging_supported:
+            resp = self.call('-/emanager/charge-battery', triggerAction=True, batteryPercent='100')
+            if not resp:
                 _LOGGER.warning('Failed to start charging')
+            else:
+                return resp
         else:
             _LOGGER.error('No charging support.')
 
     def stop_charging(self):
         """Turn on/off window heater."""
-        if self.climatisation_supported:
-            if not self.call('-/emanager/charge-battery', triggerAction=False, batteryPercent='99'):
+        if self.charging_supported:
+            resp = self.call('-/emanager/charge-battery', triggerAction=False, batteryPercent='99')
+            if not resp:
                 _LOGGER.warning('Failed to stop charging')
+            else:
+                return resp
         else:
             _LOGGER.error('No charging support.')
+
+    def get_status(self, timeout = 10):
+        """Check status from call"""
+        retry_counter = 0
+        while retry_counter < timeout:
+            resp = self.call('-/emanager/get-notifications', data='dummy')
+            data = resp.get('actionNotificationList', {})
+            if data:
+                return data
+            time.sleep(1)
+            retry_counter += 1
+        return False
+
 
     def __str__(self):
         return self.vin
