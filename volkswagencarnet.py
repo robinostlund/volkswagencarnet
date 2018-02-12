@@ -15,7 +15,7 @@ from collections import OrderedDict
 
 version_info >= (3, 0) or exit('Python 3 required')
 
-__version__ = '2.0.14'
+__version__ = '2.0.15'
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -187,17 +187,16 @@ class Connection(object):
             return False
 
     def _request(self, method, ref, rel=None):
+        url = urljoin(rel or self._session_auth_ref_url, ref)
         try:
-            url = urljoin(rel or self._session_auth_ref_url, ref)
             _LOGGER.debug('Request for %s', url)
-            #res = method(url, headers = self._session_headers, timeout=TIMEOUT.seconds)
             res = method(url, headers=self._session_headers)
             res.raise_for_status()
             res = res.json(object_hook=_obj_parser)
             _LOGGER.debug('Received %s', res)
             return res
         except RequestException as error:
-            _LOGGER.warning('Failure when communcating with the server: %s', error)
+            _LOGGER.warning('Failure when communcating with the server: %s, url: %s', error, url)
             raise
 
     def _logout(self):

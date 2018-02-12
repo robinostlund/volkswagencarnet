@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name = 'volkswagencarnet',
-    version = '2.0.14',
+    version = '2.0.15',
     description = 'Communicate with Volkswagen Carnet',
     author = 'Robin Ostlund',
     author_email = 'me@robinostlund.name',
