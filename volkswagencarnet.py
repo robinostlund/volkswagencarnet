@@ -15,7 +15,7 @@ from collections import OrderedDict
 
 version_info >= (3, 0) or exit('Python 3 required')
 
-__version__ = '2.0.18'
+__version__ = '2.0.19'
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -598,6 +598,8 @@ class Vehicle(object):
             lock_data = self.data.get('vsr', {}).get('lockData', {})
             vehicle_locked = True
             for lock in lock_data:
+                if lock == 'trunk':
+                    continue
                 if lock_data[lock] != 2:
                     vehicle_locked = False
             return vehicle_locked
@@ -606,6 +608,20 @@ class Vehicle(object):
     def door_locked_supported(self):
         check = self.data.get('vsr', {}).get('lockData', {})
         if len(check) > 0:
+            return True
+
+    @property
+    def trunk_locked(self):
+        if self.trunk_locked_supported:
+            trunk_lock_data = self.data.get('vsr', {}).get('lockData', {}).get('trunk')
+            if trunk_lock_data != 2:
+                return False
+            else:
+                return True
+    @property
+    def trunk_locked_supported(self):
+        check = self.data.get('vsr', {}).get('lockData', {}).get('trunk')
+        if check:
             return True
 
     # states
