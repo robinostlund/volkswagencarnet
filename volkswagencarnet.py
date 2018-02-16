@@ -15,7 +15,7 @@ from collections import OrderedDict
 
 version_info >= (3, 0) or exit('Python 3 required')
 
-__version__ = '2.0.19'
+__version__ = '2.0.20'
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -48,6 +48,7 @@ class Connection(object):
         self._session_guest_language_id = 'se'
 
         self._session_auth_ref_url = False
+        self.session_logged_in = False
         self._session_auth_username = username
         self._session_auth_password = password
 
@@ -165,6 +166,7 @@ class Connection(object):
                 return ""
 
             ref_url3 = req.headers.get("location")
+            print(ref_url3)
             req = self._session.get(ref_url3, headers = self._session_auth_headers)
 
             # We have a new CSRF
@@ -181,9 +183,11 @@ class Connection(object):
             self._session_headers["Referer"] = ref_url3
             self._session_headers["X-CSRF-Token"] = csrf
             self._session_auth_ref_url = ref_url3 + '/'
+            self.session_logged_in = True
             return True
         except Exception as error:
             #_LOGGER.error('Failed to login to carnet, %s' % error)
+            self.session_logged_in = False
             return False
 
     def _request(self, method, ref, rel=None):
@@ -290,6 +294,9 @@ class Connection(object):
         except (IOError, OSError) as error:
             _LOGGER.warning('Could not validate login: %s', error)
             return False
+    @property
+    def logged_in(self):
+        return self.session_logged_in
 
 class Vehicle(object):
     def __init__(self, conn, vin, data):

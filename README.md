@@ -24,11 +24,16 @@ $ pip install volkswagencarnet
 ### Example
 ```python
 #!/usr/bin/env python3
+import sys
 import volkswagencarnet
 
 vw = volkswagencarnet.Connection('username', 'password')
 # login to carnet
 vw._login()
+if not vw.logged_in:
+    print('Could not login to carnet')
+    sys.exit(1)
+    
 # get vehicles from carnet
 vw.update()
 
