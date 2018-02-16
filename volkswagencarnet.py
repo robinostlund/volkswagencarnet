@@ -15,7 +15,7 @@ from collections import OrderedDict
 
 version_info >= (3, 0) or exit('Python 3 required')
 
-__version__ = '2.0.17'
+__version__ = '2.0.18'
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -213,9 +213,9 @@ class Connection(object):
     def update(self, reset=False):
         """Update status."""
         try:
-            #if not self.validate_login:
-            #    _LOGGER.warning('Session expired, creating new login session to carnet.')
-            #    self._login()
+            if not self.validate_login:
+                _LOGGER.warning('Session expired, creating new login session to carnet.')
+                self._login()
             _LOGGER.debug('Updating vehicle status from carnet')
             if not self._state or reset:
                 _LOGGER.debug('Querying vehicles')
@@ -312,9 +312,9 @@ class Vehicle(object):
     def call(self, method, **data):
         """Make remote method call."""
         try:
-            #if not self._connection.validate_login:
-            #    _LOGGER.warning('Session expired, logging in again to carnet.')
-            #    self._connection._login()
+            if not self._connection.validate_login:
+                _LOGGER.warning('Session expired, logging in again to carnet.')
+                self._connection._login()
             res = self.post(method, **data)
             if res.get('errorCode') != '0':
                 _LOGGER.warning('Failed to execute')
