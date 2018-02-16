@@ -15,7 +15,7 @@ from collections import OrderedDict
 
 version_info >= (3, 0) or exit('Python 3 required')
 
-__version__ = '2.0.20'
+__version__ = '2.0.21'
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -48,7 +48,8 @@ class Connection(object):
         self._session_guest_language_id = 'se'
 
         self._session_auth_ref_url = False
-        self.session_logged_in = False
+        self._session_logged_in = False
+        self._session_first_update = False
         self._session_auth_username = username
         self._session_auth_password = password
 
@@ -183,11 +184,11 @@ class Connection(object):
             self._session_headers["Referer"] = ref_url3
             self._session_headers["X-CSRF-Token"] = csrf
             self._session_auth_ref_url = ref_url3 + '/'
-            self.session_logged_in = True
+            self._session_logged_in = True
             return True
         except Exception as error:
             #_LOGGER.error('Failed to login to carnet, %s' % error)
-            self.session_logged_in = False
+            self._session_logged_in = False
             return False
 
     def _request(self, method, ref, rel=None):
@@ -217,9 +218,12 @@ class Connection(object):
     def update(self, reset=False):
         """Update status."""
         try:
-            if not self.validate_login:
-                _LOGGER.warning('Session expired, creating new login session to carnet.')
-                self._login()
+            if self._session_first_update:
+                if not self.validate_login:
+                    _LOGGER.warning('Session expired, creating new login session to carnet.')
+                    self._login()
+            else:
+                self._session_first_update = True
             _LOGGER.debug('Updating vehicle status from carnet')
             if not self._state or reset:
                 _LOGGER.debug('Querying vehicles')
@@ -296,7 +300,7 @@ class Connection(object):
             return False
     @property
     def logged_in(self):
-        return self.session_logged_in
+        return self._session_logged_in
 
 class Vehicle(object):
     def __init__(self, conn, vin, data):
