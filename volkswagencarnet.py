@@ -15,7 +15,7 @@ from collections import OrderedDict
 
 version_info >= (3, 0) or exit('Python 3 required')
 
-__version__ = '2.0.15'
+__version__ = '2.0.16'
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -251,14 +251,18 @@ class Connection(object):
                 # fetch vehicle details data
                 vehicle_details = self.get('-/vehicle-info/get-vehicle-details', rel)
 
-                if vehicle_emanager.get('errorCode') == '0':
-                    self._state[vin]['emanager'] = vehicle_emanager['EManager']
-                if vehicle_location.get('errorCode') == '0':
-                    self._state[vin]['position'] = vehicle_location['position']
-                if vehicle_details.get('errorCode') == '0':
-                    self._state[vin]['vehicle-details'] = vehicle_details['vehicleDetails']
-                if vehicle_data.get('errorCode') == '0':
-                    self._state[vin]['vsr'] = vehicle_data['vehicleStatusData']
+                if vehicle_emanager.get('errorCode', {}) == '0':
+                    if vehicle_emanager.get('EManager', {}):
+                        self._state[vin]['emanager'] = vehicle_emanager.get('EManager', {})
+                if vehicle_location.get('errorCode', {}) == '0':
+                    if vehicle_location.get('position', {}):
+                        self._state[vin]['position'] = vehicle_location.get('position', {})
+                if vehicle_details.get('errorCode', {}) == '0':
+                    if vehicle_details.get('vehicleDetails', {}):
+                        self._state[vin]['vehicle-details'] = vehicle_details.get('vehicleDetails', {})
+                if vehicle_data.get('errorCode', {}) == '0':
+                    if vehicle_data.get('vehicleStatusData', {}):
+                        self._state[vin]['vsr'] = vehicle_data.get('vehicleStatusData', {})
 
                 _LOGGER.debug('State: %s', self._state)
 
@@ -308,9 +312,9 @@ class Vehicle(object):
     def call(self, method, **data):
         """Make remote method call."""
         try:
-            if not self._connection.validate_login:
-                _LOGGER.warning('Session expired, logging in again to carnet.')
-                self._connection._login()
+            #if not self._connection.validate_login:
+            #    _LOGGER.warning('Session expired, logging in again to carnet.')
+            #    self._connection._login()
             res = self.post(method, **data)
             if res.get('errorCode') != '0':
                 _LOGGER.warning('Failed to execute')
