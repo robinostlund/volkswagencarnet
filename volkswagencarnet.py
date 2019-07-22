@@ -65,31 +65,11 @@ class Connection(object):
         self._session_headers = { 'Accept': 'application/json, text/plain, */*', 'Content-Type': 'application/json;charset=UTF-8', 'User-Agent': 'Mozilla/5.0 (Linux; Android 6.0.1; D5803 Build/23.5.A.1.291; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/63.0.3239.111 Mobile Safari/537.36' }
         self._session_auth_headers = {'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3', 'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': 'Mozilla/5.0 (Linux; Android 6.0.1; D5803 Build/23.5.A.1.291; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/63.0.3239.111 Mobile Safari/537.36'}
 
-        # Regular expressions to extract data
-        re_csrf = re.compile('<meta name="_csrf" content="([^"]*)"/>')
-        re_redurl = re.compile('<redirect url="([^"]*)"></redirect>')
-        re_viewstate = re.compile('name="javax.faces.ViewState" id="j_id1:javax.faces.ViewState:0" value="([^"]*)"')
-        re_authcode = re.compile('code=([^"]*)&')
-        re_authstate = re.compile('state=([^"]*)')
-
         def extract_csrf(req):
-            return re_csrf.search(req.text).group(1)
-
-        def extract_redirect_url(req):
-            return re_redurl.search(req.text).group(1)
-
-        def extract_view_state(req):
-            return re_viewstate.search(req.text).group(1)
-
-        def extract_code(req):
-            return re_authcode.search(req).group(1)
-
-        def extract_state(req):
-            return re_authstate.search(req).group(1)
+            return re.compile('<meta name="_csrf" content="([^"]*)"/>').search(req.text).group(1)
 
         def extract_guest_language_id(req):
             return req.split('_')[1].lower()
-
 
         def extract_login_form_action(req):
             return re.compile('<form id="userCredentialsForm" method="post" name="userCredentialsForm" action="([^"]*)">').search(req.text).group(1)
@@ -232,37 +212,31 @@ class Connection(object):
                     self._login()
             else:
                 self._session_first_update = True
+
             _LOGGER.debug('Updating vehicle status from carnet')
             if not self._state or reset:
                 _LOGGER.debug('Querying vehicles')
                 owners_verification = self.post('/portal/group/%s/edit-profile/-/profile/get-vehicles-owners-verification' % self._session_guest_language_id)
 
-                loaded_cars = self.post('-/mainnavigation/get-fully-loaded-cars')
+                # get vehicles
+                loaded_vehicles = self.post('-/mainnavigation/get-fully-loaded-cars')
 
                 # load all not loaded vehicles
-                if loaded_cars['fullyLoadedVehiclesResponse']['vehiclesNotFullyLoaded']:
-                    for vehicle in loaded_cars['fullyLoadedVehiclesResponse']['vehiclesNotFullyLoaded']:
+                if loaded_vehicles.get('fullyLoadedVehiclesResponse', {}).get('vehiclesNotFullyLoaded', []):
+                    for vehicle in loaded_vehicles.get('fullyLoadedVehiclesResponse').get('vehiclesNotFullyLoaded'):
                         self.post('-/mainnavigation/load-car-details/%s' % vehicle.get('vin'))
 
                     # update loaded cars
-                    loaded_cars = self.post('-/mainnavigation/get-fully-loaded-cars')
+                    loaded_vehicles = self.post('-/mainnavigation/get-fully-loaded-cars')
 
                 # update vehicles
-                for vehicle in loaded_cars['fullyLoadedVehiclesResponse']['completeVehicles']:
-                    self._state.update({vehicle['vin']: vehicle})
+                if loaded_vehicles.get('fullyLoadedVehiclesResponse', {}).get('completeVehicles', []):
+                    for vehicle in loaded_vehicles.get('fullyLoadedVehiclesResponse').get('completeVehicles'):
+                        self._state.update({vehicle['vin']: vehicle})
 
             for vin, vehicle in self._state.items():
                 rel = self._session_base + vehicle['dashboardUrl'] + '/'
 
-                # fetch vehicle status data
-                vehicle_data = self.post('-/vsr/get-vsr', rel)
-
-                # request update of vehicle status data if not in progress
-                if request_data and vehicle_data.get('vehicleStatusData', {}).get('requestStatus', {}) != 'REQUEST_IN_PROGRESS':
-                    update_request = self.post('-/vsr/request-vsr', rel, dummy='data')
-                    if update_request.get('errorCode') != '0':
-                        _LOGGER.error('Failed to request vehicle update')
-                
                 # fetch vehicle vsr data
                 try:
                     vehicle_data = self.post('-/vsr/get-vsr', rel)
@@ -271,6 +245,11 @@ class Connection(object):
                 except Exception as err:
                     _LOGGER.debug('Could not fetch vsr data: %s' % err)
 
+                # request update of vehicle status data if not in progress
+                if request_data and vehicle_data.get('vehicleStatusData', {}).get('requestStatus', {}) != 'REQUEST_IN_PROGRESS':
+                    update_request = self.post('-/vsr/request-vsr', rel, dummy='data')
+                    if update_request.get('errorCode') != '0':
+                        _LOGGER.error('Failed to request vehicle update')
 
                 # fetch vehicle emanage data
                 try:
@@ -283,12 +262,10 @@ class Connection(object):
                 # fetch vehicle location data
                 try:
                     vehicle_location = self.post('-/cf/get-location', rel)
-
                     if vehicle_location.get('errorCode', {}) == '0' and vehicle_location.get('position', {}):
                         self._state[vin]['position'] = vehicle_location.get('position', {})
                 except Exception as err:
                     _LOGGER.debug('Could not fetch location data: %s' % err)
-
 
                 # fetch vehicle details data
                 try:
