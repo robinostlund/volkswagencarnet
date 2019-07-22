@@ -1,21 +1,22 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """Communicate with Volkswagen Carnet."""
-
 import re
 import time
 import logging
 from sys import version_info
 from requests import Session, RequestException
 from datetime import timedelta, datetime
-from urllib.parse import urlsplit, urljoin
+from urllib.parse import urlsplit, urljoin, parse_qs, urlparse
 from functools import partial
 from json import dumps as to_json
 from collections import OrderedDict
 
+from utilities import find_path, is_valid_path
+
 version_info >= (3, 0) or exit('Python 3 required')
 
-__version__ = '2.0.21'
+__version__ = '4.0.20'
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -38,14 +39,14 @@ class TimeoutRequestsSession(Session):
 
 class Connection(object):
     """ Connection to Volkswagen Carnet """
-    def __init__(self, username, password):
+    def __init__(self, username, password, guest_lang = 'en'):
         """ Initialize """
         self._session = TimeoutRequestsSession()
         self._session_headers = { 'Accept': 'application/json, text/plain, */*', 'Content-Type': 'application/json;charset=UTF-8', 'User-Agent': 'Mozilla/5.0 (Linux; Android 6.0.1; D5803 Build/23.5.A.1.291; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/63.0.3239.111 Mobile Safari/537.36' }
-        self._session_base = 'https://www.volkswagen-car-net.com/'
-        self._session_auth_headers = {'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8', 'User-Agent': 'Mozilla/5.0 (Linux; Android 6.0.1; D5803 Build/23.5.A.1.291; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/63.0.3239.111 Mobile Safari/537.36'}
-        self._session_auth_base = 'https://security.volkswagen.com'
-        self._session_guest_language_id = 'se'
+        self._session_base = 'https://www.portal.volkswagen-we.com/'
+        self._session_auth_headers = {'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3', 'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': 'Mozilla/5.0 (Linux; Android 6.0.1; D5803 Build/23.5.A.1.291; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/63.0.3239.111 Mobile Safari/537.36'}
+        self._session_auth_base = 'https://identity.vwgroup.io'
+        self._session_guest_language_id = guest_lang
 
         self._session_auth_ref_url = False
         self._session_logged_in = False
@@ -62,7 +63,7 @@ class Connection(object):
         """ Reset session in case we would like to login again """
         self._session = TimeoutRequestsSession()
         self._session_headers = { 'Accept': 'application/json, text/plain, */*', 'Content-Type': 'application/json;charset=UTF-8', 'User-Agent': 'Mozilla/5.0 (Linux; Android 6.0.1; D5803 Build/23.5.A.1.291; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/63.0.3239.111 Mobile Safari/537.36' }
-        self._session_auth_headers = {'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8', 'User-Agent': 'Mozilla/5.0 (Linux; Android 6.0.1; D5803 Build/23.5.A.1.291; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/63.0.3239.111 Mobile Safari/537.36'}
+        self._session_auth_headers = {'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3', 'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': 'Mozilla/5.0 (Linux; Android 6.0.1; D5803 Build/23.5.A.1.291; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/63.0.3239.111 Mobile Safari/537.36'}
 
         # Regular expressions to extract data
         re_csrf = re.compile('<meta name="_csrf" content="([^"]*)"/>')
@@ -89,6 +90,16 @@ class Connection(object):
         def extract_guest_language_id(req):
             return req.split('_')[1].lower()
 
+
+        def extract_login_form_action(req):
+            return re.compile('<form id="userCredentialsForm" method="post" name="userCredentialsForm" action="([^"]*)">').search(req.text).group(1)
+
+        def extract_login_form_input_token(req):
+            return re.compile('<input type="hidden" name="relayStateToken" value="([^"]*)"/>').search(req.text).group(1)
+
+        def extract_login_form_input_csrf(req):
+            return re.compile('<input type="hidden" name="_csrf" value="([^"]*)"/>').search(req.text).group(1)
+
         try:
             # Request landing page and get CSFR:
             req = self._session.get(self._session_base + '/portal/en_GB/web/guest/home')
@@ -98,10 +109,10 @@ class Connection(object):
 
             # Request login page and get CSRF
             self._session_auth_headers['Referer'] = self._session_base + 'portal'
-            self._session_auth_headers["X-CSRF-Token"] = csrf
             req = self._session.post(self._session_base + 'portal/web/guest/home/-/csrftokenhandling/get-login-url', headers = self._session_auth_headers)
             if req.status_code != 200:
                 return ""
+
             response_data = req.json()
             lg_url = response_data.get("loginURL").get("path")
 
@@ -109,83 +120,80 @@ class Connection(object):
             req = self._session.get(lg_url, allow_redirects=False, headers = self._session_auth_headers)
             if req.status_code != 302:
                 return ""
-            ref_url = req.headers.get("location")
+            ref_url_1= req.headers.get("location")
 
             # now get actual login page and get session id and ViewState
-            req = self._session.get(ref_url, headers = self._session_auth_headers)
+            req = self._session.get(ref_url_1, headers = self._session_auth_headers)
             if req.status_code != 200:
                 return ""
 
-            view_state = extract_view_state(req)
+            # get login variables
+            login_url = self._session_auth_base + extract_login_form_action(req)
+            login_token = extract_login_form_input_token(req)
+            login_csrf = extract_login_form_input_csrf(req)
 
-            # login with user details
-            self._session_auth_headers["Faces-Request"] = "partial/ajax"
-            self._session_auth_headers["Referer"] = ref_url
-            self._session_auth_headers["X-CSRF-Token"] = ''
+
+            # post login
+            self._session_auth_headers["Referer"] = ref_url_1
 
             post_data = {
-                'loginForm': 'loginForm',
-                'loginForm:email': self._session_auth_username,
-                'loginForm:password': self._session_auth_password,
-                'loginForm:j_idt19': '',
-                'javax.faces.ViewState': view_state,
-                'javax.faces.source': 'loginForm:submit',
-                'javax.faces.partial.event': 'click',
-                'javax.faces.partial.execute': 'loginForm:submit loginForm',
-                'javax.faces.partial.render': 'loginForm',
-                'javax.faces.behavior.event': 'action',
-                'javax.faces.partial.ajax': 'true'
+                'email': self._session_auth_username,
+                'password': self._session_auth_password,
+                'relayStateToken': login_token,
+                '_csrf': login_csrf,
+                'login': 'true'
             }
+            req = self._session.post(login_url, data = post_data, allow_redirects=False, headers = self._session_auth_headers)
 
-            req = self._session.post(self._session_auth_base + '/ap-login/jsf/login.jsf', data = post_data, headers = self._session_auth_headers)
-            if req.status_code != 200:
-                return ""
-            ref_url = extract_redirect_url(req).replace('&amp;', '&')
-
-            # redirect to link from login and extract state and code values
-            req = self._session.get(ref_url, allow_redirects=False, headers = self._session_auth_headers)
             if req.status_code != 302:
                 return ""
-            ref_url2 = req.headers.get("location")
 
-            code = extract_code(ref_url2)
-            state = extract_state(ref_url2)
-
-            # load ref page
-            req = self._session.get(ref_url2, headers = self._session_auth_headers)
-            if req.status_code != 200:
+            ref_url_2 = req.headers.get("location")
+            req = self._session.get(ref_url_2, allow_redirects=False, headers = self._session_auth_headers)
+            if req.status_code != 302:
                 return ""
 
-            self._session_auth_headers["Faces-Request"] = ""
-            self._session_auth_headers["Referer"] = ref_url2
+            ref_url_3 = req.headers.get("location")
+            req = self._session.get(ref_url_3, allow_redirects=False, headers = self._session_auth_headers)
+            if req.status_code != 302:
+                return ""
+
+            ref_url_4 = req.headers.get("location")
+            req = self._session.get(ref_url_4, allow_redirects=False, headers = self._session_auth_headers)
+            if req.status_code != 302:
+                return ""
+
+            ref_url_5 = req.headers.get("location")
+            state = parse_qs(urlparse(ref_url_5).query).get('state')[0]
+            code = parse_qs(urlparse(ref_url_5).query).get('code')[0]
+
+            self._session_auth_headers["Referer"] = ref_url_5
             post_data = {
                 '_33_WAR_cored5portlet_code': code,
                 '_33_WAR_cored5portlet_landingPageUrl': ''
             }
-            req = self._session.post(self._session_base + urlsplit(ref_url2).path + '?p_auth=' + state + '&p_p_id=33_WAR_cored5portlet&p_p_lifecycle=1&p_p_state=normal&p_p_mode=view&p_p_col_id=column-1&p_p_col_count=1&_33_WAR_cored5portlet_javax.portlet.action=getLoginStatus', data = post_data, allow_redirects = False, headers = self._session_auth_headers)
+            req = self._session.post(self._session_base + urlsplit(ref_url_5).path + '?p_auth=' + state + '&p_p_id=33_WAR_cored5portlet&p_p_lifecycle=1&p_p_state=normal&p_p_mode=view&p_p_col_id=column-1&p_p_col_count=1&_33_WAR_cored5portlet_javax.portlet.action=getLoginStatus', data = post_data, allow_redirects = False, headers = self._session_auth_headers)
             if req.status_code != 302:
                 return ""
 
-            ref_url3 = req.headers.get("location")
-            print(ref_url3)
-            req = self._session.get(ref_url3, headers = self._session_auth_headers)
+            ref_url_6 = req.headers.get("location")
+            req = self._session.get(ref_url_6, allow_redirects=False, headers = self._session_auth_headers)
+            if req.status_code != 200:
+                return ""
 
             # We have a new CSRF
             csrf = extract_csrf(req)
 
-            # Request country code
-            req = self._session.get(self._session_base + '/portal/en_GB/web/guest/complete-login/-/mainnavigation/get-countries')
-            if req.status_code != 200:
-                return ""
             cookie = self._session.cookies.get_dict()
             self._session_guest_language_id = extract_guest_language_id(cookie.get('GUEST_LANGUAGE_ID', {}))
 
             # Update headers for requests
-            self._session_headers["Referer"] = ref_url3
+            self._session_headers["Referer"] = ref_url_6
             self._session_headers["X-CSRF-Token"] = csrf
-            self._session_auth_ref_url = ref_url3 + '/'
+            self._session_auth_ref_url = ref_url_6 + '/'
             self._session_logged_in = True
             return True
+
         except Exception as error:
             #_LOGGER.error('Failed to login to carnet, %s' % error)
             self._session_logged_in = False
@@ -215,7 +223,7 @@ class Connection(object):
         """Perform a post query to the online service."""
         return self._request(partial(self._session.post, json=data), ref, rel)
 
-    def update(self, reset=False):
+    def update(self, reset=False, request_data = True):
         """Update status."""
         try:
             if self._session_first_update:
@@ -227,50 +235,69 @@ class Connection(object):
             _LOGGER.debug('Updating vehicle status from carnet')
             if not self._state or reset:
                 _LOGGER.debug('Querying vehicles')
-                owners_verification = self.get('/portal/group/%s/edit-profile/-/profile/get-vehicles-owners-verification' % self._session_guest_language_id)
+                owners_verification = self.post('/portal/group/%s/edit-profile/-/profile/get-vehicles-owners-verification' % self._session_guest_language_id)
 
-                loaded_cars = self.get('-/mainnavigation/get-fully-loaded-cars')
+                loaded_cars = self.post('-/mainnavigation/get-fully-loaded-cars')
 
-                for key, vehicles in loaded_cars['fullyLoadedVehiclesResponse'].items():
-                    for vehicle in vehicles:
-                        self._state.update({vehicle['vin']: vehicle})
+                # load all not loaded vehicles
+                if loaded_cars['fullyLoadedVehiclesResponse']['vehiclesNotFullyLoaded']:
+                    for vehicle in loaded_cars['fullyLoadedVehiclesResponse']['vehiclesNotFullyLoaded']:
+                        self.post('-/mainnavigation/load-car-details/%s' % vehicle.get('vin'))
+
+                    # update loaded cars
+                    loaded_cars = self.post('-/mainnavigation/get-fully-loaded-cars')
+
+                # update vehicles
+                for vehicle in loaded_cars['fullyLoadedVehiclesResponse']['completeVehicles']:
+                    self._state.update({vehicle['vin']: vehicle})
 
             for vin, vehicle in self._state.items():
                 rel = self._session_base + vehicle['dashboardUrl'] + '/'
 
-                # load car details
-                #self.get('-/mainnavigation/load-car-details/%s' % vin)
-
                 # fetch vehicle status data
-                vehicle_data = self.get('-/vsr/get-vsr', rel)
+                vehicle_data = self.post('-/vsr/get-vsr', rel)
 
                 # request update of vehicle status data if not in progress
-                if vehicle_data.get('vehicleStatusData', {}).get('requestStatus', {}) != 'REQUEST_IN_PROGRESS':
+                if request_data and vehicle_data.get('vehicleStatusData', {}).get('requestStatus', {}) != 'REQUEST_IN_PROGRESS':
                     update_request = self.post('-/vsr/request-vsr', rel, dummy='data')
                     if update_request.get('errorCode') != '0':
                         _LOGGER.error('Failed to request vehicle update')
-                    else:
-                        vehicle_data = self.get('-/vsr/get-vsr', rel)
+                
+                # fetch vehicle vsr data
+                try:
+                    vehicle_data = self.post('-/vsr/get-vsr', rel)
+                    if vehicle_data.get('errorCode', {}) == '0' and vehicle_data.get('vehicleStatusData', {}):
+                        self._state[vin]['vsr'] = vehicle_data.get('vehicleStatusData', {})
+                except Exception as err:
+                    _LOGGER.debug('Could not fetch vsr data: %s' % err)
+
 
                 # fetch vehicle emanage data
-                vehicle_emanager = self.get('-/emanager/get-emanager', rel)
-                # fetch vehicle location data
-                vehicle_location = self.get('-/cf/get-location', rel)
-                # fetch vehicle details data
-                vehicle_details = self.get('-/vehicle-info/get-vehicle-details', rel)
-
-                if vehicle_emanager.get('errorCode', {}) == '0':
-                    if vehicle_emanager.get('EManager', {}):
+                try:
+                    vehicle_emanager = self.post('-/emanager/get-emanager', rel)
+                    if vehicle_emanager.get('errorCode', {}) == '0' and vehicle_emanager.get('EManager', {}):
                         self._state[vin]['emanager'] = vehicle_emanager.get('EManager', {})
-                if vehicle_location.get('errorCode', {}) == '0':
-                    if vehicle_location.get('position', {}):
+                except Exception as err:
+                    _LOGGER.debug('Could not fetch emanager data: %s' % err)
+
+                # fetch vehicle location data
+                try:
+                    vehicle_location = self.post('-/cf/get-location', rel)
+
+                    if vehicle_location.get('errorCode', {}) == '0' and vehicle_location.get('position', {}):
                         self._state[vin]['position'] = vehicle_location.get('position', {})
-                if vehicle_details.get('errorCode', {}) == '0':
-                    if vehicle_details.get('vehicleDetails', {}):
+                except Exception as err:
+                    _LOGGER.debug('Could not fetch location data: %s' % err)
+
+
+                # fetch vehicle details data
+                try:
+                    vehicle_details = self.post('-/vehicle-info/get-vehicle-details', rel)
+                    if vehicle_details.get('errorCode', {}) == '0' and vehicle_details.get('vehicleDetails', {}):
                         self._state[vin]['vehicle-details'] = vehicle_details.get('vehicleDetails', {})
-                if vehicle_data.get('errorCode', {}) == '0':
-                    if vehicle_data.get('vehicleStatusData', {}):
-                        self._state[vin]['vsr'] = vehicle_data.get('vehicleStatusData', {})
+
+                except Exception as err:
+                    _LOGGER.debug('Could not fetch details data: %s' % err)
 
                 _LOGGER.debug('State: %s', self._state)
 
@@ -287,10 +314,13 @@ class Connection(object):
         """Return vehicle state."""
         return (Vehicle(self, vin, data) for vin, data in self._state.items())
 
+    def vehicle_attrs(self, vin):
+        return self._state.get(vin)
+
     @property
     def validate_login(self):
         try:
-            messages = self.get('-/msgc/get-new-messages')
+            messages = self.post('-/msgc/get-new-messages')
             if messages.get('errorCode', {}) == '0':
                 return True
             else:
@@ -337,13 +367,33 @@ class Vehicle(object):
             _LOGGER.warning('Failure to execute: %s', error)
 
     @property
+    def attrs(self):
+        return self._connection.vehicle_attrs(self.vin)
+
+    def has_attr(self, attr):
+        return is_valid_path(self.attrs, attr)
+
+    def get_attr(self, attr):
+        return find_path(self.attrs, attr)
+
+    def dashboard(self, **config):
+        from dashboard import Dashboard
+        return Dashboard(self, **config)
+
+
+    @property
     def last_connected(self):
         """Return when vehicle was last connected to carnet"""
         if self.last_connected_supported:
             last_connected = self.data.get('vehicle-details', {}).get('lastConnectionTimeStamp', {})
             if last_connected:
                 last_connected = last_connected[0] + last_connected[1]
-                return datetime.strptime(last_connected, '%d.%m.%Y%H:%M').strftime("%Y-%m-%d %H:%M:%S")
+                date_patterns = ["%d.%m.%Y%H:%M", "%d-%m-%Y%H:%M"]
+                for date_pattern in date_patterns:
+                    try:
+                        return datetime.strptime(last_connected, date_pattern).strftime("%Y-%m-%d %H:%M:%S")
+                    except:
+                        pass
 
     @property
     def last_connected_supported(self):
@@ -446,12 +496,14 @@ class Vehicle(object):
     @property
     def distance(self):
         if self.distance_supported:
-            return int(self.data.get('vehicle-details',{}).get('distanceCovered').replace('.', ''))
+            value = self.data.get('vehicle-details',{}).get('distanceCovered', None).replace('.', '').replace(',','')
+            if value:
+                return int(value)
 
     @property
     def distance_supported(self):
         """Return true if distance is supported"""
-        check = self.data.get('vehicle-details',{}).get('distanceCovered')
+        check = self.data.get('vehicle-details',{}).get('distanceCovered', {})
         if check: return True
 
     @property
@@ -498,6 +550,16 @@ class Vehicle(object):
     def model_image_supported(self):
         check = self.data.get('imageUrl', {})
         if check: return True
+
+    @property
+    def charging(self):
+        """Return status of charging."""
+        if self.charging_supported:
+            status = self.data.get('emanager', {}).get('rbc', {}).get('status', {}).get('chargingState', {})
+            if status == 'CHARGING':
+                return True
+            else:
+                return False
 
     @property
     def charging_supported(self):
@@ -569,11 +631,34 @@ class Vehicle(object):
             if check: return True
 
     @property
+    def climatisation(self):
+        """Return status of climatisation."""
+        if self.climatisation_supported:
+            status = self.data.get('emanager', {}).get('rpc', {}).get('status',{}).get('climatisationState', {})
+            if status == 'HEATING':
+                return True
+            else:
+                return False
+    @property
     def climatisation_supported(self):
         """Return true if vehichle has heater."""
         check = self.data.get('emanager', {}).get('rpc', {}).get('climaterActionState', {})
         if check == 'AVAILABLE' or check == 'NO_PLUGIN':
             return True
+
+    @property
+    def window_heater(self):
+        """Return status of window heater."""
+        if self.window_heater_supported:
+            ret = False
+            status_front = self.data.get('emanager', {}).get('rpc', {}).get('status', {}).get('windowHeatingStateFront', {})
+            if status_front == 'ON':
+                ret = True
+
+            status_rear = self.data.get('emanager', {}).get('rpc', {}).get('status', {}).get('windowHeatingStateRear', {})
+            if status_rear == 'ON':
+                ret = True
+            return ret
 
     @property
     def window_heater_supported(self):
@@ -635,6 +720,21 @@ class Vehicle(object):
         if check:
             return True
 
+    @property
+    def request_in_progress(self):
+        check = self.data.get('vsr', {}).get('requestStatus', {})
+        if check == 'REQUEST_IN_PROGRESS':
+            return True
+        else:
+            return False
+
+    @property
+    def request_in_progress_supported(self):
+        check = self.data.get('vsr', {}).get('requestStatus', {})
+        if check:
+            return True
+
+
     # states
     @property
     def is_parking_lights_on(self):
@@ -642,9 +742,9 @@ class Vehicle(object):
         if self.parking_light_supported:
             state = self.data.get('carRenderData', {}).get('parkingLights', {})
             if state != 2:
-                return True
-            else:
                 return False
+            else:
+                return True
 
     @property
     def is_doors_locked(self):
