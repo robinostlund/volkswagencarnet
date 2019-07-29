@@ -72,15 +72,6 @@ class Connection(object):
         def extract_guest_language_id(req):
             return req.split('_')[1].lower()
 
-        def extract_login_form_action(req):
-            return re.compile('<form id="userCredentialsForm" method="post" name="userCredentialsForm" action="([^"]*)">').search(req.text).group(1)
-
-        def extract_login_form_input_token(req):
-            return re.compile('<input type="hidden" id="input_relayState" name="relayState" value="([^"]*)"/>').search(req.text).group(1)
-
-        def extract_login_form_input_csrf(req):
-            return re.compile('<input type="hidden" name="_csrf" value="([^"]*)"/>').search(req.text).group(1)
-
         try:
             # Request landing page and get CSFR:
             req = self._session.get(self._session_base + '/portal/en_GB/web/guest/home')
@@ -882,6 +873,17 @@ class Vehicle(object):
                 return resp
         else:
             _LOGGER.error('No charging support.')
+
+    def set_climatisation_target_temperature(self, target_temperature):
+        """Turn on/off window heater."""
+        if self.climatisation_supported:
+            resp = self.call('-/emanager/set-settings', chargerMaxCurrent=None, climatisationWithoutHVPower=None, minChargeLimit=None, targetTemperature = target_temperature)
+            if not resp:
+                _LOGGER.warning('Failed to set target temperature for climatisation')
+            else:
+                return resp
+        else:
+            _LOGGER.error('No climatisation support.')
 
     def get_status(self, timeout = 10):
         """Check status from call"""

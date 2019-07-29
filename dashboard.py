@@ -162,6 +162,45 @@ class Switch(Instrument):
     def assumed_state(self):
         return True
 
+class Climate(Instrument):
+    def __init__(self, attr, name, icon):
+        super().__init__(component = "climate", attr = attr, name = name, icon = icon)
+
+    @property
+    def hvac_mode(self):
+        pass
+
+    @property
+    def target_temperature(self):
+        pass
+
+    def set_temperature(self, **kwargs):
+        pass
+
+    def set_hvac_mode(self, hvac_mode):
+        pass
+
+class ClimatisationClimate(Climate):
+    def __init__(self):
+        super().__init__(attr="climatisation", name="Climatisation", icon="mdi:radiator")
+
+    @property
+    def hvac_mode(self):
+        return self.vehicle.climatisation
+
+    @property
+    def target_temperature(self):
+        return self.vehicle.climatisation_target_temperature
+
+    def set_temperature(self, temperature):
+        self.vehicle.set_climatisation_target_temperature(temperature)
+
+    def set_hvac_mode(self, hvac_mode):
+        if hvac_mode:
+            self.vehicle.start_climatisation()
+        else:
+            self.vehicle.stop_climatisation()
+
 
 class Position(Instrument):
     def __init__(self):
@@ -315,6 +354,7 @@ def create_instruments():
         DoorLock(),
         TrunkLock(),
         Climatisation(),
+        ClimatisationClimate(),
         Charging(),
         WindowHeater(),
         Sensor(
