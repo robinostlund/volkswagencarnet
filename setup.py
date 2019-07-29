@@ -2,13 +2,12 @@ from setuptools import setup
 
 setup(
     name = 'volkswagencarnet',
-    version = '4.0.22',
+    version = '4.0.23',
     description = 'Communicate with Volkswagen Carnet',
     author = 'Robin Ostlund',
     author_email = 'me@robinostlund.name',
-    url = 'https://github.com/robinostlund/volkswagencarnet', # use the URL to the github repo
-    #download_url = 'https://github.com/robinostlund/volkswagencarnet/archive/0.1.tar.gz', # I'll explain this in a second
-    download_url = 'https://github.com/robinostlund/volkswagencarnet/archive/4.0.22.tar.gz',
+    url = 'https://github.com/robinostlund/volkswagencarnet',
+    download_url = 'https://github.com/robinostlund/volkswagencarnet/archive/4.0.23.tar.gz',
     py_modules=[
         "volkswagencarnet",
         "dashboard",
@@ -18,6 +17,7 @@ setup(
     provides=["volkswagencarnet"],
     install_requires=[
         'requests',
+        'lxml',
         'beautifulsoup4'
     ]
 )
