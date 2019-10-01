@@ -507,7 +507,7 @@ class Vehicle(object):
     @property
     def distance(self):
         if self.distance_supported:
-            value = self.data.get('vehicle-details',{}).get('distanceCovered', None).replace('.', '').replace(',','')
+            value = self.data.get('vehicle-details',{}).get('distanceCovered', None).replace('.', '').replace(',','').replace('--', '')
             if value:
                 return int(value)
 
