@@ -18,7 +18,7 @@ from utilities import find_path, is_valid_path
 
 version_info >= (3, 0) or exit('Python 3 required')
 
-__version__ = '4.0.27'
+__version__ = '4.0.28'
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -698,7 +698,11 @@ class Vehicle(object):
                 hours = self.data.get('emanager', {}).get('rbc', {}).get('status', {}).get('chargingRemaningHour', {})
                 minutes = self.data.get('emanager', {}).get('rbc', {}).get('status', {}).get('chargingRemaningMinute', {})
                 if hours and minutes:
-                    return (int(hours) * 60) + int(minutes)
+                    # return 0 if we are not able to convert the values we get from carnet.
+                    try:
+                        return (int(hours) * 60) + int(minutes)
+                    except Exception:
+                        return 0
 
     @property
     def charging_time_left_supported(self):
