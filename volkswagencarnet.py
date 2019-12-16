@@ -18,7 +18,7 @@ from utilities import find_path, is_valid_path
 
 version_info >= (3, 0) or exit('Python 3 required')
 
-__version__ = '4.0.26'
+__version__ = '4.0.27'
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -106,7 +106,7 @@ class Connection(object):
                 return ""
 
             # get login variables
-            bs = BeautifulSoup(req.text, 'lxml')
+            bs = BeautifulSoup(req.text, 'html.parser')
             login_csrf = bs.select_one('input[name=_csrf]')['value']
             login_token = bs.select_one('input[name=relayState]')['value']
             login_hmac = bs.select_one('input[name=hmac]')['value']
@@ -139,7 +139,7 @@ class Connection(object):
                 return ""
 
             # post: https://identity.vwgroup.io/signin-service/v1/xxx@apps_vw-dilab_com/login/authenticate
-            bs = BeautifulSoup(req.text, 'lxml')
+            bs = BeautifulSoup(req.text, 'html.parser')
             auth_csrf = bs.select_one('input[name=_csrf]')['value']
             auth_token = bs.select_one('input[name=relayState]')['value']
             auth_hmac = bs.select_one('input[name=hmac]')['value']
