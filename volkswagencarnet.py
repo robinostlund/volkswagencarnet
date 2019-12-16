@@ -6,7 +6,8 @@ import time
 import logging
 
 from sys import version_info
-from requests import Session, RequestException
+from requests import Session, RequestException, packages
+from requests.packages.urllib3 import disable_warnings
 from datetime import timedelta, datetime
 from urllib.parse import urlsplit, urljoin, parse_qs, urlparse
 from functools import partial
@@ -17,11 +18,14 @@ from utilities import find_path, is_valid_path
 
 version_info >= (3, 0) or exit('Python 3 required')
 
-__version__ = '4.0.20'
+__version__ = '4.0.26'
 
 _LOGGER = logging.getLogger(__name__)
 
 TIMEOUT = timedelta(seconds=30)
+
+# disable request ssl verification due to vw having issues with ca.
+disable_warnings()
 
 def _obj_parser(obj):
     """Parse datetime (only Python3 because of timezone)."""
@@ -36,6 +40,8 @@ class TimeoutRequestsSession(Session):
     def request(self, *args, **kwargs):
         if kwargs.get('timeout') is None:
             kwargs['timeout'] = 60
+        # ignore ssl verification due to vw having issues with ca.
+        kwargs['verify'] = False
         return super(TimeoutRequestsSession, self).request(*args, **kwargs)
 
 class Connection(object):
