@@ -2,12 +2,12 @@ from setuptools import setup
 
 setup(
     name = 'volkswagencarnet',
-    version = '4.0.28',
+    version = '4.0.29',
     description = 'Communicate with Volkswagen Carnet',
     author = 'Robin Ostlund',
     author_email = 'me@robinostlund.name',
     url = 'https://github.com/robinostlund/volkswagencarnet',
-    download_url = 'https://github.com/robinostlund/volkswagencarnet/archive/4.0.28.tar.gz',
+    download_url = 'https://github.com/robinostlund/volkswagencarnet/archive/4.0.29.tar.gz',
     py_modules=[
         "volkswagencarnet",
         "dashboard",
