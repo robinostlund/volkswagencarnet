@@ -348,6 +348,27 @@ class WindowHeater(Switch):
     def assumed_state(self):
         return False
 
+class RemoteAccessHeating(Switch):
+    def __init__(self):
+        super().__init__(attr="remote_access_heating", name="Remote Access Heating", icon="mdi:radiator")
+
+    def configurate(self, **config):
+        self.spin = config.get('spin', '')
+
+    @property
+    def state(self):
+        return self.vehicle.remote_access_heating
+
+    def turn_on(self):
+        self.vehicle.start_remote_access_heating(self.spin)
+
+    def turn_off(self):
+        self.vehicle.stop_remote_access_heating()
+
+    @property
+    def assumed_state(self):
+        return False
+
 def create_instruments():
     return [
         Position(),
@@ -357,6 +378,7 @@ def create_instruments():
         ClimatisationClimate(),
         Charging(),
         WindowHeater(),
+        RemoteAccessHeating(),
         Sensor(
             attr="distance",
             name="Odometer",

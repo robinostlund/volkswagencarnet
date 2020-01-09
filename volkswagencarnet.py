@@ -18,7 +18,7 @@ from utilities import find_path, is_valid_path
 
 version_info >= (3, 0) or exit('Python 3 required')
 
-__version__ = '4.0.28'
+__version__ = '4.1.1'
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -291,13 +291,14 @@ class Connection(object):
                     if update_request.get('errorCode') != '0':
                         _LOGGER.error('Failed to request vehicle update')
 
-                # fetch vehicle emanage data
-                try:
-                    vehicle_emanager = self.post('-/emanager/get-emanager', rel)
-                    if vehicle_emanager.get('errorCode', {}) == '0' and vehicle_emanager.get('EManager', {}):
-                        self._state[vin]['emanager'] = vehicle_emanager.get('EManager', {})
-                except Exception as err:
-                    _LOGGER.debug('Could not fetch emanager data: %s' % err)
+                if not vehicle['engineTypeCombustian']:
+                    # fetch vehicle emanage data
+                    try:
+                        vehicle_emanager = self.post('-/emanager/get-emanager', rel)
+                        if vehicle_emanager.get('errorCode', {}) == '0' and vehicle_emanager.get('EManager', {}):
+                            self._state[vin]['emanager'] = vehicle_emanager.get('EManager', {})
+                    except Exception as err:
+                        _LOGGER.debug('Could not fetch emanager data: %s' % err)
 
                 # fetch vehicle location data
                 try:
@@ -312,9 +313,17 @@ class Connection(object):
                     vehicle_details = self.post('-/vehicle-info/get-vehicle-details', rel)
                     if vehicle_details.get('errorCode', {}) == '0' and vehicle_details.get('vehicleDetails', {}):
                         self._state[vin]['vehicle-details'] = vehicle_details.get('vehicleDetails', {})
-
                 except Exception as err:
                     _LOGGER.debug('Could not fetch details data: %s' % err)
+
+                if vehicle['engineTypeCombustian']:
+                    # fetch remote auxiliary heating status data
+                    try:
+                        vehicle_status = self.post('-/rah/get-status')
+                        if vehicle_status.get('errorCode', {}) == '0' and vehicle_status.get('remoteAuxiliaryHeating', {}):
+                            self._state[vin]['remoteAuxiliaryHeating'] = vehicle_status.get('remoteAuxiliaryHeating', {})
+                except Exception as err:
+                        _LOGGER.debug('Could not fetch remoteAuxiliaryHeating data: %s' % err)
 
                 _LOGGER.debug('State: %s', self._state)
 
@@ -685,6 +694,19 @@ class Vehicle(object):
             if check: return True
 
     @property
+    def remote_access_heating(self):
+        """Return status of remote access heating."""
+        if self.remote_access_heating_supported:
+            status_remote_access_heating_active = self.data.get('remoteAuxiliaryHeating').get('status').get('active', False)
+            return status_remote_access_heating_active
+
+    @property
+    def remote_access_heating_supported(self):
+        """Return true if vehichle has remote access heating."""
+        check = self.data.get('remoteAuxiliaryHeating', {})
+        if check: return True
+
+    @property
     def window_supported(self):
         """Return true if window state is supported"""
         check = self.data.get('vsr', {}).get('windowstateSupported', {})
@@ -830,6 +852,7 @@ class Vehicle(object):
                 return resp
         else:
             _LOGGER.error('No climatization support.')
+            
 
     def stop_climatisation(self):
         """Turn on/off climatisation."""
@@ -861,6 +884,29 @@ class Vehicle(object):
                 _LOGGER.warning('Failed to stop window heater')
         else:
             _LOGGER.error('No window heating support.')
+
+    def start_remote_access_heating(self, spin):
+        if spin:
+            if self.remote_access_heating_supported:
+                resp = self.call('-/rah/quick-start', startMode='HEATING', spin=spin)
+                if not resp:
+                    _LOGGER.warning('Failed to start remote access heating')
+                else:
+                    return resp
+            else:
+                _LOGGER.error('No remote access heating support.')
+        else: 
+            _LOGGER.error('Invalid SPIN provided')
+
+    def stop_remote_access_heating(self):
+        if self.remote_access_heating_supported:
+            resp = self.call('-/rah/quick-stop')
+            if not resp:
+                _LOGGER.warning('Failed to stop remote access_ eating')
+            else:
+                return resp
+        else:
+            _LOGGER.error('No remote access heating support.')
 
     def start_charging(self):
         """Turn on/off window heater."""
