@@ -4,7 +4,7 @@ from setuptools import setup
 # Should be fixed, once/if this get merged to Robins repo.
 setup(
     name='volkswagencarnet',
-    version='4.1.1',
+    version='4.1.2',
     description='Communicate with Volkswagen Carnet',
     author='Robin Ostlund',
     author_email='me@robinostlund.name',
