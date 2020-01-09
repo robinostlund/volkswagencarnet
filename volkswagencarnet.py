@@ -18,7 +18,7 @@ from utilities import find_path, is_valid_path
 
 version_info >= (3, 0) or exit('Python 3 required')
 
-__version__ = '4.1.2'
+__version__ = '4.1.3'
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -322,7 +322,7 @@ class Connection(object):
                         vehicle_status = self.post('-/rah/get-status')
                         if vehicle_status.get('errorCode', {}) == '0' and vehicle_status.get('remoteAuxiliaryHeating', {}):
                             self._state[vin]['remoteAuxiliaryHeating'] = vehicle_status.get('remoteAuxiliaryHeating', {})
-                except Exception as err:
+                    except Exception as err:
                         _LOGGER.debug('Could not fetch remoteAuxiliaryHeating data: %s' % err)
 
                 _LOGGER.debug('State: %s', self._state)
