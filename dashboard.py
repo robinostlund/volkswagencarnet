@@ -348,6 +348,27 @@ class WindowHeater(Switch):
     def assumed_state(self):
         return False
 
+class CombustionEngineHeating(Switch):
+    def __init__(self):
+        super().__init__(attr="combustion_engine_heating", name="Combustion Engine Heating", icon="mdi:radiator")
+
+    def configurate(self, **config):
+        self.spin = config.get('spin', '')
+
+    @property
+    def state(self):
+        return self.vehicle.combustion_engine_heating
+
+    def turn_on(self):
+        self.vehicle.start_combustion_engine_heating(self.spin)
+
+    def turn_off(self):
+        self.vehicle.stop_combustion_engine_heating()
+
+    @property
+    def assumed_state(self):
+        return False
+
 def create_instruments():
     return [
         Position(),
@@ -357,6 +378,7 @@ def create_instruments():
         ClimatisationClimate(),
         Charging(),
         WindowHeater(),
+        CombustionEngineHeating(),
         Sensor(
             attr="distance",
             name="Odometer",

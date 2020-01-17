@@ -1,13 +1,15 @@
 from setuptools import setup
 
+# Temporary bumping version to get this to work on my fork.
+# Should be fixed, once/if this get merged to Robins repo.
 setup(
-    name = 'volkswagencarnet',
-    version = '4.0.29',
-    description = 'Communicate with Volkswagen Carnet',
-    author = 'Robin Ostlund',
-    author_email = 'me@robinostlund.name',
-    url = 'https://github.com/robinostlund/volkswagencarnet',
-    download_url = 'https://github.com/robinostlund/volkswagencarnet/archive/4.0.29.tar.gz',
+    name='volkswagencarnet',
+    version='4.1.4',
+    description='Communicate with Volkswagen Carnet',
+    author='Robin Ostlund',
+    author_email='me@robinostlund.name',
+    url='https://github.com/robinostlund/volkswagencarnet',
+    download_url='https://github.com/robinostlund/volkswagencarnet/archive/4.0.29.tar.gz',
     py_modules=[
         "volkswagencarnet",
         "dashboard",

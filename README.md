@@ -1,27 +1,28 @@
 ### IN DEVELOPMENT
-Volkswagen Carnet
-============================================================
+
+# Volkswagen Carnet
+
 Retrieve statistics about your Volkswagen from the Volkswagen Carnet online service
 
 No licence, public domain, no guarantees, feel free to use for anything. Please contribute improvements/bugfixes etc.
 
-Python Client can be found here: 
+Python Client can be found here:
 
 https://github.com/robinostlund/volkswagencarnet-client
 
-Homeassistant Platform can be found here: 
+Homeassistant Platform can be found here:
 
 https://github.com/robinostlund/homeassistant-volkswagencarnet
 
+## Installation
 
-Installation
---------------
 ```sh
 [venv-python3] user@localhost:~
 $ pip install volkswagencarnet
 ```
 
 ### Example
+
 ```python
 #!/usr/bin/env python3
 import sys
@@ -33,7 +34,7 @@ vw._login()
 if not vw.logged_in:
     print('Could not login to carnet')
     sys.exit(1)
-    
+
 # get vehicles from carnet
 vw.update()
 
@@ -58,6 +59,7 @@ for vehicle in vehicles:
     print(' Charging time left: %s' % vehicle.charging_time_left_supported)
     print(' Door Locked: %s' % vehicle.door_locked_supported)
     print(' Electric Range: %s' % vehicle.electric_range_supported)
+    print(' Combustion Engine Heating: %s' % vehicle.combustion_engine_heating_supported)
 
     print('Vehicle information:')
     print(' Distance: %s' % vehicle.distance)
@@ -73,6 +75,7 @@ for vehicle in vehicles:
     print(' Is Window Heater On: %s' % vehicle.is_window_heater_on)
     print(' Is Charging On: %s' % vehicle.is_charging_on)
     print(' Is Request in progress: %s' % vehicle.is_request_in_progress)
+  
     # and more
 
 # action: start climatisation
