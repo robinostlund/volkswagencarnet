@@ -969,7 +969,7 @@ class Vehicle(object):
         return state
 
     @property
-    def is_windows_locked(self):
+    def is_windows_closed(self):
         """Window status."""
         state = True
         check = self.data.get('vsr', {}).get('windows', {})
