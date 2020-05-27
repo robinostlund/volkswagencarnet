@@ -588,6 +588,21 @@ class Vehicle(object):
             return True
 
     @property
+    def range(self):
+        if self.range_supported:
+            value = self.data.get('vehicle-details', {}).get('range',
+                                                             None).replace('.', '').replace(',', '').replace('--', '')
+            if value:
+                return int(value)
+
+    @property
+    def range_supported(self):
+        """Return true if distance is supported"""
+        check = self.data.get('vehicle-details', {}).get('range', {})
+        if check:
+            return True
+
+    @property
     def position(self):
         """Return  position."""
         if self.position_supported:
@@ -950,6 +965,16 @@ class Vehicle(object):
         check = self.data.get('vsr', {}).get('lockData', {})
         for lock in check:
             if check[lock] != 2:
+                state = False
+        return state
+
+    @property
+    def is_windows_locked(self):
+        """Window status."""
+        state = True
+        check = self.data.get('vsr', {}).get('windows', {})
+        for window in check:
+            if check[window] != 3:
                 state = False
         return state
 
