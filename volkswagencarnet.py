@@ -703,6 +703,17 @@ class Vehicle(object):
             return True
 
     @property
+    def adblue_level(self):
+        if self.fuel_level_supported:
+            return self.data.get('vsr', {}).get('adBlueLevel', {})
+
+    @property
+    def adblue_level_supported(self):
+        check = self.data.get('vsr', {}).get('adBlueEnabled', {})
+        if check:
+            return True
+
+    @property
     def external_power(self):
         """Return true if external power is connected."""
         if self.external_power_supported:
@@ -780,6 +791,16 @@ class Vehicle(object):
         check = self.data.get('remoteAuxiliaryHeating', {})
         if check:
             return True
+        
+    @property
+    def window_closed(self):
+        if self.window_supported:
+            windows = self.data.get('vsr', {}).get('windows', {})
+            windows_closed = True
+            for window in windows:
+                if windows[window] != 3:
+                    windows_closed = False
+            return windows_closed
 
     @property
     def window_supported(self):
