@@ -1095,6 +1095,28 @@ class Vehicle(object):
         else:
             _LOGGER.error('No combustion engine heating support.')
 
+    def lock_car(self, spin):
+        if spin:
+            resp = self.call('-/vsr/remote-lock',
+                             spin=spin)
+            if not resp:
+                _LOGGER.warning('Failed to lock car')
+            else:
+                return resp
+        else:
+            _LOGGER.error('Invalid SPIN provided')
+
+    def unlock_car(self, spin):
+        if spin:
+            resp = self.call('-/vsr/remote-unlock',
+                             spin=spin)
+            if not resp:
+                _LOGGER.warning('Failed to unlock car')
+            else:
+                return resp
+        else:
+            _LOGGER.error('Invalid SPIN provided')
+            
     def start_charging(self):
         """Turn on/off window heater."""
         if self.charging_supported:
