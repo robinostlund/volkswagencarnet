@@ -237,6 +237,9 @@ class DoorLock(Instrument):
     def __init__(self):
         super().__init__(component = "lock", attr = "door_locked", name = "Door locked")
 
+    def configurate(self, **config):
+        self.spin = config.get('spin', '')
+
     @property
     def is_mutable(self):
         return True
@@ -254,40 +257,10 @@ class DoorLock(Instrument):
         return self.state
 
     def lock(self):
-        return None
-
+        return self.vehicle.lock_car(self.spin)
+    
     def unlock(self):
-        return None
-
-    @property
-    def assumed_state(self):
-        return True
-
-class TrunkLock(Instrument):
-    def __init__(self):
-        super().__init__(component = "lock", attr = "trunk_locked", name = "Trunk locked")
-
-    @property
-    def is_mutable(self):
-        return True
-
-    @property
-    def str_state(self):
-        return "Locked" if self.state else "Unlocked"
-
-    @property
-    def state(self):
-        return self.vehicle.trunk_locked
-
-    @property
-    def is_locked(self):
-        return self.state
-
-    def lock(self):
-        return None
-
-    def unlock(self):
-        return None
+        return self.vehicle.unlock_car(self.spin)
 
     @property
     def assumed_state(self):
@@ -373,7 +346,6 @@ def create_instruments():
     return [
         Position(),
         DoorLock(),
-        TrunkLock(),
         Climatisation(),
         ClimatisationClimate(),
         Charging(),
@@ -471,11 +443,11 @@ def create_instruments():
         #    name="Doors locked",
         #    device_class="lock"
         #),
-        #BinarySensor(
-        #    attr="trunk_locked",
-        #    name="Trunk locked",
-        #    device_class="lock"
-        #),
+        BinarySensor(
+            attr="trunk_locked",
+            name="Trunk locked",
+            device_class="lock"
+        ),
         BinarySensor(
             attr="request_in_progress",
             name="Request in progress",
