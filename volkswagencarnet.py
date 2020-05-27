@@ -805,7 +805,7 @@ class Vehicle(object):
     @property
     def window_supported(self):
         """Return true if window state is supported"""
-        check = self.data.get('vsr', {}).get('windowstateSupported', {})
+        check = self.data.get('vsr', {}).get('windowStatusSupported', {})
         if check:
             return True
 
