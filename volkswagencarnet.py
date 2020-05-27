@@ -597,14 +597,14 @@ class Vehicle(object):
 
     @property
     def range_supported(self):
-        """Return true if distance is supported"""
+        """Return true if range is supported"""
         check = self.data.get('vehicle-details', {}).get('range', {})
         if check:
             return True
 
     @property
     def position(self):
-        """Return  position."""
+        """Return position."""
         if self.position_supported:
             return self.data.get('position')
 
@@ -816,7 +816,7 @@ class Vehicle(object):
 
     @property
     def climatisation_supported(self):
-        """Return true if vehichle has heater."""
+        """Return true if vehicle has heater."""
         check = self.data.get('emanager', {}).get(
             'rpc', {}).get('climaterActionState', {})
         if check == 'AVAILABLE' or check == 'NO_PLUGIN':
