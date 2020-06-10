@@ -18,7 +18,7 @@ from utilities import find_path, is_valid_path
 
 version_info >= (3, 0) or exit('Python 3 required')
 
-__version__ = '4.1.11'
+__version__ = '4.1.12'
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -862,6 +862,8 @@ class Vehicle(object):
                         return (int(hours) * 60) + int(minutes)
                     except Exception:
                         return 0
+                else:
+                    return 0
 
     @property
     def charging_time_left_supported(self):
