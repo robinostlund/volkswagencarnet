@@ -466,16 +466,16 @@ def create_instruments():
             name="Climatisation without external power",
             device_class="power"
         ),
-        #BinarySensor(
-        #    attr="door_locked",
-        #    name="Doors locked",
-        #    device_class="lock"
-        #),
-        #BinarySensor(
-        #    attr="trunk_locked",
-        #    name="Trunk locked",
-        #    device_class="lock"
-        #),
+        BinarySensor(
+           attr="door_locked",
+           name="Doors locked",
+           device_class="lock"
+        ),
+        BinarySensor(
+           attr="trunk_locked",
+           name="Trunk locked",
+           device_class="lock"
+        ),
         BinarySensor(
             attr="request_in_progress",
             name="Request in progress",

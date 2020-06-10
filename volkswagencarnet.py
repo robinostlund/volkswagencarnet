@@ -18,7 +18,7 @@ from utilities import find_path, is_valid_path
 
 version_info >= (3, 0) or exit('Python 3 required')
 
-__version__ = '4.1.5'
+__version__ = '4.1.6'
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -321,7 +321,10 @@ class Connection(object):
                     if update_request.get('errorCode') != '0':
                         _LOGGER.error('Failed to request vehicle update')
 
-                if not vehicle['engineTypeCombustian']:
+                print(vehicle)
+
+                #if not vehicle['engineTypeCombustian']:
+                if vehicle.get('emanager', {}).get('rdtAvailable', False):
                     # fetch vehicle emanage data
                     try:
                         vehicle_emanager = self.post(
