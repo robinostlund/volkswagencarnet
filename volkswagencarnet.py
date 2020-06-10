@@ -18,7 +18,7 @@ from utilities import find_path, is_valid_path
 
 version_info >= (3, 0) or exit('Python 3 required')
 
-__version__ = '4.1.8'
+__version__ = '4.1.9'
 
 _LOGGER = logging.getLogger(__name__)
 
