@@ -18,7 +18,7 @@ from utilities import find_path, is_valid_path
 
 version_info >= (3, 0) or exit('Python 3 required')
 
-__version__ = '4.1.10'
+__version__ = '4.1.11'
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -450,6 +450,10 @@ class Vehicle(object):
     def dashboard(self, **config):
         from dashboard import Dashboard
         return Dashboard(self, **config)
+
+    @property
+    def unique_id(self):
+        return self.vin.lower()
 
     @property
     def last_connected(self):
