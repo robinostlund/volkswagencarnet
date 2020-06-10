@@ -18,7 +18,7 @@ from utilities import find_path, is_valid_path
 
 version_info >= (3, 0) or exit('Python 3 required')
 
-__version__ = '4.1.7'
+__version__ = '4.1.8'
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -321,20 +321,21 @@ class Connection(object):
                     if update_request.get('errorCode') != '0':
                         _LOGGER.error('Failed to request vehicle update')
 
-                print(vehicle)
-
                 #if not vehicle['engineTypeCombustian']:
-                if vehicle.get('emanager', {}).get('rdtAvailable', False):
-                    # fetch vehicle emanage data
-                    try:
-                        vehicle_emanager = self.post(
-                            '-/emanager/get-emanager', rel)
-                        if vehicle_emanager.get('errorCode', {}) == '0' and vehicle_emanager.get('EManager', {}):
-                            self._state[vin]['emanager'] = vehicle_emanager.get(
-                                'EManager', {})
-                    except Exception as err:
-                        _LOGGER.debug(
-                            'Could not fetch emanager data: %s' % err)
+                #if vehicle.get('emanager', {}).get('rdtAvailable', False):
+                # fetch vehicle emanage data
+                try:
+                    vehicle_emanager = self.post(
+                        '-/emanager/get-emanager', rel)
+                    if vehicle_emanager.get('errorCode', {}) == '0' and vehicle_emanager.get('EManager', {}):
+                        self._state[vin]['emanager'] = vehicle_emanager.get(
+                            'EManager', {})
+                except Exception as err:
+                    # ignore if we can't reach
+                    pass
+                    # print(err)
+                    # _LOGGER.debug(
+                    #     'Could not fetch emanager data: %s' % err)
 
                 # fetch vehicle location data
                 try:
@@ -531,15 +532,38 @@ class Vehicle(object):
             return True
 
     @property
+    def adblue_level(self):
+        if self.fuel_level_supported:
+            return self.data.get('vsr', {}).get('adBlueLevel', 0)
+
+    @property
+    def adblue_level_supported(self):
+        check = self.data.get('vsr', {}).get('adBlueEnabled', {})
+        if isinstance(check, bool) and check:
+            return True
+
+
+    # @property
+    # def battery_level(self):
+    #     """Return battery level"""
+    #     if self.battery_level_supported:
+    #         return self.data.get('emanager', {}).get('rbc', {}).get('status', {}).get('batteryPercentage', {})
+
+    # @property
+    # def battery_level_supported(self):
+    #     check = self.data.get('emanager', {}).get('rbc', {}).get(
+    #         'status', {}).get('batteryPercentage', {})
+    #     if isinstance(check, int):
+    #         return True
+
+    @property
     def battery_level(self):
-        """Return battery level"""
-        if self.battery_level_supported:
-            return self.data.get('emanager', {}).get('rbc', {}).get('status', {}).get('batteryPercentage', {})
+        if self.fuel_level_supported:
+            return self.data.get('vsr', {}).get('batteryLevel', 0)
 
     @property
     def battery_level_supported(self):
-        check = self.data.get('emanager', {}).get('rbc', {}).get(
-            'status', {}).get('batteryPercentage', {})
+        check = self.data.get('vsr', {}).get('batteryLevel', {})
         if isinstance(check, int):
             return True
 
@@ -658,39 +682,71 @@ class Vehicle(object):
         if check:
             return True
 
+    # @property
+    # def electric_range(self):
+    #     if self.electric_range_supported:
+    #         return self.data.get('emanager', {}).get('rbc', {}).get('status', {}).get('electricRange', {})
+
+    # @property
+    # def electric_range_supported(self):
+    #     check = self.data.get('emanager', {}).get(
+    #         'rbc', {}).get('status', {}).get('electricRange', {})
+    #     if isinstance(check, int):
+    #         return True
+
     @property
     def electric_range(self):
-        if self.electric_range_supported:
-            return self.data.get('emanager', {}).get('rbc', {}).get('status', {}).get('electricRange', {})
+        if self.fuel_level_supported:
+            return self.data.get('vsr', {}).get('batteryRange', {})
 
     @property
     def electric_range_supported(self):
-        check = self.data.get('emanager', {}).get(
-            'rbc', {}).get('status', {}).get('electricRange', {})
+        check = self.data.get('vsr', {}).get('batteryRange', {})
         if isinstance(check, int):
             return True
 
+    # @property
+    # def combustion_range(self):
+    #     if self.combustion_range_supported:
+    #         return self.data.get('emanager', {}).get('rbc', {}).get('status', {}).get('combustionRange', {})
+
+    # @property
+    # def combustion_range_supported(self):
+    #     check = self.data.get('emanager', {}).get('rbc', {}).get(
+    #         'status', {}).get('combustionRange', {})
+    #     if isinstance(check, int):
+    #         return True
     @property
     def combustion_range(self):
-        if self.combustion_range_supported:
-            return self.data.get('emanager', {}).get('rbc', {}).get('status', {}).get('combustionRange', {})
+        if self.fuel_level_supported:
+            return self.data.get('vsr', {}).get('fuelRange', {})
 
     @property
     def combustion_range_supported(self):
-        check = self.data.get('emanager', {}).get('rbc', {}).get(
-            'status', {}).get('combustionRange', {})
+        check = self.data.get('vsr', {}).get('fuelRange', {})
         if isinstance(check, int):
             return True
 
+    # @property
+    # def combined_range(self):
+    #     if self.combustion_range_supported:
+    #         return self.data.get('emanager', {}).get('rbc', {}).get('status', {}).get('combinedRange', {})
+
+    # @property
+    # def combined_range_supported(self):
+    #     check = self.data.get('emanager', {}).get(
+    #         'rbc', {}).get('status', {}).get('combinedRange', {})
+    #     if isinstance(check, int):
+    #         return True
+
     @property
     def combined_range(self):
-        if self.combustion_range_supported:
-            return self.data.get('emanager', {}).get('rbc', {}).get('status', {}).get('combinedRange', {})
+        if self.fuel_level_supported:
+            return self.data.get('vsr', {}).get('totalRange', {})
 
     @property
     def combined_range_supported(self):
-        check = self.data.get('emanager', {}).get(
-            'rbc', {}).get('status', {}).get('combinedRange', {})
+        check = self.data.get('vsr', {}).get('totalRange', {})
         if isinstance(check, int):
             return True
 
