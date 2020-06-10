@@ -100,9 +100,10 @@ class Sensor(Instrument):
             return val
 
 class BinarySensor(Instrument):
-    def __init__(self, attr, name, device_class):
+    def __init__(self, attr, name, device_class, reverse_state=False):
         super().__init__(component = "binary_sensor", attr = attr, name = name)
         self.device_class = device_class
+        self.reverse_state = reverse_state
 
     @property
     def is_mutable(self):
@@ -112,6 +113,8 @@ class BinarySensor(Instrument):
     def str_state(self):
         if self.device_class in ["door", "window"]:
             return "Open" if self.state else "Closed"
+        if self.device_class == "lock":
+            return "Unlocked" if self.state else "Locked"
         if self.device_class == "safety":
             return "Warning!" if self.state else "OK"
         if self.device_class == "plug":
@@ -124,10 +127,17 @@ class BinarySensor(Instrument):
     @property
     def state(self):
         val = super().state
+
         if isinstance(val, (bool, list)):
             #  for list (e.g. bulb_failures):
             #  empty list (False) means no problem
-            return bool(val)
+            if self.reverse_state:
+                if bool(val):
+                    return False
+                else:
+                    return True
+            else:
+                return bool(val)
         elif isinstance(val, str):
             return val != "Normal"
         return val
@@ -469,12 +479,14 @@ def create_instruments():
         BinarySensor(
            attr="door_locked",
            name="Doors locked",
-           device_class="lock"
+           device_class="lock",
+           reverse_state=True
         ),
         BinarySensor(
            attr="trunk_locked",
            name="Trunk locked",
-           device_class="lock"
+           device_class="lock",
+           reverse_state=True
         ),
         BinarySensor(
             attr="request_in_progress",
