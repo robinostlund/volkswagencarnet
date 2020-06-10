@@ -324,18 +324,16 @@ class Connection(object):
                 #if not vehicle['engineTypeCombustian']:
                 #if vehicle.get('emanager', {}).get('rdtAvailable', False):
                 # fetch vehicle emanage data
-                try:
-                    vehicle_emanager = self.post(
-                        '-/emanager/get-emanager', rel)
-                    if vehicle_emanager.get('errorCode', {}) == '0' and vehicle_emanager.get('EManager', {}):
-                        self._state[vin]['emanager'] = vehicle_emanager.get(
-                            'EManager', {})
-                except Exception as err:
-                    # ignore if we can't reach
-                    pass
-                    # print(err)
-                    # _LOGGER.debug(
-                    #     'Could not fetch emanager data: %s' % err)
+                if not vehicle['engineTypeCombustian']:
+                    try:
+                        vehicle_emanager = self.post(
+                            '-/emanager/get-emanager', rel)
+                        if vehicle_emanager.get('errorCode', {}) == '0' and vehicle_emanager.get('EManager', {}):
+                            self._state[vin]['emanager'] = vehicle_emanager.get(
+                                'EManager', {})
+                    except Exception as err:
+                        _LOGGER.debug(
+                            'Could not fetch emanager data: %s' % err)
 
                 # fetch vehicle location data
                 try:
