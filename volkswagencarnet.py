@@ -18,7 +18,7 @@ from utilities import find_path, is_valid_path
 
 version_info >= (3, 0) or exit('Python 3 required')
 
-__version__ = '4.1.9'
+__version__ = '4.1.10'
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -539,7 +539,6 @@ class Vehicle(object):
         check = self.data.get('vsr', {}).get('adBlueEnabled', {})
         if isinstance(check, bool) and check:
             return True
-
 
     # @property
     # def battery_level(self):

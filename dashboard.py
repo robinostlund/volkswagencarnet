@@ -63,7 +63,7 @@ class Instrument:
 
     @property
     def is_supported(self):
-        supported = "is_" + self.attr + "_supported"
+        supported = self.attr + "_supported"
         if hasattr(self.vehicle, supported):
             return getattr(self.vehicle, supported)
         if hasattr(self.vehicle, self.attr):
