@@ -18,7 +18,7 @@ from utilities import find_path, is_valid_path
 
 version_info >= (3, 0) or exit('Python 3 required')
 
-__version__ = '4.1.18'
+__version__ = '4.1.19
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -801,7 +801,7 @@ class Vehicle(object):
         """Return true if vehichle has combustion climatisation."""
         check = self.is_climatisation_supported
         check2 = self.data.get('emanager', {}).get('rdt', {}).get('auxHeatingAllowed', False)
-        if check and and check2:
+        if check and check2:
             return True
 
     @property
