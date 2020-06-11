@@ -18,7 +18,7 @@ from utilities import find_path, is_valid_path
 
 version_info >= (3, 0) or exit('Python 3 required')
 
-__version__ = '4.1.23'
+__version__ = '4.1.24'
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -997,7 +997,7 @@ class Vehicle(object):
     # actions
     def start_electric_climatisation(self):
         """Turn on/off climatisation."""
-        if self.is_eletric_climatisation_supported:
+        if self.is_electric_climatisation_supported:
             resp = self.call('-/emanager/trigger-climatisation', triggerAction=True, electricClima=True)
             if not resp:
                 _LOGGER.warning('Failed to start climatisation')
