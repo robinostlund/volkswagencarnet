@@ -192,7 +192,7 @@ class Climate(Instrument):
 
 class ElectricClimatisationClimate(Climate):
     def __init__(self):
-        super().__init__(attr="climatisation", name="Electric Climatisation", icon="mdi:radiator")
+        super().__init__(attr="electric_climatisation", name="Electric Climatisation", icon="mdi:radiator")
 
     @property
     def hvac_mode(self):
