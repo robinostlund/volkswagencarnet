@@ -18,7 +18,7 @@ from utilities import find_path, is_valid_path
 
 version_info >= (3, 0) or exit('Python 3 required')
 
-__version__ = '4.1.13'
+__version__ = '4.1.14'
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -280,22 +280,18 @@ class Connection(object):
             _LOGGER.debug('Updating vehicle status from carnet')
             if not self._state or reset:
                 _LOGGER.debug('Querying vehicles')
-                owners_verification = self.post(
-                    '/portal/group/%s/edit-profile/-/profile/get-vehicles-owners-verification' % self._session_guest_language_id)
+                owners_verification = self.post('/portal/group/%s/edit-profile/-/profile/get-vehicles-owners-verification' % self._session_guest_language_id)
 
                 # get vehicles
-                loaded_vehicles = self.post(
-                    '-/mainnavigation/get-fully-loaded-cars')
+                loaded_vehicles = self.post('-/mainnavigation/get-fully-loaded-cars')
 
                 # load all not loaded vehicles
                 if loaded_vehicles.get('fullyLoadedVehiclesResponse', {}).get('vehiclesNotFullyLoaded', []):
                     for vehicle in loaded_vehicles.get('fullyLoadedVehiclesResponse').get('vehiclesNotFullyLoaded'):
-                        self.post('-/mainnavigation/load-car-details/%s' %
-                                  vehicle.get('vin'))
+                        self.post('-/mainnavigation/load-car-details/%s' % vehicle.get('vin'))
 
                     # update loaded cars
-                    loaded_vehicles = self.post(
-                        '-/mainnavigation/get-fully-loaded-cars')
+                    loaded_vehicles = self.post('-/mainnavigation/get-fully-loaded-cars')
 
                 # update vehicles
                 if loaded_vehicles.get('fullyLoadedVehiclesResponse', {}).get('completeVehicles', []):
@@ -309,50 +305,45 @@ class Connection(object):
                 try:
                     vehicle_data = self.post('-/vsr/get-vsr', rel)
                     if vehicle_data.get('errorCode', {}) == '0' and vehicle_data.get('vehicleStatusData', {}):
-                        self._state[vin]['vsr'] = vehicle_data.get(
-                            'vehicleStatusData', {})
+                        self._state[vin]['vsr'] = vehicle_data.get('vehicleStatusData', {})
                 except Exception as err:
                     _LOGGER.debug('Could not fetch vsr data: %s' % err)
 
                 # request update of vehicle status data if not in progress
                 if request_data and vehicle_data.get('vehicleStatusData', {}).get('requestStatus', {}) != 'REQUEST_IN_PROGRESS':
-                    update_request = self.post(
-                        '-/vsr/request-vsr', rel, dummy='data')
+                    update_request = self.post('-/vsr/request-vsr', rel, dummy='data')
                     if update_request.get('errorCode') != '0':
                         _LOGGER.error('Failed to request vehicle update')
 
                 # fetch vehicle emanage data
                 if not vehicle['engineTypeCombustian']:
+                    vehcle_emanager = {}
                     try:
-                        vehicle_emanager = self.post(
-                            '-/emanager/get-emanager', rel)
+                        vehicle_emanager = self.post('-/emanager/get-emanager', rel)
                         if vehicle_emanager.get('errorCode', {}) == '0' and vehicle_emanager.get('EManager', {}):
                             self._state[vin]['emanager'] = vehicle_emanager.get('EManager', {})
+
                     except Exception as err:
-                        _LOGGER.debug(
-                            'Could not fetch emanager data: %s' % err)
+                        _LOGGER.debug('Could not fetch emanager data: %s' % err)
 
                 # fetch vehicle location data
                 try:
                     vehicle_location = self.post('-/cf/get-location', rel)
                     if vehicle_location.get('errorCode', {}) == '0' and vehicle_location.get('position', {}):
-                        self._state[vin]['position'] = vehicle_location.get(
-                            'position', {})
+                        self._state[vin]['position'] = vehicle_location.get('position', {})
                 except Exception as err:
                     _LOGGER.debug('Could not fetch location data: %s' % err)
 
                 # fetch vehicle details data
                 try:
-                    vehicle_details = self.post(
-                        '-/vehicle-info/get-vehicle-details', rel)
+                    vehicle_details = self.post('-/vehicle-info/get-vehicle-details', rel)
                     if vehicle_details.get('errorCode', {}) == '0' and vehicle_details.get('vehicleDetails', {}):
-                        self._state[vin]['vehicle-details'] = vehicle_details.get(
-                            'vehicleDetails', {})
+                        self._state[vin]['vehicle-details'] = vehicle_details.get('vehicleDetails', {})
                 except Exception as err:
                     _LOGGER.debug('Could not fetch details data: %s' % err)
 
-                if vehicle['engineTypeCombustian'] or self._state[vin].get('emanager', {}).get('rdt', {}).get('auxHeatingAllowed', False):
-                    # fetch combustion engine remote auxiliary heating status data
+                # fetch combustion engine remote auxiliary heating status data
+                if vehicle['engineTypeCombustian']:
                     try:
                         vehicle_rah_status = self.post('-/rah/get-status')
                         if vehicle_rah_status.get('errorCode', {}) == '0' and vehicle_rah_status.get('remoteAuxiliaryHeating', {}):
@@ -360,7 +351,7 @@ class Connection(object):
                     except Exception as err:
                         _LOGGER.debug('Could not fetch remoteAuxiliaryHeating data: %s' % err)
 
-                _LOGGER.debug('State: %s', self._state)
+                _LOGGER.debug('Car States: %s', self._state)
 
             return True
         except (IOError, OSError) as error:
@@ -776,9 +767,10 @@ class Vehicle(object):
     def climatisation(self):
         """Return status of climatisation."""
         if self.is_climatisation_supported:
+            type = self.data.get('emanager', {}).get('rpc', {}).get('settings', {}).get('electric', False)
             status = self.data.get('emanager', {}).get('rpc', {}).get('status', {}).get('climatisationState', {})
-            if status == 'HEATING':
-                return True
+            if status in ['HEATING', 'COOLING'] and not type:
+                return status
             else:
                 return False
 
@@ -787,6 +779,25 @@ class Vehicle(object):
         """Return true if vehichle has heater."""
         check = self.data.get('emanager', {}).get('rpc', {}).get('climaterActionState', {})
         if check == 'AVAILABLE' or check == 'NO_PLUGIN':
+            return True
+
+    @property
+    def combustion_climatisation(self):
+        """Return status of combustion climatisation."""
+        if self.is_combustion_climatisation_supported:
+            type = self.data.get('emanager', {}).get('rpc', {}).get('settings', {}).get('electric', False)
+            status = self.data.get('emanager', {}).get('rpc', {}).get('status', {}).get('climatisationState', {})
+            if status in ['HEATING', 'COOLING'] and type:
+                return status
+            else:
+                return False
+
+    @property
+    def is_combustion_climatisation_supported(self):
+        """Return true if vehichle has combustion climatisation."""
+        check = self.data.get('emanager', {}).get('rpc', {}).get('climaterActionState', {})
+        check2 = self.data.get('emanager', {}).get('rdt', {}).get('auxHeatingAllowed', False)
+        if check in ['AVAILABLE', 'NO_PLUGIN'] and check2:
             return True
 
     @property
@@ -815,7 +826,7 @@ class Vehicle(object):
     def combustion_engine_heating(self):
         """Return status of combustion engine heating."""
         if self.is_combustion_engine_heating_supported:
-            return self.data.get('remoteauxheating').get('status').get('active', False)
+            return self.data.get('remoteauxheating', {}).get('status', {}).get('active', False)
 
     @property
     def is_combustion_engine_heating_supported(self):
@@ -925,10 +936,21 @@ class Vehicle(object):
     @property
     def is_climatisation_on(self):
         """Return status of climatisation."""
-        if self.climatisation_supported:
-            status = self.data.get('emanager', {}).get('rpc', {}).get(
-                'status', {}).get('climatisationState', {})
-            if status == 'HEATING':
+        if self.is_climatisation_supported:
+            type = self.data.get('emanager', {}).get('rpc', {}).get('settings', {}).get('electric', False)
+            status = self.data.get('emanager', {}).get('rpc', {}).get('status', {}).get('climatisationState', {})
+            if type and status in ['HEATING', 'COOLING']:
+                return True
+            else:
+                return False
+
+    @property
+    def is_combustion_climatisation_on(self):
+        """Return status of climatisation."""
+        if self.is_combustion_climatisation_supported:
+            type = self.data.get('emanager', {}).get('rpc', {}).get('settings', {}).get('electric', False)
+            status = self.data.get('emanager', {}).get('rpc', {}).get('status', {}).get('climatisationState', {})
+            if not type and status in ['HEATING', 'COOLING']:
                 return True
             else:
                 return False
@@ -971,9 +993,8 @@ class Vehicle(object):
     # actions
     def start_climatisation(self):
         """Turn on/off climatisation."""
-        if self.climatisation_supported:
-            resp = self.call('-/emanager/trigger-climatisation',
-                             triggerAction=True, electricClima=True)
+        if self.is_climatisation_supported:
+            resp = self.call('-/emanager/trigger-climatisation', triggerAction=True, electricClima=True)
             if not resp:
                 _LOGGER.warning('Failed to start climatisation')
             else:
@@ -983,9 +1004,8 @@ class Vehicle(object):
 
     def stop_climatisation(self):
         """Turn on/off climatisation."""
-        if self.climatisation_supported:
-            resp = self.call('-/emanager/trigger-climatisation',
-                             triggerAction=False, electricClima=True)
+        if self.is_climatisation_supported:
+            resp = self.call('-/emanager/trigger-climatisation',triggerAction=False, electricClima=True)
             if not resp:
                 _LOGGER.warning('Failed to stop climatisation')
             else:
@@ -1017,9 +1037,8 @@ class Vehicle(object):
 
     def start_combustion_engine_heating(self, spin):
         if spin:
-            if self.combustion_engine_heating_supported:
-                resp = self.call('-/rah/quick-start',
-                                 startMode='HEATING', spin=spin)
+            if self.is_combustion_engine_heating_supported:
+                resp = self.call('-/rah/quick-start', startMode='HEATING', spin=spin)
                 if not resp:
                     _LOGGER.warning('Failed to start combustion engine heating')
                 else:
@@ -1030,7 +1049,7 @@ class Vehicle(object):
             _LOGGER.error('Invalid SPIN provided')
 
     def stop_combustion_engine_heating(self):
-        if self.combustion_engine_heating_supported:
+        if self.is_combustion_engine_heating_supported:
             resp = self.call('-/rah/quick-stop')
             if not resp:
                 _LOGGER.warning('Failed to stop combustion engine heating')
@@ -1038,6 +1057,28 @@ class Vehicle(object):
                 return resp
         else:
             _LOGGER.error('No combustion engine heating support.')
+
+    def start_combustion_climatisation(self, spin):
+        """Turn on/off climatisation."""
+        if self.is_climatisation_supported:
+            resp = self.call('-/emanager/trigger-climatisation', triggerAction=True, electricClima=False, spin=spin)
+            if not resp:
+                _LOGGER.warning('Failed to start combustion climatisation')
+            else:
+                return resp
+        else:
+            _LOGGER.error('No combution climatization support.')
+
+    def stop_combustion_climatisation(self, spin):
+        """Turn on/off climatisation."""
+        if self.climatisation_supported:
+            resp = self.call('-/emanager/trigger-climatisation', triggerAction=False, electricClima=False, spin=spin)
+            if not resp:
+                _LOGGER.warning('Failed to stop combustion climatisation')
+            else:
+                return resp
+        else:
+            _LOGGER.error('No combustion climatization support.')
 
     def start_charging(self):
         """Turn on/off window heater."""
