@@ -203,7 +203,7 @@ class ElectricClimatisationClimate(Climate):
         return self.vehicle.climatisation_target_temperature
 
     def set_temperature(self, temperature):
-        self.vehicle.set_electric_climatisation_target_temperature(temperature)
+        self.vehicle.set_climatisation_target_temperature(temperature)
 
     def set_hvac_mode(self, hvac_mode):
         if hvac_mode:
