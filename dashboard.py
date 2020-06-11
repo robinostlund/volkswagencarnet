@@ -527,7 +527,7 @@ def create_instruments():
         BinarySensor(
             attr="climatisation_without_external_power",
             name="Climatisation without external power",
-            device_class="heat"
+            device_class="power"
         ),
         BinarySensor(
            attr="door_locked",
