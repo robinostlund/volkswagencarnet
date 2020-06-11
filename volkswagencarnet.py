@@ -18,7 +18,7 @@ from utilities import find_path, is_valid_path
 
 version_info >= (3, 0) or exit('Python 3 required')
 
-__version__ = '4.1.20'
+__version__ = '4.1.21'
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -769,7 +769,7 @@ class Vehicle(object):
             type = self.data.get('emanager', {}).get('rpc', {}).get('settings', {}).get('electric', False)
             status = self.data.get('emanager', {}).get('rpc', {}).get('status', {}).get('climatisationState', {})
             if status in ['HEATING', 'COOLING'] and not type:
-                return status
+                return True
             else:
                 return False
 
@@ -792,7 +792,7 @@ class Vehicle(object):
             type = self.data.get('emanager', {}).get('rpc', {}).get('settings', {}).get('electric', False)
             status = self.data.get('emanager', {}).get('rpc', {}).get('status', {}).get('climatisationState', {})
             if status in ['HEATING', 'COOLING'] and type:
-                return status
+                return True
             else:
                 return False
 

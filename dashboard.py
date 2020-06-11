@@ -196,11 +196,7 @@ class ElectricClimatisationClimate(Climate):
 
     @property
     def hvac_mode(self):
-        mode = self.vehicle.electric_climatisation
-        if mode == 'HEATING':
-            return 'cool'
-        else:
-            return 'heat'
+        return self.vehicle.electric_climatisation
 
     @property
     def target_temperature(self):
@@ -224,11 +220,7 @@ class CombustionClimatisationClimate(Climate):
 
     @property
     def hvac_mode(self):
-        mode = self.vehicle.combustion_climatisation
-        if mode == 'HEATING':
-            return 'cool'
-        else:
-            return 'heat'
+        return self.vehicle.combustion_climatisation
 
     @property
     def target_temperature(self):
