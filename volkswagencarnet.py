@@ -18,7 +18,7 @@ from utilities import find_path, is_valid_path
 
 version_info >= (3, 0) or exit('Python 3 required')
 
-__version__ = '4.1.16'
+__version__ = '4.1.17'
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -467,8 +467,7 @@ class Vehicle(object):
     @property
     def climatisation_target_temperature(self):
         if self.is_climatisation_supported:
-            temperature = self.data.get('emanager', {}).get(
-                'rpc', {}).get('settings', {}).get('targetTemperature', {})
+            temperature = self.data.get('emanager', {}).get('rpc', {}).get('settings', {}).get('targetTemperature', {})
             if temperature:
                 return temperature
 
@@ -775,11 +774,16 @@ class Vehicle(object):
                 return False
 
     @property
-    def is_electric_climatisation_supported(self):
+    def is_climatisation_supported(self):
         """Return true if vehichle has heater."""
         check = self.data.get('emanager', {}).get('rpc', {}).get('climaterActionState', {})
         if check == 'AVAILABLE' or check == 'NO_PLUGIN':
             return True
+
+    @property
+    def is_electric_climatisation_supported(self):
+        """Return true if vehichle has heater."""
+        return self.is_climatisation_supported
 
     @property
     def combustion_climatisation(self):
@@ -795,7 +799,7 @@ class Vehicle(object):
     @property
     def is_combustion_climatisation_supported(self):
         """Return true if vehichle has combustion climatisation."""
-        check = self.data.get('emanager', {}).get('rpc', {}).get('climaterActionState', {})
+        check = self.is_climatisation_supported
         check2 = self.data.get('emanager', {}).get('rdt', {}).get('auxHeatingAllowed', False)
         if check in ['AVAILABLE', 'NO_PLUGIN'] and check2:
             return True
