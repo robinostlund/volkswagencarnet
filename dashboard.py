@@ -196,7 +196,7 @@ class ElectricClimatisationClimate(Climate):
 
     @property
     def hvac_mode(self):
-        mode = self.vehicle.climatisation
+        mode = self.vehicle.electric_climatisation
         if mode == 'HEATING':
             return 'cool'
         else:
@@ -207,13 +207,13 @@ class ElectricClimatisationClimate(Climate):
         return self.vehicle.climatisation_target_temperature
 
     def set_temperature(self, temperature):
-        self.vehicle.set_climatisation_target_temperature(temperature)
+        self.vehicle.set_electric_climatisation_target_temperature(temperature)
 
     def set_hvac_mode(self, hvac_mode):
         if hvac_mode:
-            self.vehicle.start_climatisation()
+            self.vehicle.start_electric_climatisation()
         else:
-            self.vehicle.stop_climatisation()
+            self.vehicle.stop_electric_climatisation()
 
 class CombustionClimatisationClimate(Climate):
     def __init__(self):
@@ -342,13 +342,13 @@ class ElectricClimatisation(Switch):
 
     @property
     def state(self):
-        return self.vehicle.climatisation
+        return self.vehicle.electric_climatisation
 
     def turn_on(self):
-        self.vehicle.start_climatisation()
+        self.vehicle.start_electric_climatisation()
 
     def turn_off(self):
-        self.vehicle.stop_climatisation()
+        self.vehicle.stop_electric_climatisation()
 
     @property
     def assumed_state(self):

@@ -18,7 +18,7 @@ from utilities import find_path, is_valid_path
 
 version_info >= (3, 0) or exit('Python 3 required')
 
-__version__ = '4.1.15'
+__version__ = '4.1.16'
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -764,9 +764,9 @@ class Vehicle(object):
                 return True
 
     @property
-    def climatisation(self):
+    def electric_climatisation(self):
         """Return status of climatisation."""
-        if self.is_climatisation_supported:
+        if self.is_electric_climatisation_supported:
             type = self.data.get('emanager', {}).get('rpc', {}).get('settings', {}).get('electric', False)
             status = self.data.get('emanager', {}).get('rpc', {}).get('status', {}).get('climatisationState', {})
             if status in ['HEATING', 'COOLING'] and not type:
@@ -775,7 +775,7 @@ class Vehicle(object):
                 return False
 
     @property
-    def is_climatisation_supported(self):
+    def is_electric_climatisation_supported(self):
         """Return true if vehichle has heater."""
         check = self.data.get('emanager', {}).get('rpc', {}).get('climaterActionState', {})
         if check == 'AVAILABLE' or check == 'NO_PLUGIN':
@@ -817,7 +817,7 @@ class Vehicle(object):
     @property
     def is_window_heater_supported(self):
         """Return true if vehichle has heater."""
-        if self.is_climatisation_supported:
+        if self.is_electric_climatisation_supported:
             check = self.data.get('emanager', {}).get('rpc', {}).get('status', {}).get('windowHeatingAvailable', {})
             if check:
                 return True
@@ -934,9 +934,9 @@ class Vehicle(object):
         return state
 
     @property
-    def is_climatisation_on(self):
+    def is_electric_climatisation_on(self):
         """Return status of climatisation."""
-        if self.is_climatisation_supported:
+        if self.is_electric_climatisation_supported:
             type = self.data.get('emanager', {}).get('rpc', {}).get('settings', {}).get('electric', False)
             status = self.data.get('emanager', {}).get('rpc', {}).get('status', {}).get('climatisationState', {})
             if type and status in ['HEATING', 'COOLING']:
@@ -991,9 +991,9 @@ class Vehicle(object):
             return False
 
     # actions
-    def start_climatisation(self):
+    def start_electric_climatisation(self):
         """Turn on/off climatisation."""
-        if self.is_climatisation_supported:
+        if self.is_eletric_climatisation_supported:
             resp = self.call('-/emanager/trigger-climatisation', triggerAction=True, electricClima=True)
             if not resp:
                 _LOGGER.warning('Failed to start climatisation')
@@ -1002,9 +1002,9 @@ class Vehicle(object):
         else:
             _LOGGER.error('No climatization support.')
 
-    def stop_climatisation(self):
+    def stop_electric_climatisation(self):
         """Turn on/off climatisation."""
-        if self.is_climatisation_supported:
+        if self.is_electric_climatisation_supported:
             resp = self.call('-/emanager/trigger-climatisation',triggerAction=False, electricClima=True)
             if not resp:
                 _LOGGER.warning('Failed to stop climatisation')
@@ -1060,7 +1060,7 @@ class Vehicle(object):
 
     def start_combustion_climatisation(self, spin):
         """Turn on/off climatisation."""
-        if self.is_climatisation_supported:
+        if self.is_combustion_climatisation_supported:
             resp = self.call('-/emanager/trigger-climatisation', triggerAction=True, electricClima=False, spin=spin)
             if not resp:
                 _LOGGER.warning('Failed to start combustion climatisation')
@@ -1071,7 +1071,7 @@ class Vehicle(object):
 
     def stop_combustion_climatisation(self, spin):
         """Turn on/off climatisation."""
-        if self.climatisation_supported:
+        if self.is_combustion_climatisation_supported:
             resp = self.call('-/emanager/trigger-climatisation', triggerAction=False, electricClima=False, spin=spin)
             if not resp:
                 _LOGGER.warning('Failed to stop combustion climatisation')
@@ -1106,9 +1106,8 @@ class Vehicle(object):
 
     def set_climatisation_target_temperature(self, target_temperature):
         """Turn on/off window heater."""
-        if self.climatisation_supported:
-            resp = self.call('-/emanager/set-settings', chargerMaxCurrent=None,
-                             climatisationWithoutHVPower=None, minChargeLimit=None, targetTemperature=target_temperature)
+        if self.is_electric_climatisation_supported or self.is_combustion_climatisation_supported:
+            resp = self.call('-/emanager/set-settings', chargerMaxCurrent=None, climatisationWithoutHVPower=None, minChargeLimit=None, targetTemperature=target_temperature)
             if not resp:
                 _LOGGER.warning(
                     'Failed to set target temperature for climatisation')
