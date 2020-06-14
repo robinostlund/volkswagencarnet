@@ -978,7 +978,7 @@ class Vehicle(object):
     @property
     def is_charging_on(self):
         """Return status of charging."""
-        if self.charging_supported:
+        if self.is_charging_supported:
             status = self.data.get('emanager', {}).get(
                 'rbc', {}).get('status', {}).get('chargingState', {})
             if status == 'CHARGING':
@@ -1086,7 +1086,7 @@ class Vehicle(object):
 
     def start_charging(self):
         """Turn on/off window heater."""
-        if self.charging_supported:
+        if self.is_charging_supported:
             resp = self.call('-/emanager/charge-battery',
                              triggerAction=True, batteryPercent='100')
             if not resp:
@@ -1098,7 +1098,7 @@ class Vehicle(object):
 
     def stop_charging(self):
         """Turn on/off window heater."""
-        if self.charging_supported:
+        if self.is_charging_supported:
             resp = self.call('-/emanager/charge-battery',
                              triggerAction=False, batteryPercent='99')
             if not resp:
