@@ -3,6 +3,8 @@
 ![Python package](https://github.com/robinostlund/volkswagencarnet/workflows/Python%20package/badge.svg)
 ![Upload Python Package](https://github.com/robinostlund/volkswagencarnet/workflows/Upload%20Python%20Package/badge.svg)
 
+![Downloads a day](https://img.shields.io/pypi/dd/volkswagencarnet?label=Downloads)
+
 ## Information
 
 Retrieve statistics about your Volkswagen from the Volkswagen Carnet online service
