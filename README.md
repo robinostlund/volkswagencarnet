@@ -13,15 +13,15 @@ No licence, public domain, no guarantees, feel free to use for anything. Please 
 
 - [Wez3](https://github.com/wez3)
 - [Reneboer](https://github.com/reneboer)
-  For supporting this project.
+
+For supporting this project.
+
+## Other related repositories
 
 Python Client can be found here:
 
-https://github.com/robinostlund/volkswagencarnet-client
-
-Homeassistant Platform can be found here:
-
-https://github.com/robinostlund/homeassistant-volkswagencarnet
+- [HomeAssistant Component](https://github.com/robinostlund/homeassistant-volkswagencarnet)
+- [VolkswagenCarnetClient](https://github.com/robinostlund/volkswagencarnet-client)
 
 ## Installation
 
