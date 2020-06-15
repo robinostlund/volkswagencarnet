@@ -1,6 +1,7 @@
-### IN DEVELOPMENT
-
 # Volkswagen Carnet
+
+![Python package](https://github.com/robinostlund/volkswagencarnet/workflows/Python%20package/badge.svg)
+![Upload Python Package](https://github.com/robinostlund/volkswagencarnet/workflows/Upload%20Python%20Package/badge.svg)
 
 Retrieve statistics about your Volkswagen from the Volkswagen Carnet online service
 
@@ -75,7 +76,7 @@ for vehicle in vehicles:
     print(' Is Window Heater On: %s' % vehicle.is_window_heater_on)
     print(' Is Charging On: %s' % vehicle.is_charging_on)
     print(' Is Request in progress: %s' % vehicle.is_request_in_progress)
-  
+
     # and more
 
 # action: start climatisation
