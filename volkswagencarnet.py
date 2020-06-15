@@ -445,8 +445,7 @@ class Vehicle(object):
     def last_connected(self):
         """Return when vehicle was last connected to carnet"""
         if self.is_last_connected_supported:
-            last_connected = self.data.get(
-                'vehicle-details', {}).get('lastConnectionTimeStamp', {})
+            last_connected = self.data.get('vehicle-details', {}).get('lastConnectionTimeStamp', {})
             if last_connected:
                 last_connected = last_connected[0] + last_connected[1]
                 date_patterns = ["%d.%m.%Y%H:%M", "%d-%m-%Y%H:%M"]
@@ -567,7 +566,7 @@ class Vehicle(object):
     @property
     def distance(self):
         if self.is_distance_supported:
-            value = self.data.get('vehicle-details', {}).get('distanceCovered',None).replace('.', '').replace(',', '').replace('--', '')
+            value = self.data.get('vehicle-details', {}).get('distanceCovered', None).replace('.', '').replace(',', '').replace('--', '')
             if value:
                 return int(value)
 
@@ -783,10 +782,20 @@ class Vehicle(object):
         if check:
             return True
 
+   @property
+    def window_closed(self):
+        if self.window_supported:
+            windows = self.data.get('vsr', {}).get('windows', {})
+            windows_closed = True
+            for window in windows:
+                if windows[window] != 3:
+                    windows_closed = False
+            return windows_closed
+
     @property
-    def is_window_supported(self):
+    def is_window_closed_supported(self):
         """Return true if window state is supported"""
-        check = self.data.get('vsr', {}).get('windowstateSupported', {})
+        check = self.data.get('vsr', {}).get('windowStatusSupported', {})
         if check:
             return True
 
@@ -832,8 +841,7 @@ class Vehicle(object):
     @property
     def trunk_locked(self):
         if self.is_trunk_locked_supported:
-            trunk_lock_data = self.data.get(
-                'vsr', {}).get('lockData', {}).get('trunk')
+            trunk_lock_data = self.data.get('vsr', {}).get('lockData', {}).get('trunk')
             if trunk_lock_data != 2:
                 return False
             else:
@@ -903,6 +911,16 @@ class Vehicle(object):
             else:
                 return False
 
+    def is_windows_closed(self):
+        """Return status of Window status."""
+        if self.is_windows_closed_supported:
+            state = True
+            check = self.data.get('vsr', {}).get('windows', {})
+            for window in check:
+                if check[window] != 3:
+                    state = False
+            return state
+
     @property
     def is_window_heater_on(self):
         """Return status of window heater."""
@@ -936,6 +954,26 @@ class Vehicle(object):
             return False
 
     # actions
+    def lock_car(self, spin):
+        if spin:
+            resp = self.call('-/vsr/remote-lock', spin=spin)
+            if not resp:
+                _LOGGER.warning('Failed to lock car')
+            else:
+                return resp
+        else:
+            _LOGGER.error('Invalid SPIN provided')
+
+    def unlock_car(self, spin):
+        if spin:
+            resp = self.call('-/vsr/remote-unlock', spin=spin)
+            if not resp:
+                _LOGGER.warning('Failed to unlock car')
+            else:
+                return resp
+        else:
+            _LOGGER.error('Invalid SPIN provided')
+
     def start_electric_climatisation(self):
         """Turn on/off climatisation."""
         if self.is_electric_climatisation_supported:
