@@ -33,7 +33,6 @@ class Instrument:
         _LOGGER.debug("%s is supported", self)
         self.configurate(**config)
         return True
-        
 
     @property
     def vehicle_name(self):
@@ -292,7 +291,7 @@ class DoorLock(Instrument):
 
     def lock(self):
         return self.vehicle.lock_car(self.spin)
-    
+
     def unlock(self):
         return self.vehicle.unlock_car(self.spin)
 

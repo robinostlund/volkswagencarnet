@@ -599,21 +599,6 @@ class Vehicle(object):
             return True
 
     @property
-    def range(self):
-        if self.range_supported:
-            value = self.data.get('vehicle-details', {}).get('range',
-                                                             None).replace('.', '').replace(',', '').replace('--', '')
-            if value:
-                return int(value)
-
-    @property
-    def range_supported(self):
-        """Return true if range is supported"""
-        check = self.data.get('vehicle-details', {}).get('range', {})
-        if check:
-            return True
-
-    @property
     def position(self):
         """Return  position."""
         if self.is_position_supported:
@@ -749,61 +734,6 @@ class Vehicle(object):
             return True
 
     @property
-    def total_range(self):
-        if self.total_range_supported:
-            return self.data.get('vsr', {}).get('totalRange', {})
-
-    @property
-    def total_range_supported(self):
-        check = self.data.get('vsr', {}).get('totalRange', {})
-        if isinstance(check, int):
-            return True
-
-    @property
-    def primary_engine_range(self):
-        if self.primary_engine_range_supported:
-            return self.data.get('vsr', {}).get('primaryEngineRange', {})
-
-    @property
-    def primary_engine_range_supported(self):
-        check = self.data.get('vsr', {}).get('primaryEngineRange', {})
-        if isinstance(check, int):
-            return True
-
-    @property
-    def fuel_range(self):
-        if self.fuel_range_supported:
-            return self.data.get('vsr', {}).get('fuelRange', {})
-
-    @property
-    def fuel_range_supported(self):
-        check = self.data.get('vsr', {}).get('fuelRange', {})
-        if isinstance(check, int):
-            return True
-
-    @property
-    def cng_range(self):
-        if self.cng_range_supported:
-            return self.data.get('vsr', {}).get('cngRange', {})
-
-    @property
-    def cng_range_supported(self):
-        check = self.data.get('vsr', {}).get('cngRange', {})
-        if isinstance(check, int):
-            return True
-
-    @property
-    def battery_range(self):
-        if self.battery_range_supported:
-            return self.data.get('vsr', {}).get('batteryRange', {})
-
-    @property
-    def battery_range_supported(self):
-        check = self.data.get('vsr', {}).get('batteryRange', {})
-        if isinstance(check, int):
-            return True
-
-    @property
     def fuel_level(self):
         if self.is_fuel_level_supported:
             return self.data.get('vsr', {}).get('fuelLevel', {})
@@ -812,17 +742,6 @@ class Vehicle(object):
     def is_fuel_level_supported(self):
         check = self.data.get('vsr', {}).get('fuelLevel', {})
         if isinstance(check, int):
-            return True
-
-    @property
-    def adblue_level(self):
-        if self.fuel_level_supported:
-            return self.data.get('vsr', {}).get('adBlueLevel', {})
-
-    @property
-    def adblue_level_supported(self):
-        check = self.data.get('vsr', {}).get('adBlueEnabled', {})
-        if check:
             return True
 
     @property
@@ -919,7 +838,7 @@ class Vehicle(object):
         check = self.data.get('remoteauxheating', {})
         if check:
             return True
-        
+
     @property
     def window_closed(self):
         if self.window_supported:
