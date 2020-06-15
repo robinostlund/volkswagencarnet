@@ -15,7 +15,7 @@ No licence, public domain, no guarantees, feel free to use for anything. Please 
 - [Reneboer](https://github.com/reneboer)
 - [Tubalainen](https://github.com/tubalainen)
 
-For supporting this project.
+For supporting and helping in this project.
 
 ## Other related repositories
 
