@@ -3,6 +3,13 @@
 ![Python package](https://github.com/robinostlund/volkswagencarnet/workflows/Python%20package/badge.svg)
 ![Upload Python Package](https://github.com/robinostlund/volkswagencarnet/workflows/Upload%20Python%20Package/badge.svg)
 
+![Downloads a day](https://img.shields.io/pypi/dd/volkswagencarnet?label=Downloads)
+![Downloads a week](https://img.shields.io/pypi/dw/volkswagencarnet?label=Downloads%20)
+![Downloads a month](https://img.shields.io/pypi/dm/volkswagencarnet?label=Downloads%20)
+
+![Latest PyPi Version](https://img.shields.io/pypi/v/volkswagencarnet?label=Latest%20PyPi%20Version)
+![Latest Github Tag](https://img.shields.io/github/v/tag/robinostlund/volkswagencarnet?label=Latest%20Github%20Tag&sort=semver)
+
 ## Information
 
 Retrieve statistics about your Volkswagen from the Volkswagen Carnet online service
@@ -15,7 +22,7 @@ No licence, public domain, no guarantees, feel free to use for anything. Please 
 - [Reneboer](https://github.com/reneboer)
 - [Tubalainen](https://github.com/tubalainen)
 
-For supporting this project.
+For supporting and helping in this project.
 
 ## Other related repositories
 
