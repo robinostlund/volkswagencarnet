@@ -271,6 +271,9 @@ class DoorLock(Instrument):
     def __init__(self):
         super().__init__(component = "lock", attr = "door_locked", name = "Door locked")
 
+    def configurate(self, **config):
+        self.spin = config.get('spin', '')
+
     @property
     def is_mutable(self):
         return True
@@ -288,10 +291,10 @@ class DoorLock(Instrument):
         return self.state
 
     def lock(self):
-        return None
+        return self.vehicle.lock_car(self.spin)
 
     def unlock(self):
-        return None
+        return self.vehicle.unlock_car(self.spin)
 
     @property
     def assumed_state(self):
@@ -452,7 +455,7 @@ def create_instruments():
             attr="adblue_level",
             name="Adblue level",
             icon="mdi:fuel",
-            unit="%",
+            unit="km",
         ),
         Sensor(
             attr="fuel_level",
@@ -540,6 +543,11 @@ def create_instruments():
            name="Trunk locked",
            device_class="lock",
            reverse_state=True
+        ),
+        BinarySensor(
+           attr="windows_closed",
+           name="Windows closed",
+           device_class="window",
         ),
         BinarySensor(
             attr="request_in_progress",
