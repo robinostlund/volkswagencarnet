@@ -18,10 +18,8 @@ For supporting this project.
 
 ## Other related repositories
 
-Python Client can be found here:
-
-- [HomeAssistant Component](https://github.com/robinostlund/homeassistant-volkswagencarnet)
-- [VolkswagenCarnetClient](https://github.com/robinostlund/volkswagencarnet-client)
+- [HomeAssistant Component](https://github.com/robinostlund/homeassistant-volkswagencarnet) custom component for Home Assistant
+- [VolkswagenCarnetClient](https://github.com/robinostlund/volkswagencarnet-client) cli version of this library
 
 ## Installation
 
