@@ -7,6 +7,8 @@
 ![Downloads a week](https://img.shields.io/pypi/dw/volkswagencarnet?label=Downloads%20)
 ![Downloads a month](https://img.shields.io/pypi/dm/volkswagencarnet?label=Downloads%20)
 
+![Latest PyPi Version](https://img.shields.io/pypi/v/volkswagencarnet?label=Latest%20PyPi%20Version)
+
 ## Information
 
 Retrieve statistics about your Volkswagen from the Volkswagen Carnet online service
