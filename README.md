@@ -13,6 +13,7 @@ No licence, public domain, no guarantees, feel free to use for anything. Please 
 
 - [Wez3](https://github.com/wez3)
 - [Reneboer](https://github.com/reneboer)
+- [Tubalainen](https://github.com/tubalainen)
 
 For supporting this project.
 
