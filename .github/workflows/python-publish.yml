@@ -3,17 +3,17 @@
 
 name: Upload Package to PyPi
 
-# on:
-#   release:
-#     types: [created]
+on:
+  release:
+    types: [created]
 # push:
 #   tags:
 #     - "v*"
 
-on:
-  push:
-    tags:
-      - "v*.*.*"
+# on:
+#   push:
+#     tags:
+#       - "v*.*.*"
 
 jobs:
   deploy:
