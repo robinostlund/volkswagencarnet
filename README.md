@@ -3,17 +3,23 @@
 ![Python package](https://github.com/robinostlund/volkswagencarnet/workflows/Python%20package/badge.svg)
 ![Upload Python Package](https://github.com/robinostlund/volkswagencarnet/workflows/Upload%20Python%20Package/badge.svg)
 
+## Information
+
 Retrieve statistics about your Volkswagen from the Volkswagen Carnet online service
 
 No licence, public domain, no guarantees, feel free to use for anything. Please contribute improvements/bugfixes etc.
 
-Python Client can be found here:
+## Thanks to
 
-https://github.com/robinostlund/volkswagencarnet-client
+- [Wez3](https://github.com/wez3)
+- [Reneboer](https://github.com/reneboer)
 
-Homeassistant Platform can be found here:
+For supporting this project.
 
-https://github.com/robinostlund/homeassistant-volkswagencarnet
+## Other related repositories
+
+- [HomeAssistant Component](https://github.com/robinostlund/homeassistant-volkswagencarnet) a custom component for Home Assistant
+- [VolkswagenCarnetClient](https://github.com/robinostlund/volkswagencarnet-client) a cli version of this library
 
 ## Installation
 
