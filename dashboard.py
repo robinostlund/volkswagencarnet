@@ -6,8 +6,9 @@ from utilities import camel2slug
 
 _LOGGER = logging.getLogger(__name__)
 
+
 class Instrument:
-    def __init__(self, component, attr, name, icon = None):
+    def __init__(self, component, attr, name, icon=None):
         self.attr = attr
         self.component = component
         self.name = name
@@ -33,7 +34,6 @@ class Instrument:
         _LOGGER.debug("%s is supported", self)
         self.configurate(**config)
         return True
-        
 
     @property
     def vehicle_name(self):
@@ -70,10 +70,10 @@ class Instrument:
             return True
         return self.vehicle.has_attr(self.attr)
 
-# instrument classes
+
 class Sensor(Instrument):
     def __init__(self, attr, name, icon, unit):
-        super().__init__(component = "sensor", attr = attr, name = name, icon = icon)
+        super().__init__(component="sensor", attr=attr, name=name, icon=icon)
         self.unit = unit
 
     def configurate(self, scandinavian_miles=False, **config):
@@ -99,9 +99,10 @@ class Sensor(Instrument):
         else:
             return val
 
+
 class BinarySensor(Instrument):
     def __init__(self, attr, name, device_class, reverse_state=False):
-        super().__init__(component = "binary_sensor", attr = attr, name = name)
+        super().__init__(component="binary_sensor", attr=attr, name=name)
         self.device_class = device_class
         self.reverse_state = reverse_state
 
@@ -149,7 +150,7 @@ class BinarySensor(Instrument):
 
 class Switch(Instrument):
     def __init__(self, attr, name, icon):
-        super().__init__(component = "switch", attr = attr, name = name, icon = icon)
+        super().__init__(component="switch", attr=attr, name=name, icon=icon)
 
     @property
     def is_mutable(self):
@@ -172,9 +173,10 @@ class Switch(Instrument):
     def assumed_state(self):
         return True
 
+
 class Climate(Instrument):
     def __init__(self, attr, name, icon):
-        super().__init__(component = "climate", attr = attr, name = name, icon = icon)
+        super().__init__(component="climate", attr=attr, name=name, icon=icon)
 
     @property
     def hvac_mode(self):
@@ -189,6 +191,7 @@ class Climate(Instrument):
 
     def set_hvac_mode(self, hvac_mode):
         pass
+
 
 class ElectricClimatisationClimate(Climate):
     def __init__(self):
@@ -210,6 +213,7 @@ class ElectricClimatisationClimate(Climate):
             self.vehicle.start_electric_climatisation()
         else:
             self.vehicle.stop_electric_climatisation()
+
 
 class CombustionClimatisationClimate(Climate):
     def __init__(self):
@@ -238,7 +242,7 @@ class CombustionClimatisationClimate(Climate):
 
 class Position(Instrument):
     def __init__(self):
-        super().__init__(component = "device_tracker", attr = "position", name = "Position")
+        super().__init__(component="device_tracker", attr="position", name="Position")
 
     @property
     def is_mutable(self):
@@ -267,9 +271,10 @@ class Position(Instrument):
             state.get("heading", None),
         )
 
+
 class DoorLock(Instrument):
     def __init__(self):
-        super().__init__(component = "lock", attr = "door_locked", name = "Door locked")
+        super().__init__(component="lock", attr="door_locked", name="Door locked")
 
     def configurate(self, **config):
         self.spin = config.get('spin', '')
@@ -300,9 +305,10 @@ class DoorLock(Instrument):
     def assumed_state(self):
         return True
 
+
 class TrunkLock(Instrument):
     def __init__(self):
-        super().__init__(component = "lock", attr = "trunk_locked", name = "Trunk locked")
+        super().__init__(component="lock", attr="trunk_locked", name="Trunk locked")
 
     @property
     def is_mutable(self):
@@ -331,6 +337,8 @@ class TrunkLock(Instrument):
         return True
 
 # Switches
+
+
 class ElectricClimatisation(Switch):
     def __init__(self):
         super().__init__(attr="electric_climatisation", name="Electric Climatisation", icon="mdi:radiator")
@@ -348,6 +356,7 @@ class ElectricClimatisation(Switch):
     @property
     def assumed_state(self):
         return False
+
 
 class Charging(Switch):
     def __init__(self):
@@ -367,6 +376,7 @@ class Charging(Switch):
     def assumed_state(self):
         return False
 
+
 class WindowHeater(Switch):
     def __init__(self):
         super().__init__(attr="window_heater", name="Window Heater", icon="mdi:car-defrost-rear")
@@ -384,6 +394,7 @@ class WindowHeater(Switch):
     @property
     def assumed_state(self):
         return False
+
 
 class CombustionEngineHeating(Switch):
     def __init__(self):
@@ -406,6 +417,7 @@ class CombustionEngineHeating(Switch):
     def assumed_state(self):
         return False
 
+
 class CombustionClimatisation(Switch):
     def __init__(self):
         super().__init__(attr="combustion_climatisation", name="Combustion Climate Heating", icon="mdi:radiator")
@@ -426,6 +438,7 @@ class CombustionClimatisation(Switch):
     @property
     def assumed_state(self):
         return False
+
 
 def create_instruments():
     return [
@@ -533,21 +546,21 @@ def create_instruments():
             device_class="power"
         ),
         BinarySensor(
-           attr="door_locked",
-           name="Doors locked",
-           device_class="lock",
-           reverse_state=True
+            attr="door_locked",
+            name="Doors locked",
+            device_class="lock",
+            reverse_state=True
         ),
         BinarySensor(
-           attr="trunk_locked",
-           name="Trunk locked",
-           device_class="lock",
-           reverse_state=True
+            attr="trunk_locked",
+            name="Trunk locked",
+            device_class="lock",
+            reverse_state=True
         ),
         BinarySensor(
-           attr="windows_closed",
-           name="Windows closed",
-           device_class="window",
+            attr="windows_closed",
+            name="Windows closed",
+            device_class="window",
         ),
         BinarySensor(
             attr="request_in_progress",
@@ -555,6 +568,7 @@ def create_instruments():
             device_class="connectivity"
         ),
     ]
+
 
 class Dashboard:
     def __init__(self, vehicle, **config):
