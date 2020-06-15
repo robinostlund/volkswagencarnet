@@ -1,7 +1,5 @@
 # Volkswagen Carnet
 
-[![License Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=true)](http://www.apache.org/licenses/LICENSE-2.0)
-
 ![Python package](https://github.com/robinostlund/volkswagencarnet/workflows/Python%20package/badge.svg)
 ![Upload Python Package](https://github.com/robinostlund/volkswagencarnet/workflows/Upload%20Python%20Package/badge.svg)
 
