@@ -8,6 +8,7 @@
 ![Downloads a month](https://img.shields.io/pypi/dm/volkswagencarnet?label=Downloads%20)
 
 ![Latest PyPi Version](https://img.shields.io/pypi/v/volkswagencarnet?label=Latest%20PyPi%20Version)
+![Latest Tag](https://img.shields.io/github/v/tag/robinostlund/volkswagencarnet?sort=semver)
 
 ## Information
 
