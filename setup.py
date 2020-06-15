@@ -24,6 +24,7 @@ setup(
     ],
     provides=["volkswagencarnet"],
     install_requires=[
+        'pytest>=5,<6',
         'requests',
         'lxml',
         'beautifulsoup4'
