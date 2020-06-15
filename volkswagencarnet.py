@@ -5,9 +5,9 @@ import re
 import time
 import logging
 
-from sys import version_info
-from requests import Session, RequestException, packages
+from requests import Session, RequestException
 from requests.packages.urllib3 import disable_warnings
+from sys import version_info
 from datetime import timedelta, datetime
 from urllib.parse import urlsplit, urljoin, parse_qs, urlparse
 from functools import partial
@@ -184,14 +184,16 @@ class Connection(object):
             if req.status_code != 302:
                 return ""
 
-            # get: https://identity.vwgroup.io/consent/v1/users/xxx/xxx@apps_vw-dilab_com?scopes=openid%20profile%20birthdate%20nickname%20address%20email%20phone%20cars%20dealers%20mbb&relay_state=xxx&callback=https://identity.vwgroup.io/oidc/v1/oauth/client/callback&hmac=xxx
+            # get:
+            # https://identity.vwgroup.io/consent/v1/users/xxx/xxx@apps_vw-dilab_com?scopes=openid%20profile%20birthdate%20nickname%20address%20email%20phone%20cars%20dealers%20mbb&relay_state=xxx&callback=https://identity.vwgroup.io/oidc/v1/oauth/client/callback&hmac=xxx
             ref_url_4 = req.headers.get("location")
             req = self._session.get(
                 ref_url_4, allow_redirects=False, headers=self._session_auth_headers)
             if req.status_code != 302:
                 return ""
 
-            # get: https://identity.vwgroup.io/oidc/v1/oauth/client/callback/success?user_id=xxx&client_id=xxx@apps_vw-dilab_com&scopes=openid%20profile%20birthdate%20nickname%20address%20email%20phone%20cars%20dealers%20mbb&consentedScopes=openid%20profile%20birthdate%20nickname%20address%20email%20phone%20cars%20dealers%20mbb&relay_state=xxx&hmac=xxx
+            # get:
+            # https://identity.vwgroup.io/oidc/v1/oauth/client/callback/success?user_id=xxx&client_id=xxx@apps_vw-dilab_com&scopes=openid%20profile%20birthdate%20nickname%20address%20email%20phone%20cars%20dealers%20mbb&consentedScopes=openid%20profile%20birthdate%20nickname%20address%20email%20phone%20cars%20dealers%20mbb&relay_state=xxx&hmac=xxx
             ref_url_5 = req.headers.get("location")
             user_id = parse_qs(urlparse(ref_url_5).query).get('user_id')[0]
             req = self._session.get(
@@ -204,14 +206,15 @@ class Connection(object):
             state = parse_qs(urlparse(ref_url_6).query).get('state')[0]
             code = parse_qs(urlparse(ref_url_6).query).get('code')[0]
 
-            # post: https://www.portal.volkswagen-we.com/portal/web/guest/complete-login?p_auth=xxx&p_p_id=33_WAR_cored5portlet&p_p_lifecycle=1&p_p_state=normal&p_p_mode=view&p_p_col_id=column-1&p_p_col_count=1&_33_WAR_cored5portlet_javax.portlet.action=getLoginStatus
+            # post:
+            # https://www.portal.volkswagen-we.com/portal/web/guest/complete-login?p_auth=xxx&p_p_id=33_WAR_cored5portlet&p_p_lifecycle=1&p_p_state=normal&p_p_mode=view&p_p_col_id=column-1&p_p_col_count=1&_33_WAR_cored5portlet_javax.portlet.action=getLoginStatus
             self._session_auth_headers["Referer"] = ref_url_6
             post_data = {
                 '_33_WAR_cored5portlet_code': code,
                 '_33_WAR_cored5portlet_landingPageUrl': ''
             }
-            req = self._session.post(self._session_base + urlsplit(ref_url_6).path + '?p_auth=' + state +
-                                     '&p_p_id=33_WAR_cored5portlet&p_p_lifecycle=1&p_p_state=normal&p_p_mode=view&p_p_col_id=column-1&p_p_col_count=1&_33_WAR_cored5portlet_javax.portlet.action=getLoginStatus', data=post_data, allow_redirects=False, headers=self._session_auth_headers)
+            url = self._session_base + urlsplit(ref_url_6).path
+            req = self._session.post(f'{url}?p_auth={state}&p_p_id=33_WAR_cored5portlet&p_p_lifecycle=1&p_p_state=normal&p_p_mode=view&p_p_col_id=column-1&p_p_col_count=1&_33_WAR_cored5portlet_javax.portlet.action=getLoginStatus', data=post_data, allow_redirects=False, headers=self._session_auth_headers)
             if req.status_code != 302:
                 return ""
 
@@ -280,7 +283,8 @@ class Connection(object):
             _LOGGER.debug('Updating vehicle status from carnet')
             if not self._state or reset:
                 _LOGGER.debug('Querying vehicles')
-                owners_verification = self.post('/portal/group/%s/edit-profile/-/profile/get-vehicles-owners-verification' % self._session_guest_language_id)
+                owners_verification = self.post(
+                    f'/portal/group/{self._session_guest_language_id}/edit-profile/-/profile/get-vehicles-owners-verification')
 
                 # get vehicles
                 loaded_vehicles = self.post('-/mainnavigation/get-fully-loaded-cars')
@@ -452,7 +456,7 @@ class Vehicle(object):
                 for date_pattern in date_patterns:
                     try:
                         return datetime.strptime(last_connected, date_pattern).strftime("%Y-%m-%d %H:%M:%S")
-                    except:
+                    except ValueError:
                         pass
 
     @property
@@ -782,7 +786,7 @@ class Vehicle(object):
         if check:
             return True
 
-   @property
+    @property
     def window_closed(self):
         if self.window_supported:
             windows = self.data.get('vsr', {}).get('windows', {})
@@ -865,7 +869,7 @@ class Vehicle(object):
     @property
     def is_request_in_progress_supported(self):
         check = self.data.get('vsr', {}).get('requestStatus', {})
-        if check or check == None:
+        if check or check is None:
             return True
 
     # states
@@ -988,7 +992,7 @@ class Vehicle(object):
     def stop_electric_climatisation(self):
         """Turn on/off climatisation."""
         if self.is_electric_climatisation_supported:
-            resp = self.call('-/emanager/trigger-climatisation',triggerAction=False, electricClima=True)
+            resp = self.call('-/emanager/trigger-climatisation', triggerAction=False, electricClima=True)
             if not resp:
                 _LOGGER.warning('Failed to stop climatisation')
             else:
