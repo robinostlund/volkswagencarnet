@@ -782,7 +782,7 @@ class Vehicle(object):
         if check:
             return True
 
-   @property
+    @property
     def window_closed(self):
         if self.window_supported:
             windows = self.data.get('vsr', {}).get('windows', {})
