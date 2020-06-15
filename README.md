@@ -18,8 +18,8 @@ For supporting this project.
 
 ## Other related repositories
 
-- [HomeAssistant Component](https://github.com/robinostlund/homeassistant-volkswagencarnet) custom component for Home Assistant
-- [VolkswagenCarnetClient](https://github.com/robinostlund/volkswagencarnet-client) cli version of this library
+- [HomeAssistant Component](https://github.com/robinostlund/homeassistant-volkswagencarnet) a custom component for Home Assistant
+- [VolkswagenCarnetClient](https://github.com/robinostlund/volkswagencarnet-client) a cli version of this library
 
 ## Installation
 
