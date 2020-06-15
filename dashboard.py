@@ -63,7 +63,7 @@ class Instrument:
 
     @property
     def is_supported(self):
-        supported = "is_" + self.attr + "_supported"
+        supported = 'is_' + self.attr + "_supported"
         if hasattr(self.vehicle, supported):
             return getattr(self.vehicle, supported)
         if hasattr(self.vehicle, self.attr):
@@ -100,9 +100,10 @@ class Sensor(Instrument):
             return val
 
 class BinarySensor(Instrument):
-    def __init__(self, attr, name, device_class):
+    def __init__(self, attr, name, device_class, reverse_state=False):
         super().__init__(component = "binary_sensor", attr = attr, name = name)
         self.device_class = device_class
+        self.reverse_state = reverse_state
 
     @property
     def is_mutable(self):
@@ -112,6 +113,8 @@ class BinarySensor(Instrument):
     def str_state(self):
         if self.device_class in ["door", "window"]:
             return "Open" if self.state else "Closed"
+        if self.device_class == "lock":
+            return "Unlocked" if self.state else "Locked"
         if self.device_class == "safety":
             return "Warning!" if self.state else "OK"
         if self.device_class == "plug":
@@ -124,10 +127,17 @@ class BinarySensor(Instrument):
     @property
     def state(self):
         val = super().state
+
         if isinstance(val, (bool, list)):
             #  for list (e.g. bulb_failures):
             #  empty list (False) means no problem
-            return bool(val)
+            if self.reverse_state:
+                if bool(val):
+                    return False
+                else:
+                    return True
+            else:
+                return bool(val)
         elif isinstance(val, str):
             return val != "Normal"
         return val
@@ -180,13 +190,13 @@ class Climate(Instrument):
     def set_hvac_mode(self, hvac_mode):
         pass
 
-class ClimatisationClimate(Climate):
+class ElectricClimatisationClimate(Climate):
     def __init__(self):
-        super().__init__(attr="climatisation", name="Climatisation", icon="mdi:radiator")
+        super().__init__(attr="electric_climatisation", name="Electric Climatisation", icon="mdi:radiator")
 
     @property
     def hvac_mode(self):
-        return self.vehicle.climatisation
+        return self.vehicle.electric_climatisation
 
     @property
     def target_temperature(self):
@@ -197,9 +207,33 @@ class ClimatisationClimate(Climate):
 
     def set_hvac_mode(self, hvac_mode):
         if hvac_mode:
-            self.vehicle.start_climatisation()
+            self.vehicle.start_electric_climatisation()
         else:
-            self.vehicle.stop_climatisation()
+            self.vehicle.stop_electric_climatisation()
+
+class CombustionClimatisationClimate(Climate):
+    def __init__(self):
+        super().__init__(attr="combustion_climatisation", name="Combustion Climatisation", icon="mdi:radiator")
+
+    def configurate(self, **config):
+        self.spin = config.get('spin', '')
+
+    @property
+    def hvac_mode(self):
+        return self.vehicle.combustion_climatisation
+
+    @property
+    def target_temperature(self):
+        return self.vehicle.climatisation_target_temperature
+
+    def set_temperature(self, temperature):
+        self.vehicle.set_climatisation_target_temperature(temperature)
+
+    def set_hvac_mode(self, hvac_mode):
+        if hvac_mode:
+            self.vehicle.start_combustion_climatisation(self.spin)
+        else:
+            self.vehicle.stop_combustion_climatisation(self.spin)
 
 
 class Position(Instrument):
@@ -267,19 +301,19 @@ class DoorLock(Instrument):
         return True
 
 # Switches
-class Climatisation(Switch):
+class ElectricClimatisation(Switch):
     def __init__(self):
-        super().__init__(attr="climatisation", name="Climatisation", icon="mdi:radiator")
+        super().__init__(attr="electric_climatisation", name="Electric Climatisation", icon="mdi:radiator")
 
     @property
     def state(self):
-        return self.vehicle.climatisation
+        return self.vehicle.electric_climatisation
 
     def turn_on(self):
-        self.vehicle.start_climatisation()
+        self.vehicle.start_electric_climatisation()
 
     def turn_off(self):
-        self.vehicle.stop_climatisation()
+        self.vehicle.stop_electric_climatisation()
 
     @property
     def assumed_state(self):
@@ -342,12 +376,36 @@ class CombustionEngineHeating(Switch):
     def assumed_state(self):
         return False
 
+class CombustionClimatisation(Switch):
+    def __init__(self):
+        super().__init__(attr="combustion_climatisation", name="Combustion Climate Heating", icon="mdi:radiator")
+
+    def configurate(self, **config):
+        self.spin = config.get('spin', '')
+
+    @property
+    def state(self):
+        return self.vehicle.combustion_climatisation
+
+    def turn_on(self):
+        self.vehicle.start_combustion_climatisation(self.spin)
+
+    def turn_off(self):
+        self.vehicle.stop_combustion_climatisation(self.spin)
+
+    @property
+    def assumed_state(self):
+        return False
+
 def create_instruments():
     return [
         Position(),
         DoorLock(),
-        Climatisation(),
-        ClimatisationClimate(),
+        TrunkLock(),
+        ElectricClimatisation(),
+        ElectricClimatisationClimate(),
+        CombustionClimatisation(),
+        CombustionClimatisationClimate(),
         Charging(),
         WindowHeater(),
         CombustionEngineHeating(),
@@ -361,6 +419,12 @@ def create_instruments():
             attr="battery_level",
             name="Battery level",
             icon="mdi:battery",
+            unit="%",
+        ),
+        Sensor(
+            attr="adblue_level",
+            name="Adblue level",
+            icon="mdi:fuel",
             unit="%",
         ),
         Sensor(
@@ -426,7 +490,7 @@ def create_instruments():
         BinarySensor(
             attr="external_power",
             name="External power",
-            device_class="power"
+            device_class="plug"
         ),
         BinarySensor(
             attr="parking_light",
@@ -438,15 +502,17 @@ def create_instruments():
             name="Climatisation without external power",
             device_class="power"
         ),
-        #BinarySensor(
-        #    attr="door_locked",
-        #    name="Doors locked",
-        #    device_class="lock"
-        #),
         BinarySensor(
-            attr="trunk_locked",
-            name="Trunk locked",
-            device_class="lock"
+           attr="door_locked",
+           name="Doors locked",
+           device_class="lock",
+           reverse_state=True
+        ),
+        BinarySensor(
+           attr="trunk_locked",
+           name="Trunk locked",
+           device_class="lock",
+           reverse_state=True
         ),
         BinarySensor(
             attr="request_in_progress",
