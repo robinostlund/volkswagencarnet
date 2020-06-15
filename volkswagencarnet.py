@@ -18,7 +18,7 @@ from utilities import find_path, is_valid_path
 
 version_info >= (3, 0) or exit('Python 3 required')
 
-__version__ = '4.1.24'
+__version__ = '4.1.25'
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -790,7 +790,7 @@ class Vehicle(object):
         """Return status of combustion climatisation."""
         if self.is_combustion_climatisation_supported:
             type = self.data.get('emanager', {}).get('rpc', {}).get('settings', {}).get('electric', False)
-            status = self.data.get('emanager', {}).get('rpc', {}).get('status', {}).get('climatisationState', {})
+            status = self.data.get('emanager', {}).get('rpc', {}).get('status', {}).get('climatisationState', '')
             if status in ['HEATING', 'COOLING'] and type:
                 return True
             else:
@@ -962,7 +962,7 @@ class Vehicle(object):
     @property
     def is_window_heater_on(self):
         """Return status of window heater."""
-        if self.window_heater_supported:
+        if self.is_window_heater_supported:
             ret = False
             status_front = self.data.get('emanager', {}).get('rpc', {}).get(
                 'status', {}).get('windowHeatingStateFront', {})
@@ -978,7 +978,7 @@ class Vehicle(object):
     @property
     def is_charging_on(self):
         """Return status of charging."""
-        if self.charging_supported:
+        if self.is_charging_supported:
             status = self.data.get('emanager', {}).get(
                 'rbc', {}).get('status', {}).get('chargingState', {})
             if status == 'CHARGING':
@@ -1019,7 +1019,7 @@ class Vehicle(object):
 
     def start_window_heater(self):
         """Turn on/off window heater."""
-        if self.window_heater_supported:
+        if self.is_window_heater_supported:
             resp = self.call(
                 '-/emanager/trigger-windowheating', triggerAction=True)
             if not resp:
@@ -1031,7 +1031,7 @@ class Vehicle(object):
 
     def stop_window_heater(self):
         """Turn on/off window heater."""
-        if self.window_heater_supported:
+        if self.is_window_heater_supported:
             resp = self.call(
                 '-/emanager/trigger-windowheating', triggerAction=False)
             if not resp:
@@ -1086,9 +1086,8 @@ class Vehicle(object):
 
     def start_charging(self):
         """Turn on/off window heater."""
-        if self.charging_supported:
-            resp = self.call('-/emanager/charge-battery',
-                             triggerAction=True, batteryPercent='100')
+        if self.is_charging_supported:
+            resp = self.call('-/emanager/charge-battery', triggerAction=True, batteryPercent='100')
             if not resp:
                 _LOGGER.warning('Failed to start charging')
             else:
@@ -1098,9 +1097,8 @@ class Vehicle(object):
 
     def stop_charging(self):
         """Turn on/off window heater."""
-        if self.charging_supported:
-            resp = self.call('-/emanager/charge-battery',
-                             triggerAction=False, batteryPercent='99')
+        if self.is_charging_supported:
+            resp = self.call('-/emanager/charge-battery', triggerAction=False, batteryPercent='99')
             if not resp:
                 _LOGGER.warning('Failed to stop charging')
             else:

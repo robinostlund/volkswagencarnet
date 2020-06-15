@@ -452,7 +452,7 @@ def create_instruments():
             attr="adblue_level",
             name="Adblue level",
             icon="mdi:fuel",
-            unit="%",
+            unit="km",
         ),
         Sensor(
             attr="fuel_level",
