@@ -3,9 +3,17 @@
 ![Python package](https://github.com/robinostlund/volkswagencarnet/workflows/Python%20package/badge.svg)
 ![Upload Python Package](https://github.com/robinostlund/volkswagencarnet/workflows/Upload%20Python%20Package/badge.svg)
 
+## Information
+
 Retrieve statistics about your Volkswagen from the Volkswagen Carnet online service
 
 No licence, public domain, no guarantees, feel free to use for anything. Please contribute improvements/bugfixes etc.
+
+## Thanks to
+
+- [Wez3](https://github.com/wez3)
+- [Reneboer](https://github.com/reneboer)
+  For supporting this project.
 
 Python Client can be found here:
 
