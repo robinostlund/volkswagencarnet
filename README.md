@@ -4,6 +4,8 @@
 ![Upload Python Package](https://github.com/robinostlund/volkswagencarnet/workflows/Upload%20Python%20Package/badge.svg)
 
 ![Downloads a day](https://img.shields.io/pypi/dd/volkswagencarnet?label=Downloads)
+![Downloads a week](https://img.shields.io/pypi/dw/volkswagencarnet?label=Downloads%20)
+![Downloads a month](https://img.shields.io/pypi/dm/volkswagencarnet?label=Downloads%20)
 
 ## Information
 
