@@ -205,14 +205,14 @@ class ElectricClimatisationClimate(Climate):
     def target_temperature(self):
         return self.vehicle.climatisation_target_temperature
 
-    def set_temperature(self, temperature):
-        self.vehicle.set_climatisation_target_temperature(temperature)
+    async def set_temperature(self, temperature):
+        await self.vehicle.set_climatisation_target_temperature(temperature)
 
-    def set_hvac_mode(self, hvac_mode):
+    async def set_hvac_mode(self, hvac_mode):
         if hvac_mode:
-            self.vehicle.start_electric_climatisation()
+            await self.vehicle.start_electric_climatisation()
         else:
-            self.vehicle.stop_electric_climatisation()
+            await self.vehicle.stop_electric_climatisation()
 
 
 class CombustionClimatisationClimate(Climate):
@@ -230,14 +230,14 @@ class CombustionClimatisationClimate(Climate):
     def target_temperature(self):
         return self.vehicle.climatisation_target_temperature
 
-    def set_temperature(self, temperature):
-        self.vehicle.set_climatisation_target_temperature(temperature)
+    async def set_temperature(self, temperature):
+        await self.vehicle.set_climatisation_target_temperature(temperature)
 
-    def set_hvac_mode(self, hvac_mode):
+    async def set_hvac_mode(self, hvac_mode):
         if hvac_mode:
-            self.vehicle.start_combustion_climatisation(self.spin)
+            await self.vehicle.start_combustion_climatisation(self.spin)
         else:
-            self.vehicle.stop_combustion_climatisation(self.spin)
+            await self.vehicle.stop_combustion_climatisation(self.spin)
 
 
 class Position(Instrument):
@@ -295,11 +295,11 @@ class DoorLock(Instrument):
     def is_locked(self):
         return self.state
 
-    def lock(self):
-        return self.vehicle.lock_car(self.spin)
+    async def lock(self):
+        return await self.vehicle.lock_car(self.spin)
 
-    def unlock(self):
-        return self.vehicle.unlock_car(self.spin)
+    async def unlock(self):
+        return await self.vehicle.unlock_car(self.spin)
 
     @property
     def assumed_state(self):
@@ -347,11 +347,11 @@ class ElectricClimatisation(Switch):
     def state(self):
         return self.vehicle.electric_climatisation
 
-    def turn_on(self):
-        self.vehicle.start_electric_climatisation()
+    async def turn_on(self):
+        await self.vehicle.start_electric_climatisation()
 
-    def turn_off(self):
-        self.vehicle.stop_electric_climatisation()
+    async def turn_off(self):
+        await self.vehicle.stop_electric_climatisation()
 
     @property
     def assumed_state(self):
@@ -366,11 +366,11 @@ class Charging(Switch):
     def state(self):
         return self.vehicle.charging
 
-    def turn_on(self):
-        self.vehicle.start_charging()
+    async def turn_on(self):
+        await self.vehicle.start_charging()
 
-    def turn_off(self):
-        self.vehicle.stop_charging()
+    async def turn_off(self):
+        await self.vehicle.stop_charging()
 
     @property
     def assumed_state(self):
@@ -385,11 +385,11 @@ class WindowHeater(Switch):
     def state(self):
         return self.vehicle.window_heater
 
-    def turn_on(self):
-        self.vehicle.start_window_heater()
+    async def turn_on(self):
+        await self.vehicle.start_window_heater()
 
-    def turn_off(self):
-        self.vehicle.stop_window_heater()
+    async def turn_off(self):
+        await self.vehicle.stop_window_heater()
 
     @property
     def assumed_state(self):
@@ -407,11 +407,11 @@ class CombustionEngineHeating(Switch):
     def state(self):
         return self.vehicle.combustion_engine_heating
 
-    def turn_on(self):
-        self.vehicle.start_combustion_engine_heating(self.spin)
+    async def turn_on(self):
+        await self.vehicle.start_combustion_engine_heating(self.spin)
 
-    def turn_off(self):
-        self.vehicle.stop_combustion_engine_heating()
+    async def turn_off(self):
+        await self.vehicle.stop_combustion_engine_heating()
 
     @property
     def assumed_state(self):
@@ -429,11 +429,11 @@ class CombustionClimatisation(Switch):
     def state(self):
         return self.vehicle.combustion_climatisation
 
-    def turn_on(self):
-        self.vehicle.start_combustion_climatisation(self.spin)
+    async def turn_on(self):
+        await self.vehicle.start_combustion_climatisation(self.spin)
 
-    def turn_off(self):
-        self.vehicle.stop_combustion_climatisation(self.spin)
+    async def turn_off(self):
+        await self.vehicle.stop_combustion_climatisation(self.spin)
 
     @property
     def assumed_state(self):
