@@ -340,6 +340,7 @@ class Connection:
                     for vehicle in loaded_vehicles.get('fullyLoadedVehiclesResponse').get('completeVehicles'):
                         self._state.update({vehicle['vin']: vehicle})
 
+            # get vehicle data
             for vin, vehicle in self._state.items():
                 rel = self._session_base + vehicle['dashboardUrl'] + '/'
 
@@ -401,16 +402,25 @@ class Connection:
 
                 _LOGGER.debug('Car States: %s', self._state)
 
+            # update data in all vehicles
+            for vehicle in self.vehicles:
+                await vehicle.update()
+
             return True
-        except (IOError, OSError) as error:
-            _LOGGER.warning(
-                'Could not update information from carnet: %s', error)
+        except (IOError, OSError, LookupError) as error:
+            _LOGGER.warning('Could not update information from carnet: %s', error)
 
     def vehicle(self, vin):
         """Return vehicle for given vin."""
-        return next((vehicle for vehicle in self.vehicles if vehicle.vin.lower() == vin.lower()), None)
+        return next(
+            (
+                vehicle
+                for vehicle in self.vehicles
+                if vehicle.unique_id == vin.lower()
+            ), None
+        )
 
-    @ property
+    @property
     def vehicles(self):
         """Return vehicle state."""
         return (Vehicle(self, vin, data) for vin, data in self._state.items())
@@ -422,7 +432,6 @@ class Connection:
     async def validate_login(self):
         try:
             messages = await self.post('-/msgc/get-new-messages')
-            print(messages)
             if messages.get('errorCode', {}) == '0':
                 return True
             else:
