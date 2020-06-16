@@ -6,8 +6,6 @@ import time
 import logging
 import asyncio
 
-# from requests import Session, RequestException
-# from requests.packages.urllib3 import disable_warnings
 from sys import version_info, argv
 from datetime import timedelta, datetime
 from urllib.parse import urlsplit, urljoin, parse_qs, urlparse
@@ -21,17 +19,10 @@ from aiohttp.hdrs import METH_GET, METH_POST
 
 version_info >= (3, 0) or exit('Python 3 required')
 
-# __version__ = '4.1.31'
-
-# logging.basicConfig(level=logging.DEBUG)
-
 _LOGGER = logging.getLogger(__name__)
 
 
 TIMEOUT = timedelta(seconds=30)
-
-# disable request ssl verification due to vw having issues with ca.
-# disable_warnings()
 
 HEADERS_SESSION = {
     'Accept': 'application/json, text/plain, */*',
