@@ -6,8 +6,8 @@ import time
 import logging
 import asyncio
 
-from requests import Session, RequestException
-from requests.packages.urllib3 import disable_warnings
+# from requests import Session, RequestException
+# from requests.packages.urllib3 import disable_warnings
 from sys import version_info, argv
 from datetime import timedelta, datetime
 from urllib.parse import urlsplit, urljoin, parse_qs, urlparse
@@ -31,7 +31,7 @@ _LOGGER = logging.getLogger(__name__)
 TIMEOUT = timedelta(seconds=30)
 
 # disable request ssl verification due to vw having issues with ca.
-disable_warnings()
+# disable_warnings()
 
 HEADERS_SESSION = {
     'Accept': 'application/json, text/plain, */*',
@@ -62,13 +62,13 @@ BASE_AUTH = 'https://identity.vwgroup.io'
 #     return obj
 
 
-class TimeoutRequestsSession(Session):
-    def request(self, *args, **kwargs):
-        if kwargs.get('timeout') is None:
-            kwargs['timeout'] = 60
-        # ignore ssl verification due to vw having issues with ca.
-        kwargs['verify'] = False
-        return super(TimeoutRequestsSession, self).request(*args, **kwargs)
+# class TimeoutRequestsSession(Session):
+#     def request(self, *args, **kwargs):
+#         if kwargs.get('timeout') is None:
+#             kwargs['timeout'] = 60
+#         # ignore ssl verification due to vw having issues with ca.
+#         kwargs['verify'] = False
+#         return super(TimeoutRequestsSession, self).request(*args, **kwargs)
 
 
 class Connection:
