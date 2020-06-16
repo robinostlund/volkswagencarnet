@@ -27,6 +27,24 @@ TIMEOUT = timedelta(seconds=30)
 # disable request ssl verification due to vw having issues with ca.
 disable_warnings()
 
+HEADERS_SESSION = {
+    'Accept': 'application/json, text/plain, */*',
+    'Content-Type': 'application/json;charset=UTF-8',
+    'User-Agent': 'Mozilla/5.0 (Linux; Android 6.0.1; D5803 Build/23.5.A.1.291; wv) \
+        AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/63.0.3239.111 Mobile Safari/537.36'
+}
+
+HEADERS_AUTH = {
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,\
+        image/apng,*/*;q=0.8,application/signed-exchange;v=b3',
+    'Content-Type': 'application/x-www-form-urlencoded',
+    'User-Agent': 'Mozilla/5.0 (Linux; Android 6.0.1; D5803 Build/23.5.A.1.291; wv) \
+        AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/63.0.3239.111 Mobile Safari/537.36'
+}
+
+BASE_SESSION = 'https://www.portal.volkswagen-we.com/'
+BASE_AUTH = 'https://identity.vwgroup.io'
+
 
 def _obj_parser(obj):
     """Parse datetime (only Python3 because of timezone)."""
@@ -47,18 +65,16 @@ class TimeoutRequestsSession(Session):
         return super(TimeoutRequestsSession, self).request(*args, **kwargs)
 
 
-class Connection(object):
+class Connection:
     """ Connection to Volkswagen Carnet """
 
     def __init__(self, username, password, guest_lang='en'):
         """ Initialize """
         self._session = TimeoutRequestsSession()
-        self._session_headers = {'Accept': 'application/json, text/plain, */*', 'Content-Type': 'application/json;charset=UTF-8',
-                                 'User-Agent': 'Mozilla/5.0 (Linux; Android 6.0.1; D5803 Build/23.5.A.1.291; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/63.0.3239.111 Mobile Safari/537.36'}
-        self._session_base = 'https://www.portal.volkswagen-we.com/'
-        self._session_auth_headers = {'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3', 'Content-Type': 'application/x-www-form-urlencoded',
-                                      'User-Agent': 'Mozilla/5.0 (Linux; Android 6.0.1; D5803 Build/23.5.A.1.291; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/63.0.3239.111 Mobile Safari/537.36'}
-        self._session_auth_base = 'https://identity.vwgroup.io'
+        self._session_headers = HEADERS_SESSION.copy()
+        self._session_base = BASE_SESSION
+        self._session_auth_headers = HEADERS_AUTH.copy()
+        self._session_auth_base = BASE_AUTH
         self._session_guest_language_id = guest_lang
 
         self._session_auth_ref_url = False
@@ -75,10 +91,8 @@ class Connection(object):
     def _login(self):
         """ Reset session in case we would like to login again """
         self._session = TimeoutRequestsSession()
-        self._session_headers = {'Accept': 'application/json, text/plain, */*', 'Content-Type': 'application/json;charset=UTF-8',
-                                 'User-Agent': 'Mozilla/5.0 (Linux; Android 6.0.1; D5803 Build/23.5.A.1.291; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/63.0.3239.111 Mobile Safari/537.36'}
-        self._session_auth_headers = {'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3', 'Content-Type': 'application/x-www-form-urlencoded',
-                                      'User-Agent': 'Mozilla/5.0 (Linux; Android 6.0.1; D5803 Build/23.5.A.1.291; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/63.0.3239.111 Mobile Safari/537.36'}
+        self._session_headers = HEADERS_SESSION.copy()
+        self._session_auth_headers = HEADERS_AUTH.copy()
 
         def extract_csrf(req):
             return re.compile('<meta name="_csrf" content="([^"]*)"/>').search(req.text).group(1)
@@ -88,8 +102,7 @@ class Connection(object):
 
         try:
             # Request landing page and get CSFR:
-            req = self._session.get(
-                self._session_base + '/portal/en_GB/web/guest/home')
+            req = self._session.get(self._session_base + '/portal/en_GB/web/guest/home')
             if req.status_code != 200:
                 return ""
             csrf = extract_csrf(req)
@@ -105,15 +118,13 @@ class Connection(object):
             lg_url = response_data.get("loginURL").get("path")
 
             # no redirect so we can get values we look for
-            req = self._session.get(
-                lg_url, allow_redirects=False, headers=self._session_auth_headers)
+            req = self._session.get(lg_url, allow_redirects=False, headers=self._session_auth_headers)
             if req.status_code != 302:
                 return ""
             ref_url_1 = req.headers.get("location")
 
             # now get actual login page and get session id and ViewState
-            req = self._session.get(
-                ref_url_1, headers=self._session_auth_headers)
+            req = self._session.get(ref_url_1, headers=self._session_auth_headers)
             if req.status_code != 200:
                 return ""
 
@@ -122,8 +133,7 @@ class Connection(object):
             login_csrf = bs.select_one('input[name=_csrf]')['value']
             login_token = bs.select_one('input[name=relayState]')['value']
             login_hmac = bs.select_one('input[name=hmac]')['value']
-            login_form_action = bs.find(
-                'form', id='emailPasswordForm').get('action')
+            login_form_action = bs.find('form', id='emailPasswordForm').get('action')
             login_url = self._session_auth_base + login_form_action
 
             # post login
@@ -137,8 +147,7 @@ class Connection(object):
                 '_csrf': login_csrf,
             }
             # post: https://identity.vwgroup.io/signin-service/v1/xxx@apps_vw-dilab_com/login/identifier
-            req = self._session.post(
-                login_url, data=post_data, allow_redirects=False, headers=self._session_auth_headers)
+            req = self._session.post(login_url, data=post_data, allow_redirects=False, headers=self._session_auth_headers)
 
             if req.status_code != 303:
                 return ""
@@ -147,8 +156,7 @@ class Connection(object):
             auth_relay_url = self._session_auth_base + ref_url_2
 
             # get: https://identity.vwgroup.io/signin-service/v1/xxx@apps_vw-dilab_com/login/authenticate?relayState=xxx&email=xxx
-            req = self._session.get(
-                auth_relay_url, allow_redirects=False, headers=self._session_auth_headers)
+            req = self._session.get(auth_relay_url, allow_redirects=False, headers=self._session_auth_headers)
             if req.status_code != 200:
                 return ""
 
@@ -157,12 +165,11 @@ class Connection(object):
             auth_csrf = bs.select_one('input[name=_csrf]')['value']
             auth_token = bs.select_one('input[name=relayState]')['value']
             auth_hmac = bs.select_one('input[name=hmac]')['value']
-            auth_form_action = bs.find(
-                'form', id='credentialsForm').get('action')
+            auth_form_action = bs.find('form', id='credentialsForm').get('action')
             auth_url = self._session_auth_base + auth_form_action
 
             # post login
-            self._session_auth_headers["Referer"] = auth_relay_url
+            self._session_auth_headers['Referer'] = auth_relay_url
 
             post_data = {
                 'email': self._session_auth_username,
@@ -172,56 +179,55 @@ class Connection(object):
                 '_csrf': auth_csrf,
             }
             # post: https://identity.vwgroup.io/signin-service/v1/xxx@apps_vw-dilab_com/login/authenticate
-            req = self._session.post(
-                auth_url, data=post_data, allow_redirects=False, headers=self._session_auth_headers)
+            req = self._session.post(auth_url, data=post_data, allow_redirects=False, headers=self._session_auth_headers)
             if req.status_code != 302:
                 return ""
 
             # get: https://identity.vwgroup.io/oidc/v1/oauth/sso?clientId=xxx@apps_vw-dilab_com&relayState=xxx&userId=xxx&HMAC=xxx
-            ref_url_3 = req.headers.get("location")
-            req = self._session.get(
-                ref_url_3, allow_redirects=False, headers=self._session_auth_headers)
+            ref_url_3 = req.headers.get('location')
+            req = self._session.get(ref_url_3, allow_redirects=False, headers=self._session_auth_headers)
             if req.status_code != 302:
                 return ""
 
             # get:
             # https://identity.vwgroup.io/consent/v1/users/xxx/xxx@apps_vw-dilab_com?scopes=openid%20profile%20birthdate%20nickname%20address%20email%20phone%20cars%20dealers%20mbb&relay_state=xxx&callback=https://identity.vwgroup.io/oidc/v1/oauth/client/callback&hmac=xxx
-            ref_url_4 = req.headers.get("location")
-            req = self._session.get(
-                ref_url_4, allow_redirects=False, headers=self._session_auth_headers)
+            ref_url_4 = req.headers.get('location')
+            req = self._session.get(ref_url_4, allow_redirects=False, headers=self._session_auth_headers)
             if req.status_code != 302:
                 return ""
 
             # get:
             # https://identity.vwgroup.io/oidc/v1/oauth/client/callback/success?user_id=xxx&client_id=xxx@apps_vw-dilab_com&scopes=openid%20profile%20birthdate%20nickname%20address%20email%20phone%20cars%20dealers%20mbb&consentedScopes=openid%20profile%20birthdate%20nickname%20address%20email%20phone%20cars%20dealers%20mbb&relay_state=xxx&hmac=xxx
-            ref_url_5 = req.headers.get("location")
-            user_id = parse_qs(urlparse(ref_url_5).query).get('user_id')[0]
-            req = self._session.get(
-                ref_url_5, allow_redirects=False, headers=self._session_auth_headers)
+            ref_url_5 = req.headers.get('location')
+            #user_id = parse_qs(urlparse(ref_url_5).query).get('user_id')[0]
+            req = self._session.get(ref_url_5, allow_redirects=False, headers=self._session_auth_headers)
             if req.status_code != 302:
                 return ""
 
             # get: https://www.portal.volkswagen-we.com/portal/web/guest/complete-login?state=xxx&code=xxx
-            ref_url_6 = req.headers.get("location")
+            ref_url_6 = req.headers.get('location')
             state = parse_qs(urlparse(ref_url_6).query).get('state')[0]
             code = parse_qs(urlparse(ref_url_6).query).get('code')[0]
 
             # post:
             # https://www.portal.volkswagen-we.com/portal/web/guest/complete-login?p_auth=xxx&p_p_id=33_WAR_cored5portlet&p_p_lifecycle=1&p_p_state=normal&p_p_mode=view&p_p_col_id=column-1&p_p_col_count=1&_33_WAR_cored5portlet_javax.portlet.action=getLoginStatus
-            self._session_auth_headers["Referer"] = ref_url_6
+            self._session_auth_headers['Referer'] = ref_url_6
             post_data = {
                 '_33_WAR_cored5portlet_code': code,
                 '_33_WAR_cored5portlet_landingPageUrl': ''
             }
             url = self._session_base + urlsplit(ref_url_6).path
-            req = self._session.post(f'{url}?p_auth={state}&p_p_id=33_WAR_cored5portlet&p_p_lifecycle=1&p_p_state=normal&p_p_mode=view&p_p_col_id=column-1&p_p_col_count=1&_33_WAR_cored5portlet_javax.portlet.action=getLoginStatus', data=post_data, allow_redirects=False, headers=self._session_auth_headers)
+            req = self._session.post(
+                f'{url}?p_auth={state}&p_p_id=33_WAR_cored5portlet&p_p_lifecycle=1&p_p_state=normal&p_p_mode=view&p_p_col_id=column-1&p_p_col_count=1&_33_WAR_cored5portlet_javax.portlet.action=getLoginStatus',
+                data=post_data,
+                allow_redirects=False,
+                headers=self._session_auth_headers)
             if req.status_code != 302:
                 return ""
 
             # get: https://www.portal.volkswagen-we.com/portal/user/xxx/v_8xxx
-            ref_url_7 = req.headers.get("location")
-            req = self._session.get(
-                ref_url_7, allow_redirects=False, headers=self._session_auth_headers)
+            ref_url_7 = req.headers.get('location')
+            req = self._session.get(ref_url_7, allow_redirects=False, headers=self._session_auth_headers)
             if req.status_code != 200:
                 return ""
 
@@ -229,13 +235,12 @@ class Connection(object):
             csrf = extract_csrf(req)
 
             cookie = self._session.cookies.get_dict()
-            self._session_guest_language_id = extract_guest_language_id(
-                cookie.get('GUEST_LANGUAGE_ID', {}))
+            self._session_guest_language_id = extract_guest_language_id(cookie.get('GUEST_LANGUAGE_ID', {}))
 
             # Update headers for requests
-            self._session_headers["Referer"] = ref_url_7
-            self._session_headers["X-CSRF-Token"] = csrf
-            self._session_auth_ref_url = ref_url_7 + '/'
+            self._session_headers['Referer'] = ref_url_7
+            self._session_headers['X-CSRF-Token'] = csrf
+            self._session_auth_ref_url = f'{ref_url_7}/'
             self._session_logged_in = True
             return True
 
@@ -274,8 +279,7 @@ class Connection(object):
         try:
             if self._session_first_update:
                 if not self.validate_login:
-                    _LOGGER.warning(
-                        'Session expired, creating new login session to carnet.')
+                    _LOGGER.warning('Session expired, creating new login session to carnet.')
                     self._login()
             else:
                 self._session_first_update = True
@@ -283,8 +287,7 @@ class Connection(object):
             _LOGGER.debug('Updating vehicle status from carnet')
             if not self._state or reset:
                 _LOGGER.debug('Querying vehicles')
-                owners_verification = self.post(
-                    f'/portal/group/{self._session_guest_language_id}/edit-profile/-/profile/get-vehicles-owners-verification')
+                # owners_verification = self.post(f'/portal/group/{self._session_guest_language_id}/edit-profile/-/profile/get-vehicles-owners-verification')
 
                 # get vehicles
                 loaded_vehicles = self.post('-/mainnavigation/get-fully-loaded-cars')
@@ -321,7 +324,6 @@ class Connection(object):
 
                 # fetch vehicle emanage data
                 if not vehicle['engineTypeCombustian']:
-                    vehcle_emanager = {}
                     try:
                         vehicle_emanager = self.post('-/emanager/get-emanager', rel)
                         if vehicle_emanager.get('errorCode', {}) == '0' and vehicle_emanager.get('EManager', {}):
@@ -391,7 +393,7 @@ class Connection(object):
         return self._session_logged_in
 
 
-class Vehicle(object):
+class Vehicle:
     def __init__(self, conn, vin, data):
         self.data = data
         self.vin = vin
@@ -406,8 +408,7 @@ class Vehicle(object):
 
     def post(self, query, **data):
         """Perform a query to the online service."""
-        rel = self._connection._session_base + \
-            self.data.get('dashboardUrl') + '/'
+        rel = self._connection._session_base + self.data.get('dashboardUrl') + '/'
         req = self._connection.post(query, rel, **data)
         return req
 
@@ -415,7 +416,7 @@ class Vehicle(object):
         """Make remote method call."""
         try:
             if not self._connection.validate_login:
-                _LOGGER.warning('Session expired, logging in again to carnet.')
+                _LOGGER.warning('Session expired, reconnecting to carnet.')
                 self._connection._login()
             res = self.post(method, **data)
             if res.get('errorCode') != '0':
