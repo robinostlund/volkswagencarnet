@@ -341,7 +341,7 @@ class TrunkLock(Instrument):
 
 class RequestUpdate(Switch):
     def __init__(self):
-        super().__init__(attr="request_in_progress", name="Request In Progress", icon="mdi:connectivity")
+        super().__init__(attr="request_in_progress", name="Request In Progress", icon="mdi:car-connected")
 
     @property
     def state(self):
