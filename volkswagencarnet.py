@@ -4,23 +4,29 @@
 import re
 import time
 import logging
+import asyncio
 
 from requests import Session, RequestException
 from requests.packages.urllib3 import disable_warnings
-from sys import version_info
+from sys import version_info, argv
 from datetime import timedelta, datetime
 from urllib.parse import urlsplit, urljoin, parse_qs, urlparse
-from functools import partial
 from json import dumps as to_json
 from collections import OrderedDict
 from bs4 import BeautifulSoup
-from utilities import find_path, is_valid_path
+from utilities import find_path, is_valid_path, read_config, json_loads
+
+from aiohttp import ClientSession, ClientTimeout
+from aiohttp.hdrs import METH_GET, METH_POST
 
 version_info >= (3, 0) or exit('Python 3 required')
 
 # __version__ = '4.1.31'
 
+# logging.basicConfig(level=logging.DEBUG)
+
 _LOGGER = logging.getLogger(__name__)
+
 
 TIMEOUT = timedelta(seconds=30)
 
@@ -46,14 +52,14 @@ BASE_SESSION = 'https://www.portal.volkswagen-we.com/'
 BASE_AUTH = 'https://identity.vwgroup.io'
 
 
-def _obj_parser(obj):
-    """Parse datetime (only Python3 because of timezone)."""
-    for key, val in obj.items():
-        try:
-            obj[key] = datetime.strptime(val, '%Y-%m-%dT%H:%M:%S%z')
-        except (TypeError, ValueError):
-            pass
-    return obj
+# def _obj_parser(obj):
+#     """Parse datetime (only Python3 because of timezone)."""
+#     for key, val in obj.items():
+#         try:
+#             obj[key] = datetime.strptime(val, '%Y-%m-%dT%H:%M:%S%z')
+#         except (TypeError, ValueError):
+#             pass
+#     return obj
 
 
 class TimeoutRequestsSession(Session):
@@ -68,9 +74,10 @@ class TimeoutRequestsSession(Session):
 class Connection:
     """ Connection to Volkswagen Carnet """
 
-    def __init__(self, username, password, guest_lang='en'):
+    def __init__(self, session, username, password, guest_lang='en'):
         """ Initialize """
-        self._session = TimeoutRequestsSession()
+        # self._session = TimeoutRequestsSession()
+        self._session = session
         self._session_headers = HEADERS_SESSION.copy()
         self._session_base = BASE_SESSION
         self._session_auth_headers = HEADERS_AUTH.copy()
@@ -88,48 +95,52 @@ class Connection:
 
         self._state = {}
 
-    def _login(self):
+    async def _login(self):
         """ Reset session in case we would like to login again """
-        self._session = TimeoutRequestsSession()
+        # self._session = TimeoutRequestsSession()
         self._session_headers = HEADERS_SESSION.copy()
         self._session_auth_headers = HEADERS_AUTH.copy()
 
         def extract_csrf(req):
-            return re.compile('<meta name="_csrf" content="([^"]*)"/>').search(req.text).group(1)
+            return re.compile('<meta name="_csrf" content="([^"]*)"/>').search(req).group(1)
 
         def extract_guest_language_id(req):
             return req.split('_')[1].lower()
 
         try:
             # Request landing page and get CSFR:
-            req = self._session.get(self._session_base + '/portal/en_GB/web/guest/home')
-            if req.status_code != 200:
+            req = await self._session.get(
+                url=self._session_base + '/portal/en_GB/web/guest/home'
+            )
+            if req.status != 200:
                 return ""
-            csrf = extract_csrf(req)
+            csrf = extract_csrf(await req.text())
 
             # Request login page and get CSRF
             self._session_auth_headers['Referer'] = self._session_base + 'portal'
-            req = self._session.post(
-                self._session_base + 'portal/web/guest/home/-/csrftokenhandling/get-login-url', headers=self._session_auth_headers)
-            if req.status_code != 200:
+            req = await self._session.post(
+                url=f'{self._session_base}portal/web/guest/home/-/csrftokenhandling/get-login-url',
+                headers=self._session_auth_headers
+            )
+            if req.status != 200:
                 return ""
 
-            response_data = req.json()
+            response_data = await req.json()
             lg_url = response_data.get("loginURL").get("path")
 
             # no redirect so we can get values we look for
-            req = self._session.get(lg_url, allow_redirects=False, headers=self._session_auth_headers)
-            if req.status_code != 302:
+            req = await self._session.get(lg_url, allow_redirects=False, headers=self._session_auth_headers)
+            if req.status != 302:
                 return ""
             ref_url_1 = req.headers.get("location")
 
             # now get actual login page and get session id and ViewState
-            req = self._session.get(ref_url_1, headers=self._session_auth_headers)
-            if req.status_code != 200:
+            req = await self._session.get(ref_url_1, headers=self._session_auth_headers)
+            if req.status != 200:
                 return ""
 
             # get login variables
-            bs = BeautifulSoup(req.text, 'html.parser')
+            bs = BeautifulSoup(await req.text(), 'html.parser')
             login_csrf = bs.select_one('input[name=_csrf]')['value']
             login_token = bs.select_one('input[name=relayState]')['value']
             login_hmac = bs.select_one('input[name=hmac]')['value']
@@ -147,26 +158,34 @@ class Connection:
                 '_csrf': login_csrf,
             }
             # post: https://identity.vwgroup.io/signin-service/v1/xxx@apps_vw-dilab_com/login/identifier
-            req = self._session.post(login_url, data=post_data, allow_redirects=False, headers=self._session_auth_headers)
+            req = await self._session.post(
+                url=login_url,
+                data=post_data,
+                allow_redirects=False,
+                headers=self._session_auth_headers)
 
-            if req.status_code != 303:
+            if req.status != 303:
                 return ""
 
             ref_url_2 = req.headers.get("location")
             auth_relay_url = self._session_auth_base + ref_url_2
 
             # get: https://identity.vwgroup.io/signin-service/v1/xxx@apps_vw-dilab_com/login/authenticate?relayState=xxx&email=xxx
-            req = self._session.get(auth_relay_url, allow_redirects=False, headers=self._session_auth_headers)
-            if req.status_code != 200:
+            req = await self._session.get(
+                url=auth_relay_url,
+                allow_redirects=False,
+                headers=self._session_auth_headers
+            )
+            if req.status != 200:
                 return ""
 
             # post: https://identity.vwgroup.io/signin-service/v1/xxx@apps_vw-dilab_com/login/authenticate
-            bs = BeautifulSoup(req.text, 'html.parser')
+            bs = BeautifulSoup(await req.text(), 'html.parser')
             auth_csrf = bs.select_one('input[name=_csrf]')['value']
             auth_token = bs.select_one('input[name=relayState]')['value']
             auth_hmac = bs.select_one('input[name=hmac]')['value']
             auth_form_action = bs.find('form', id='credentialsForm').get('action')
-            auth_url = self._session_auth_base + auth_form_action
+            auth_url = f'{self._session_auth_base}{auth_form_action}'
 
             # post login
             self._session_auth_headers['Referer'] = auth_relay_url
@@ -179,29 +198,46 @@ class Connection:
                 '_csrf': auth_csrf,
             }
             # post: https://identity.vwgroup.io/signin-service/v1/xxx@apps_vw-dilab_com/login/authenticate
-            req = self._session.post(auth_url, data=post_data, allow_redirects=False, headers=self._session_auth_headers)
-            if req.status_code != 302:
+            req = await self._session.post(
+                url=auth_url,
+                data=post_data,
+                allow_redirects=False,
+                headers=self._session_auth_headers
+            )
+            if req.status != 302:
                 return ""
 
             # get: https://identity.vwgroup.io/oidc/v1/oauth/sso?clientId=xxx@apps_vw-dilab_com&relayState=xxx&userId=xxx&HMAC=xxx
             ref_url_3 = req.headers.get('location')
-            req = self._session.get(ref_url_3, allow_redirects=False, headers=self._session_auth_headers)
-            if req.status_code != 302:
+            req = await self._session.get(
+                url=ref_url_3,
+                allow_redirects=False,
+                headers=self._session_auth_headers
+            )
+            if req.status != 302:
                 return ""
 
             # get:
             # https://identity.vwgroup.io/consent/v1/users/xxx/xxx@apps_vw-dilab_com?scopes=openid%20profile%20birthdate%20nickname%20address%20email%20phone%20cars%20dealers%20mbb&relay_state=xxx&callback=https://identity.vwgroup.io/oidc/v1/oauth/client/callback&hmac=xxx
             ref_url_4 = req.headers.get('location')
-            req = self._session.get(ref_url_4, allow_redirects=False, headers=self._session_auth_headers)
-            if req.status_code != 302:
+            req = await self._session.get(
+                url=ref_url_4,
+                allow_redirects=False,
+                headers=self._session_auth_headers
+            )
+            if req.status != 302:
                 return ""
 
             # get:
             # https://identity.vwgroup.io/oidc/v1/oauth/client/callback/success?user_id=xxx&client_id=xxx@apps_vw-dilab_com&scopes=openid%20profile%20birthdate%20nickname%20address%20email%20phone%20cars%20dealers%20mbb&consentedScopes=openid%20profile%20birthdate%20nickname%20address%20email%20phone%20cars%20dealers%20mbb&relay_state=xxx&hmac=xxx
             ref_url_5 = req.headers.get('location')
-            #user_id = parse_qs(urlparse(ref_url_5).query).get('user_id')[0]
-            req = self._session.get(ref_url_5, allow_redirects=False, headers=self._session_auth_headers)
-            if req.status_code != 302:
+            # user_id = parse_qs(urlparse(ref_url_5).query).get('user_id')[0]
+            req = await self._session.get(
+                url=ref_url_5,
+                allow_redirects=False,
+                headers=self._session_auth_headers
+            )
+            if req.status != 302:
                 return ""
 
             # get: https://www.portal.volkswagen-we.com/portal/web/guest/complete-login?state=xxx&code=xxx
@@ -217,25 +253,32 @@ class Connection:
                 '_33_WAR_cored5portlet_landingPageUrl': ''
             }
             url = self._session_base + urlsplit(ref_url_6).path
-            req = self._session.post(
-                f'{url}?p_auth={state}&p_p_id=33_WAR_cored5portlet&p_p_lifecycle=1&p_p_state=normal&p_p_mode=view&p_p_col_id=column-1&p_p_col_count=1&_33_WAR_cored5portlet_javax.portlet.action=getLoginStatus',
+            req = await self._session.post(
+                url=f'{url}?p_auth={state}&p_p_id=33_WAR_cored5portlet&p_p_lifecycle=1&p_p_state=normal&p_p_mode=view&p_p_col_id=column-1&p_p_col_count=1&_33_WAR_cored5portlet_javax.portlet.action=getLoginStatus',
                 data=post_data,
                 allow_redirects=False,
-                headers=self._session_auth_headers)
-            if req.status_code != 302:
+                headers=self._session_auth_headers
+            )
+            if req.status != 302:
                 return ""
 
             # get: https://www.portal.volkswagen-we.com/portal/user/xxx/v_8xxx
             ref_url_7 = req.headers.get('location')
-            req = self._session.get(ref_url_7, allow_redirects=False, headers=self._session_auth_headers)
-            if req.status_code != 200:
+            req = await self._session.get(
+                url=ref_url_7,
+                allow_redirects=False,
+                headers=self._session_auth_headers
+            )
+            if req.status != 200:
                 return ""
 
             # We have a new CSRF
-            csrf = extract_csrf(req)
+            csrf = extract_csrf(await req.text())
 
-            cookie = self._session.cookies.get_dict()
-            self._session_guest_language_id = extract_guest_language_id(cookie.get('GUEST_LANGUAGE_ID', {}))
+            # cookie = self._session.cookies.get_dict()
+            # cookie = req.cookies
+
+            self._session_guest_language_id = extract_guest_language_id(req.cookies.get('GUEST_LANGUAGE_ID').value)
 
             # Update headers for requests
             self._session_headers['Referer'] = ref_url_7
@@ -249,38 +292,67 @@ class Connection:
             self._session_logged_in = False
             return False
 
-    def _request(self, method, ref, rel=None):
-        url = urljoin(rel or self._session_auth_ref_url, ref)
+    # async def _request(self, method, ref, rel=None):
+    #     url = urljoin(rel or self._session_auth_ref_url, ref)
+    #     try:
+    #         _LOGGER.debug('Request for %s', url)
+    #         res = method(url, headers=self._session_headers)
+    #         res.raise_for_status()
+    #         res = res.json(object_hook=_obj_parser)
+    #         _LOGGER.debug('Received %s', res)
+    #         return res
+    #     except RequestException as error:
+    #         _LOGGER.warning(
+    #             'Failure when communcating with the server: %s, url: %s', error, url)
+    #         raise
+
+    async def _request(self, method, url, **kwargs):
+        """Perform a query to the vw carnet"""
         try:
-            _LOGGER.debug('Request for %s', url)
-            res = method(url, headers=self._session_headers)
-            res.raise_for_status()
-            res = res.json(object_hook=_obj_parser)
-            _LOGGER.debug('Received %s', res)
-            return res
-        except RequestException as error:
+            _LOGGER.debug("Request for %s", url)
+
+            async with self._session.request(
+                method,
+                url,
+                headers=self._session_headers,
+                timeout=ClientTimeout(total=TIMEOUT.seconds),
+                **kwargs
+            ) as response:
+                response.raise_for_status()
+                res = await response.json(loads=json_loads)
+                _LOGGER.debug("Received %s", res)
+                return res
+        except Exception as error:
             _LOGGER.warning(
-                'Failure when communcating with the server: %s, url: %s', error, url)
+                "Failure when communcating with the server: %s", error
+            )
             raise
 
-    def _logout(self):
+    async def _logout(self):
         self.post('-/logout/revoke')
 
-    def get(self, ref, rel=None):
+    def _make_url(self, ref, rel=None):
+        return urljoin(rel or self._session_auth_ref_url, ref)
+
+    async def get(self, url, rel=None):
         """Perform a get query to the online service."""
-        return self._request(self._session.get, ref, rel)
+        # return self._request(self._session.get, ref, rel)
+        return await self._request(METH_GET, self._make_url(url, rel))
 
-    def post(self, ref, rel=None, **data):
+    async def post(self, url, rel=None, **data):
         """Perform a post query to the online service."""
-        return self._request(partial(self._session.post, json=data), ref, rel)
+        # return self._request(partial(self._session.post, json=data), ref, rel)
+        return await self._request(
+            METH_POST, self._make_url(url, rel), json=data
+        )
 
-    def update(self, reset=False, request_data=True):
+    async def update(self, reset=False, request_data=True):
         """Update status."""
         try:
             if self._session_first_update:
-                if not self.validate_login:
+                if not await self.validate_login:
                     _LOGGER.warning('Session expired, creating new login session to carnet.')
-                    self._login()
+                    await self._login()
             else:
                 self._session_first_update = True
 
@@ -290,15 +362,22 @@ class Connection:
                 # owners_verification = self.post(f'/portal/group/{self._session_guest_language_id}/edit-profile/-/profile/get-vehicles-owners-verification')
 
                 # get vehicles
-                loaded_vehicles = self.post('-/mainnavigation/get-fully-loaded-cars')
+                loaded_vehicles = await self.post(
+                    url='-/mainnavigation/get-fully-loaded-cars'
+                )
 
                 # load all not loaded vehicles
                 if loaded_vehicles.get('fullyLoadedVehiclesResponse', {}).get('vehiclesNotFullyLoaded', []):
                     for vehicle in loaded_vehicles.get('fullyLoadedVehiclesResponse').get('vehiclesNotFullyLoaded'):
-                        self.post('-/mainnavigation/load-car-details/%s' % vehicle.get('vin'))
+                        vehicle_vin = vehicle.get('vin')
+                        await self.post(
+                            url=f'-/mainnavigation/load-car-details/{vehicle_vin}'
+                        )
 
                     # update loaded cars
-                    loaded_vehicles = self.post('-/mainnavigation/get-fully-loaded-cars')
+                    loaded_vehicles = await self.post(
+                        url='-/mainnavigation/get-fully-loaded-cars'
+                    )
 
                 # update vehicles
                 if loaded_vehicles.get('fullyLoadedVehiclesResponse', {}).get('completeVehicles', []):
@@ -310,7 +389,10 @@ class Connection:
 
                 # fetch vehicle vsr data
                 try:
-                    vehicle_data = self.post('-/vsr/get-vsr', rel)
+                    vehicle_data = await self.post(
+                        url='-/vsr/get-vsr',
+                        rel=rel
+                    )
                     if vehicle_data.get('errorCode', {}) == '0' and vehicle_data.get('vehicleStatusData', {}):
                         self._state[vin]['vsr'] = vehicle_data.get('vehicleStatusData', {})
                 except Exception as err:
@@ -318,14 +400,18 @@ class Connection:
 
                 # request update of vehicle status data if not in progress
                 if request_data and vehicle_data.get('vehicleStatusData', {}).get('requestStatus', {}) != 'REQUEST_IN_PROGRESS':
-                    update_request = self.post('-/vsr/request-vsr', rel, dummy='data')
+                    update_request = await self.post(
+                        url='-/vsr/request-vsr',
+                        rel=rel,
+                        dummy='data'
+                    )
                     if update_request.get('errorCode') != '0':
                         _LOGGER.error('Failed to request vehicle update')
 
                 # fetch vehicle emanage data
                 if not vehicle['engineTypeCombustian']:
                     try:
-                        vehicle_emanager = self.post('-/emanager/get-emanager', rel)
+                        vehicle_emanager = await self.post('-/emanager/get-emanager', rel)
                         if vehicle_emanager.get('errorCode', {}) == '0' and vehicle_emanager.get('EManager', {}):
                             self._state[vin]['emanager'] = vehicle_emanager.get('EManager', {})
 
@@ -334,7 +420,7 @@ class Connection:
 
                 # fetch vehicle location data
                 try:
-                    vehicle_location = self.post('-/cf/get-location', rel)
+                    vehicle_location = await self.post('-/cf/get-location', rel)
                     if vehicle_location.get('errorCode', {}) == '0' and vehicle_location.get('position', {}):
                         self._state[vin]['position'] = vehicle_location.get('position', {})
                 except Exception as err:
@@ -342,7 +428,7 @@ class Connection:
 
                 # fetch vehicle details data
                 try:
-                    vehicle_details = self.post('-/vehicle-info/get-vehicle-details', rel)
+                    vehicle_details = await self.post('-/vehicle-info/get-vehicle-details', rel)
                     if vehicle_details.get('errorCode', {}) == '0' and vehicle_details.get('vehicleDetails', {}):
                         self._state[vin]['vehicle-details'] = vehicle_details.get('vehicleDetails', {})
                 except Exception as err:
@@ -351,7 +437,7 @@ class Connection:
                 # fetch combustion engine remote auxiliary heating status data
                 if vehicle['engineTypeCombustian']:
                     try:
-                        vehicle_rah_status = self.post('-/rah/get-status')
+                        vehicle_rah_status = await self.post('-/rah/get-status')
                         if vehicle_rah_status.get('errorCode', {}) == '0' and vehicle_rah_status.get('remoteAuxiliaryHeating', {}):
                             self._state[vin]['remoteauxheating'] = vehicle_rah_status.get('remoteAuxiliaryHeating', {})
                     except Exception as err:
@@ -368,7 +454,7 @@ class Connection:
         """Return vehicle for given vin."""
         return next((vehicle for vehicle in self.vehicles if vehicle.vin.lower() == vin.lower()), None)
 
-    @property
+    @ property
     def vehicles(self):
         """Return vehicle state."""
         return (Vehicle(self, vin, data) for vin, data in self._state.items())
@@ -376,10 +462,11 @@ class Connection:
     def vehicle_attrs(self, vin):
         return self._state.get(vin)
 
-    @property
-    def validate_login(self):
+    @ property
+    async def validate_login(self):
         try:
-            messages = self.post('-/msgc/get-new-messages')
+            messages = await self.post('-/msgc/get-new-messages')
+            print(messages)
             if messages.get('errorCode', {}) == '0':
                 return True
             else:
@@ -388,7 +475,7 @@ class Connection:
             _LOGGER.warning('Could not validate login: %s', error)
             return False
 
-    @property
+    @ property
     def logged_in(self):
         return self._session_logged_in
 
@@ -399,26 +486,25 @@ class Vehicle:
         self.vin = vin
         self._connection = conn
 
-    def get(self, query):
-        """Perform a query to the online service."""
-        rel = self._connection._session_base + \
-            self.data.get('dashboardUrl') + '/'
-        req = self._connection.get(query, rel)
-        return req
-
-    def post(self, query, **data):
+    async def get(self, query):
         """Perform a query to the online service."""
         rel = self._connection._session_base + self.data.get('dashboardUrl') + '/'
-        req = self._connection.post(query, rel, **data)
+        req = await self._connection.get(query, rel)
         return req
 
-    def call(self, method, **data):
+    async def post(self, query, **data):
+        """Perform a query to the online service."""
+        rel = self._connection._session_base + self.data.get('dashboardUrl') + '/'
+        req = await self._connection.post(query, rel, **data)
+        return req
+
+    async def call(self, method, **data):
         """Make remote method call."""
         try:
-            if not self._connection.validate_login:
+            if not await self._connection.validate_login:
                 _LOGGER.warning('Session expired, reconnecting to carnet.')
-                self._connection._login()
-            res = self.post(method, **data)
+                await self._connection._login()
+            res = await self.post(method, **data)
             if res.get('errorCode') != '0':
                 _LOGGER.warning('Failed to execute')
                 return False
@@ -428,7 +514,7 @@ class Vehicle:
         except RequestException as error:
             _LOGGER.warning('Failure to execute: %s', error)
 
-    @property
+    @ property
     def attrs(self):
         return self._connection.vehicle_attrs(self.vin)
 
@@ -442,11 +528,11 @@ class Vehicle:
         from dashboard import Dashboard
         return Dashboard(self, **config)
 
-    @property
+    @ property
     def unique_id(self):
         return self.vin.lower()
 
-    @property
+    @ property
     def last_connected(self):
         """Return when vehicle was last connected to carnet"""
         if self.is_last_connected_supported:
@@ -460,36 +546,36 @@ class Vehicle:
                     except ValueError:
                         pass
 
-    @property
+    @ property
     def is_last_connected_supported(self):
         """Return when vehicle was last connected to carnet"""
         check = self.data.get('vehicle-details', {}).get('lastConnectionTimeStamp', {})
         if check:
             return True
 
-    @property
+    @ property
     def climatisation_target_temperature(self):
         if self.is_climatisation_supported:
             temperature = self.data.get('emanager', {}).get('rpc', {}).get('settings', {}).get('targetTemperature', {})
             if temperature:
                 return temperature
 
-    @property
+    @ property
     def is_climatisation_target_temperature_supported(self):
         if self.is_climatisation_supported:
             return True
 
-    @property
+    @ property
     def climatisation_without_external_power(self):
         if self.is_climatisation_without_external_power_supported:
             return self.data.get('emanager', {}).get('rpc', {}).get('settings', {}).get('climatisationWithoutHVPower', {})
 
-    @property
+    @ property
     def is_climatisation_without_external_power_supported(self):
         if self.is_climatisation_supported:
             return True
 
-    @property
+    @ property
     def service_inspection(self):
         """Return time left for service inspection"""
         if self.is_service_inspection_supported:
@@ -497,13 +583,13 @@ class Vehicle:
             if check:
                 return check
 
-    @property
+    @ property
     def is_service_inspection_supported(self):
         check = self.data.get('vehicle-details', {}).get('serviceInspectionData', {})
         if check:
             return True
 
-    @property
+    @ property
     def oil_inspection(self):
         """Return time left for service inspection"""
         if self.is_service_inspection_supported:
@@ -511,47 +597,47 @@ class Vehicle:
             if check:
                 return check
 
-    @property
+    @ property
     def is_oil_inspection_supported(self):
         check = self.data.get('vehicle-details', {}).get('oilInspectionData', {})
         if check:
             return True
 
-    @property
+    @ property
     def adblue_level(self):
         if self.is_adblue_level_supported:
             return self.data.get('vsr', {}).get('adBlueLevel', 0)
 
-    @property
+    @ property
     def is_adblue_level_supported(self):
         check = self.data.get('vsr', {}).get('adBlueEnabled', {})
         if isinstance(check, bool) and check:
             return True
 
-    @property
+    @ property
     def battery_level(self):
         if self.is_battery_level_supported:
             return self.data.get('vsr', {}).get('batteryLevel', 0)
 
-    @property
+    @ property
     def is_battery_level_supported(self):
         check = self.data.get('vsr', {}).get('batteryLevel', {})
         if isinstance(check, int):
             return True
 
-    @property
+    @ property
     def charge_max_ampere(self):
         """Return charge max ampere"""
         if self.is_charge_max_ampere_supported:
             return self.data.get('emanager', {}).get('rbc', {}).get('settings', {}).get('chargerMaxCurrent', {})
 
-    @property
+    @ property
     def is_charge_max_ampere_supported(self):
         check = self.data.get('emanager', {}).get('rbc', {}).get('settings', {}).get('chargerMaxCurrent', {})
         if isinstance(check, int):
             return True
 
-    @property
+    @ property
     def parking_light(self):
         """Return true if parking light is on"""
         if self.is_parking_light_supported:
@@ -561,77 +647,77 @@ class Vehicle:
             else:
                 return False
 
-    @property
+    @ property
     def is_parking_light_supported(self):
         """Return true if parking light is supported"""
         check = self.data.get('vsr', {}).get('carRenderData', {}).get('parkingLights', {})
         if isinstance(check, int):
             return True
 
-    @property
+    @ property
     def distance(self):
         if self.is_distance_supported:
             value = self.data.get('vehicle-details', {}).get('distanceCovered', None).replace('.', '').replace(',', '').replace('--', '')
             if value:
                 return int(value)
 
-    @property
+    @ property
     def is_distance_supported(self):
         """Return true if distance is supported"""
         check = self.data.get('vehicle-details', {}).get('distanceCovered', {})
         if check:
             return True
 
-    @property
+    @ property
     def position(self):
         """Return  position."""
         if self.is_position_supported:
             return self.data.get('position')
 
-    @property
+    @ property
     def is_position_supported(self):
         """Return true if vehichle has position."""
         check = self.data.get('position', {}).get('lng', {})
         if check:
             return True
 
-    @property
+    @ property
     def model(self):
         """Return model"""
         if self.is_model_supported:
             return self.data.get('model')
 
-    @property
+    @ property
     def is_model_supported(self):
         check = self.data.get('model')
         if check:
             return True
 
-    @property
+    @ property
     def model_year(self):
         """Return model year"""
         if self.is_model_year_supported:
             return self.data.get('modelYear', {})
 
-    @property
+    @ property
     def is_model_year_supported(self):
         check = self.data.get('modelYear', {})
         if check:
             return True
 
-    @property
+    @ property
     def model_image(self):
         """Return model image"""
         if self.is_model_image_supported:
             return self.data.get('imageUrl', {})
 
-    @property
+    @ property
     def is_model_image_supported(self):
         check = self.data.get('imageUrl', {})
         if check:
             return True
 
-    @property
+    @ property
     def charging(self):
         """Return status of charging."""
         if self.is_charging_supported:
@@ -641,58 +727,58 @@ class Vehicle:
             else:
                 return False
 
-    @property
+    @ property
     def is_charging_supported(self):
         """Return true if vehichle has heater."""
         check = self.data.get('emanager', {}).get('rbc', {}).get('status', {}).get('batteryPercentage', {})
         if check:
             return True
 
-    @property
+    @ property
     def electric_range(self):
         if self.is_electric_range_supported:
             return self.data.get('vsr', {}).get('batteryRange', {})
 
-    @property
+    @ property
     def is_electric_range_supported(self):
         check = self.data.get('vsr', {}).get('batteryRange', {})
         if isinstance(check, int):
             return True
 
-    @property
+    @ property
     def combustion_range(self):
         if self.is_combustion_range_supported:
             return self.data.get('vsr', {}).get('fuelRange', {})
 
-    @property
+    @ property
     def is_combustion_range_supported(self):
         check = self.data.get('vsr', {}).get('fuelRange', {})
         if isinstance(check, int):
             return True
 
-    @property
+    @ property
     def combined_range(self):
         if self.is_combined_range_supported:
             return self.data.get('vsr', {}).get('totalRange', {})
 
-    @property
+    @ property
     def is_combined_range_supported(self):
         check = self.data.get('vsr', {}).get('totalRange', {})
         if isinstance(check, int):
             return True
 
-    @property
+    @ property
     def fuel_level(self):
         if self.is_fuel_level_supported:
             return self.data.get('vsr', {}).get('fuelLevel', {})
 
-    @property
+    @ property
     def is_fuel_level_supported(self):
         check = self.data.get('vsr', {}).get('fuelLevel', {})
         if isinstance(check, int):
             return True
 
-    @property
+    @ property
     def external_power(self):
         """Return true if external power is connected."""
         if self.is_external_power_supported:
@@ -702,7 +788,7 @@ class Vehicle:
             else:
                 return False
 
-    @property
+    @ property
     def is_external_power_supported(self):
         """External power supported."""
         if self.is_charging_supported:
@@ -710,7 +796,7 @@ class Vehicle:
             if check:
                 return True
 
-    @property
+    @ property
     def electric_climatisation(self):
         """Return status of climatisation."""
         if self.is_electric_climatisation_supported:
@@ -721,19 +807,19 @@ class Vehicle:
             else:
                 return False
 
-    @property
+    @ property
     def is_climatisation_supported(self):
         """Return true if vehichle has heater."""
         check = self.data.get('emanager', {}).get('rpc', {}).get('climaterActionState', {})
         if check == 'AVAILABLE' or check == 'NO_PLUGIN':
             return True
 
-    @property
+    @ property
     def is_electric_climatisation_supported(self):
         """Return true if vehichle has heater."""
         return self.is_climatisation_supported
 
-    @property
+    @ property
     def combustion_climatisation(self):
         """Return status of combustion climatisation."""
         if self.is_combustion_climatisation_supported:
@@ -744,7 +830,7 @@ class Vehicle:
             else:
                 return False
 
-    @property
+    @ property
     def is_combustion_climatisation_supported(self):
         """Return true if vehichle has combustion climatisation."""
         check = self.is_climatisation_supported
@@ -752,7 +838,7 @@ class Vehicle:
         if check and check2:
             return True
 
-    @property
+    @ property
     def window_heater(self):
         """Return status of window heater."""
         if self.is_window_heater_supported:
@@ -766,7 +852,7 @@ class Vehicle:
                 ret = True
             return ret
 
-    @property
+    @ property
     def is_window_heater_supported(self):
         """Return true if vehichle has heater."""
         if self.is_electric_climatisation_supported:
@@ -774,20 +860,20 @@ class Vehicle:
             if check:
                 return True
 
-    @property
+    @ property
     def combustion_engine_heating(self):
         """Return status of combustion engine heating."""
         if self.is_combustion_engine_heating_supported:
             return self.data.get('remoteauxheating', {}).get('status', {}).get('active', False)
 
-    @property
+    @ property
     def is_combustion_engine_heating_supported(self):
         """Return true if vehichle has combustion engine heating."""
         check = self.data.get('remoteauxheating', {})
         if check:
             return True
 
-    @property
+    @ property
     def window_closed(self):
         if self.window_supported:
             windows = self.data.get('vsr', {}).get('windows', {})
@@ -797,14 +883,14 @@ class Vehicle:
                     windows_closed = False
             return windows_closed
 
-    @property
+    @ property
     def is_window_closed_supported(self):
         """Return true if window state is supported"""
         check = self.data.get('vsr', {}).get('windowStatusSupported', {})
         if check:
             return True
 
-    @property
+    @ property
     def charging_time_left(self):
         if self.is_charging_time_left_supported:
             if self.external_power:
@@ -820,12 +906,12 @@ class Vehicle:
                         pass
             return 0
 
-    @property
+    @ property
     def is_charging_time_left_supported(self):
         if self.is_charging_supported:
             return True
 
-    @property
+    @ property
     def door_locked(self):
         if self.is_door_locked_supported:
             lock_data = self.data.get('vsr', {}).get('lockData', {})
@@ -837,13 +923,13 @@ class Vehicle:
                     vehicle_locked = False
             return vehicle_locked
 
-    @property
+    @ property
     def is_door_locked_supported(self):
         check = self.data.get('vsr', {}).get('lockData', {})
         if len(check) > 0:
             return True
 
-    @property
+    @ property
     def trunk_locked(self):
         if self.is_trunk_locked_supported:
             trunk_lock_data = self.data.get('vsr', {}).get('lockData', {}).get('trunk')
@@ -852,13 +938,13 @@ class Vehicle:
             else:
                 return True
 
-    @property
+    @ property
     def is_trunk_locked_supported(self):
         check = self.data.get('vsr', {}).get('lockData', {}).get('trunk')
         if check:
             return True
 
-    @property
+    @ property
     def request_in_progress(self):
         if self.is_request_in_progress_supported:
             check = self.data.get('vsr', {}).get('requestStatus', {})
@@ -867,14 +953,14 @@ class Vehicle:
             else:
                 return False
 
-    @property
+    @ property
     def is_request_in_progress_supported(self):
         check = self.data.get('vsr', {}).get('requestStatus', {})
         if check or check is None:
             return True
 
     # states
-    @property
+    @ property
     def is_parking_lights_on(self):
         """Parking light state"""
         if self.parking_light_supported:
@@ -884,7 +970,7 @@ class Vehicle:
             else:
                 return True
 
-    @property
+    @ property
     def is_doors_locked(self):
         """Door lock status."""
         state = True
@@ -894,7 +980,7 @@ class Vehicle:
                 state = False
         return state
 
-    @property
+    @ property
     def is_electric_climatisation_on(self):
         """Return status of climatisation."""
         if self.is_electric_climatisation_supported:
@@ -905,7 +991,7 @@ class Vehicle:
             else:
                 return False
 
-    @property
+    @ property
     def is_combustion_climatisation_on(self):
         """Return status of climatisation."""
         if self.is_combustion_climatisation_supported:
@@ -916,6 +1002,7 @@ class Vehicle:
             else:
                 return False
 
+    @property
     def is_windows_closed(self):
         """Return status of Window status."""
         if self.is_windows_closed_supported:
@@ -926,7 +1013,7 @@ class Vehicle:
                     state = False
             return state
 
-    @property
+    @ property
     def is_window_heater_on(self):
         """Return status of window heater."""
         if self.is_window_heater_supported:
@@ -940,7 +1027,7 @@ class Vehicle:
                 ret = True
             return ret
 
-    @property
+    @ property
     def is_charging_on(self):
         """Return status of charging."""
         if self.is_charging_supported:
@@ -950,7 +1037,7 @@ class Vehicle:
             else:
                 return False
 
-    @property
+    @ property
     def is_request_in_progress(self):
         check = self.data.get('vsr', {}).get('requestStatus', {})
         if check == 'REQUEST_IN_PROGRESS':
@@ -959,9 +1046,9 @@ class Vehicle:
             return False
 
     # actions
-    def lock_car(self, spin):
+    async def lock_car(self, spin):
         if spin:
-            resp = self.call('-/vsr/remote-lock', spin=spin)
+            resp = await self.call('-/vsr/remote-lock', spin=spin)
             if not resp:
                 _LOGGER.warning('Failed to lock car')
             else:
@@ -969,9 +1056,9 @@ class Vehicle:
         else:
             _LOGGER.error('Invalid SPIN provided')
 
-    def unlock_car(self, spin):
+    async def unlock_car(self, spin):
         if spin:
-            resp = self.call('-/vsr/remote-unlock', spin=spin)
+            resp = await self.call('-/vsr/remote-unlock', spin=spin)
             if not resp:
                 _LOGGER.warning('Failed to unlock car')
             else:
@@ -979,10 +1066,10 @@ class Vehicle:
         else:
             _LOGGER.error('Invalid SPIN provided')
 
-    def start_electric_climatisation(self):
+    async def start_electric_climatisation(self):
         """Turn on/off climatisation."""
         if self.is_electric_climatisation_supported:
-            resp = self.call('-/emanager/trigger-climatisation', triggerAction=True, electricClima=True)
+            resp = await self.call('-/emanager/trigger-climatisation', triggerAction=True, electricClima=True)
             if not resp:
                 _LOGGER.warning('Failed to start climatisation')
             else:
@@ -990,10 +1077,10 @@ class Vehicle:
         else:
             _LOGGER.error('No climatization support.')
 
-    def stop_electric_climatisation(self):
+    async def stop_electric_climatisation(self):
         """Turn on/off climatisation."""
         if self.is_electric_climatisation_supported:
-            resp = self.call('-/emanager/trigger-climatisation', triggerAction=False, electricClima=True)
+            resp = await self.call('-/emanager/trigger-climatisation', triggerAction=False, electricClima=True)
             if not resp:
                 _LOGGER.warning('Failed to stop climatisation')
             else:
@@ -1001,10 +1088,10 @@ class Vehicle:
         else:
             _LOGGER.error('No climatization support.')
 
-    def start_window_heater(self):
+    async def start_window_heater(self):
         """Turn on/off window heater."""
         if self.is_window_heater_supported:
-            resp = self.call('-/emanager/trigger-windowheating', triggerAction=True)
+            resp = await self.call('-/emanager/trigger-windowheating', triggerAction=True)
             if not resp:
                 _LOGGER.warning('Failed to start window heater')
             else:
@@ -1012,19 +1099,19 @@ class Vehicle:
         else:
             _LOGGER.error('No climatization support.')
 
-    def stop_window_heater(self):
+    async def stop_window_heater(self):
         """Turn on/off window heater."""
         if self.is_window_heater_supported:
-            resp = self.call('-/emanager/trigger-windowheating', triggerAction=False)
+            resp = await self.call('-/emanager/trigger-windowheating', triggerAction=False)
             if not resp:
                 _LOGGER.warning('Failed to stop window heater')
         else:
             _LOGGER.error('No window heating support.')
 
-    def start_combustion_engine_heating(self, spin):
+    async def start_combustion_engine_heating(self, spin):
         if spin:
             if self.is_combustion_engine_heating_supported:
-                resp = self.call('-/rah/quick-start', startMode='HEATING', spin=spin)
+                resp = await self.call('-/rah/quick-start', startMode='HEATING', spin=spin)
                 if not resp:
                     _LOGGER.warning('Failed to start combustion engine heating')
                 else:
@@ -1034,9 +1121,9 @@ class Vehicle:
         else:
             _LOGGER.error('Invalid SPIN provided')
 
-    def stop_combustion_engine_heating(self):
+    async def stop_combustion_engine_heating(self):
         if self.is_combustion_engine_heating_supported:
-            resp = self.call('-/rah/quick-stop')
+            resp = await self.call('-/rah/quick-stop')
             if not resp:
                 _LOGGER.warning('Failed to stop combustion engine heating')
             else:
@@ -1044,10 +1131,10 @@ class Vehicle:
         else:
             _LOGGER.error('No combustion engine heating support.')
 
-    def start_combustion_climatisation(self, spin):
+    async def start_combustion_climatisation(self, spin):
         """Turn on/off climatisation."""
         if self.is_combustion_climatisation_supported:
-            resp = self.call('-/emanager/trigger-climatisation', triggerAction=True, electricClima=False, spin=spin)
+            resp = await self.call('-/emanager/trigger-climatisation', triggerAction=True, electricClima=False, spin=spin)
             if not resp:
                 _LOGGER.warning('Failed to start combustion climatisation')
             else:
@@ -1055,10 +1142,10 @@ class Vehicle:
         else:
             _LOGGER.error('No combution climatization support.')
 
-    def stop_combustion_climatisation(self, spin):
+    async def stop_combustion_climatisation(self, spin):
         """Turn on/off climatisation."""
         if self.is_combustion_climatisation_supported:
-            resp = self.call('-/emanager/trigger-climatisation', triggerAction=False, electricClima=False, spin=spin)
+            resp = await self.call('-/emanager/trigger-climatisation', triggerAction=False, electricClima=False, spin=spin)
             if not resp:
                 _LOGGER.warning('Failed to stop combustion climatisation')
             else:
@@ -1066,10 +1153,10 @@ class Vehicle:
         else:
             _LOGGER.error('No combustion climatization support.')
 
-    def start_charging(self):
+    async def start_charging(self):
         """Turn on/off window heater."""
         if self.is_charging_supported:
-            resp = self.call('-/emanager/charge-battery', triggerAction=True, batteryPercent='100')
+            resp = await self.call('-/emanager/charge-battery', triggerAction=True, batteryPercent='100')
             if not resp:
                 _LOGGER.warning('Failed to start charging')
             else:
@@ -1077,10 +1164,10 @@ class Vehicle:
         else:
             _LOGGER.error('No charging support.')
 
-    def stop_charging(self):
+    async def stop_charging(self):
         """Turn on/off window heater."""
         if self.is_charging_supported:
-            resp = self.call('-/emanager/charge-battery', triggerAction=False, batteryPercent='99')
+            resp = await self.call('-/emanager/charge-battery', triggerAction=False, batteryPercent='99')
             if not resp:
                 _LOGGER.warning('Failed to stop charging')
             else:
@@ -1088,10 +1175,10 @@ class Vehicle:
         else:
             _LOGGER.error('No charging support.')
 
-    def set_climatisation_target_temperature(self, target_temperature):
+    async def set_climatisation_target_temperature(self, target_temperature):
         """Turn on/off window heater."""
         if self.is_electric_climatisation_supported or self.is_combustion_climatisation_supported:
-            resp = self.call('-/emanager/set-settings', chargerMaxCurrent=None, climatisationWithoutHVPower=None, minChargeLimit=None, targetTemperature=target_temperature)
+            resp = await self.call('-/emanager/set-settings', chargerMaxCurrent=None, climatisationWithoutHVPower=None, minChargeLimit=None, targetTemperature=target_temperature)
             if not resp:
                 _LOGGER.warning('Failed to set target temperature for climatisation')
             else:
@@ -1099,11 +1186,11 @@ class Vehicle:
         else:
             _LOGGER.error('No climatisation support.')
 
-    def get_status(self, timeout=10):
+    async def get_status(self, timeout=10):
         """Check status from call"""
         retry_counter = 0
         while retry_counter < timeout:
-            resp = self.call('-/emanager/get-notifications', data='dummy')
+            resp = await self.call('-/emanager/get-notifications', data='dummy')
             data = resp.get('actionNotificationList', {})
             if data:
                 return data
@@ -1114,10 +1201,33 @@ class Vehicle:
     def __str__(self):
         return self.vin
 
-    @property
+    @ property
     def json(self):
         def serialize(obj):
             if isinstance(obj, datetime):
                 return obj.isoformat()
         return to_json(
             OrderedDict(sorted(self.data.items())), indent=4, default=serialize)
+
+
+async def main():
+    """Main method."""
+    if "-v" in argv:
+        logging.basicConfig(level=logging.INFO)
+    elif "-vv" in argv:
+        logging.basicConfig(level=logging.DEBUG)
+    else:
+        logging.basicConfig(level=logging.ERROR)
+
+    async with ClientSession() as session:
+        connection = Connection(session, **read_config())
+        if await connection._login():
+            if await connection.update():
+                for vehicle in connection.vehicles:
+                    print(vehicle)
+
+
+if __name__ == "__main__":
+    loop = asyncio.get_event_loop()
+    # loop.run(main())
+    loop.run_until_complete(main())

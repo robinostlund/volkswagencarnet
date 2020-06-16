@@ -12,6 +12,44 @@ import re
 _LOGGER = logging.getLogger(__name__)
 
 
+def read_config():
+    """Read config from file."""
+    for directory, filename in product(
+        [
+            dirname(argv[0]),
+            expanduser("~"),
+            env.get("XDG_CONFIG_HOME", join(expanduser("~"), ".config")),
+        ],
+        ["vw.conf", ".vw.conf"],
+    ):
+        try:
+            config = join(directory, filename)
+            _LOGGER.debug("checking for config file %s", config)
+            with open(config) as config:
+                return dict(
+                    x.split(": ")
+                    for x in config.read().strip().splitlines()
+                    if not x.startswith("#")
+                )
+        except (IOError, OSError):
+            continue
+    return {}
+
+
+def json_loads(s):
+    return json.loads(s, object_hook=obj_parser)
+
+
+def obj_parser(obj):
+    """Parse datetime."""
+    for key, val in obj.items():
+        try:
+            obj[key] = datetime.strptime(val, "%Y-%m-%dT%H:%M:%S%z")
+        except (TypeError, ValueError):
+            pass
+    return obj
+
+
 def find_path(src, path):
     """Simple navigation of a hierarchical dict structure using XPATH-like syntax.
 
