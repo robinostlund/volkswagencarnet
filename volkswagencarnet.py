@@ -826,9 +826,9 @@ class Vehicle:
     def combustion_climatisation(self):
         """Return status of combustion climatisation."""
         if self.is_combustion_climatisation_supported:
-            type = self.data.get('emanager', {}).get('rpc', {}).get('settings', {}).get('electric', False)
+            climatisation_type = self.data.get('emanager', {}).get('rpc', {}).get('settings', {}).get('electric', False)
             status = self.data.get('emanager', {}).get('rpc', {}).get('status', {}).get('climatisationState', '')
-            if status in ['HEATING', 'COOLING'] and type:
+            if status and status in ['HEATING', 'COOLING'] and climatisation_type is False:
                 return True
             else:
                 return False
