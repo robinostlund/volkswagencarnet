@@ -339,6 +339,25 @@ class TrunkLock(Instrument):
 # Switches
 
 
+class RequestUpdate(Switch):
+    def __init__(self):
+        super().__init__(attr="request_in_progress", name="Request In Progress", icon="mdi:connectivity")
+
+    @property
+    def state(self):
+        return self.vehicle.request_in_progress
+
+    async def turn_on(self):
+        await self.vehicle.trigger_request_update()
+
+    async def turn_off(self):
+        pass
+
+    @property
+    def assumed_state(self):
+        return False
+
+
 class ElectricClimatisation(Switch):
     def __init__(self):
         super().__init__(attr="electric_climatisation", name="Electric Climatisation", icon="mdi:radiator")
@@ -445,6 +464,7 @@ def create_instruments():
         Position(),
         DoorLock(),
         TrunkLock(),
+        RequestUpdate(),
         ElectricClimatisation(),
         ElectricClimatisationClimate(),
         CombustionClimatisation(),
@@ -563,11 +583,11 @@ def create_instruments():
             device_class="window",
             reverse_state=True
         ),
-        BinarySensor(
-            attr="request_in_progress",
-            name="Request in progress",
-            device_class="connectivity"
-        ),
+        # BinarySensor(
+        #     attr="request_in_progress",
+        #     name="Request in progress",
+        #     device_class="connectivity"
+        # ),
     ]
 
 
