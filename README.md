@@ -40,7 +40,7 @@ $ pip install volkswagencarnet
 
 ### Example
 
-````python
+```python
 #!/usr/bin/env python3
 import volkswagencarnet
 import pprint
@@ -137,4 +137,3 @@ if __name__ == "__main__":
     # loop.run(main())
     loop.run_until_complete(main())
 ```
-````
