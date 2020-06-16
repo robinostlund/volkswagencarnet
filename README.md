@@ -42,62 +42,98 @@ $ pip install volkswagencarnet
 
 ```python
 #!/usr/bin/env python3
-import sys
 import volkswagencarnet
+import pprint
+import asyncio
+import logging
 
-vw = volkswagencarnet.Connection('username', 'password')
-# login to carnet
-vw._login()
-if not vw.logged_in:
-    print('Could not login to carnet')
-    sys.exit(1)
+from aiohttp import ClientSession
 
-# get vehicles from carnet
-vw.update()
+logging.basicConfig(level=logging.DEBUG)
 
-# parse vehicles
-vehicles = vw.vehicles
-for vehicle in vehicles:
-    print('Vehicle VIN: %s' % vehicle.vin)
+VW_USERNAME='test@example.com'
+VW_PASSWORD='mysecretpassword
 
-    print('This vehicle supports:')
-    print(' Position: %s' % vehicle.position_supported)
-    print(' Climatisation: %s' % vehicle.climatisation_supported)
-    print(' Service Inspection: %s' % vehicle.service_inspection_supported)
-    print(' Battery Level: %s' % vehicle.battery_level_supported)
-    print(' Parking Light: %s' % vehicle.parking_light_supported)
-    print(' Distance: %s' % vehicle.distance_supported)
-    print(' Model: %s' % vehicle.model_supported)
-    print(' Model Year: %s' % vehicle.model_year_supported)
-    print(' Model Image: %s' % vehicle.model_image_supported)
-    print(' Charging: %s' % vehicle.charging_supported)
-    print(' External Power: %s' % vehicle.external_power_supported)
-    print(' Window Heater: %s' % vehicle.window_heater_supported)
-    print(' Charging time left: %s' % vehicle.charging_time_left_supported)
-    print(' Door Locked: %s' % vehicle.door_locked_supported)
-    print(' Electric Range: %s' % vehicle.electric_range_supported)
-    print(' Combustion Engine Heating: %s' % vehicle.combustion_engine_heating_supported)
 
-    print('Vehicle information:')
-    print(' Distance: %s' % vehicle.distance)
-    print(' Last Connected: %s' % vehicle.last_connected)
-    print(' Next Service: %s' % vehicle.service_inspection)
-    print(' Charging Time Left: %s' % vehicle.charging_time_left)
-    print(' Electric Range: %s' % vehicle.electric_range)
+COMPONENTS = {
+    'sensor': 'sensor',
+    'binary_sensor': 'binary_sensor',
+    'lock': 'lock',
+    'device_tracker': 'device_tracker',
+    'switch': 'switch',
+    'climate': 'climate'
+}
 
-    print('Vehicle States:')
-    print(' Is Doors Locked: %s' % vehicle.is_doors_locked)
-    print(' Is Climatisation On: %s' % vehicle.is_climatisation_on)
-    print(' Is Parking Lights On: %s' % vehicle.is_parking_lights_on)
-    print(' Is Window Heater On: %s' % vehicle.is_window_heater_on)
-    print(' Is Charging On: %s' % vehicle.is_charging_on)
-    print(' Is Request in progress: %s' % vehicle.is_request_in_progress)
+RESOURCES = [
+    'position',
+    'distance',
+    'electric_climatisation',
+    'combustion_climatisation',
+    'window_heater',
+    'combustion_engine_heating',
+    'charging',
+    'adblue_level',
+    'battery_level',
+    'fuel_level',
+    'service_inspection',
+    'oil_inspection',
+    'last_connected',
+    'charging_time_left',
+    'electric_range',
+    'combustion_range',
+    'combined_range',
+    'charge_max_ampere',
+    'climatisation_target_temperature',
+    'external_power',
+    'parking_light',
+    'climatisation_without_external_power',
+    'door_locked',
+    'trunk_locked',
+    'request_in_progress',
+    'windows_closed'
+]
 
-    # and more
+def is_enabled(attr):
+    """Return true if the user has enabled the resource."""
+    return attr in RESOURCES
 
-# action: start climatisation
-vw.vehicle('my vehicle id').start_climatisation()
-# action: stop climatisation
-vw.vehicle('my vehicle id').stop_climatisation()
+async def main():
+    """Main method."""
+    async with ClientSession() as session:
+        connection = volkswagencarnet.Connection(session, VW_USERNAME, VW_PASSWORD)
+        if await connection._login():
+            if await connection.update(request_data=False):
+                # Print overall state
+                pprint.pprint(connection._state)
 
+                # Print vehicles
+                for vehicle in connection.vehicles:
+                    pprint.pprint(vehicle)
+
+                # get all instruments
+                instruments = set()
+                for vehicle in connection.vehicles:
+                    dashboard = vehicle.dashboard(mutable=True)
+
+                    for instrument in (
+                            instrument
+                            for instrument in dashboard.instruments
+                            if instrument.component in COMPONENTS
+                            and is_enabled(instrument.slug_attr)):
+
+                        instruments.add(instrument)
+
+                # Output all supported instruments
+                for instrument in instruments:
+                    print(f'name: {instrument.full_name}')
+                    print(f'str_state: {instrument.str_state}')
+                    print(f'state: {instrument.state}')
+                    print(f'supported: {instrument.is_supported}')
+                    print(f'attr: {instrument.attr}')
+                    print(f'attributes: {instrument.attributes}')
+
+if __name__ == "__main__":
+    loop = asyncio.get_event_loop()
+    # loop.run(main())
+    loop.run_until_complete(main())
 ```
