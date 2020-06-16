@@ -487,7 +487,7 @@ class Vehicle:
         self._connection = conn
 
     async def update(self):
-        await self._connection.update()
+        await self._connection.update(request_data=False)
 
     async def get(self, query):
         """Perform a query to the online service."""
@@ -503,19 +503,19 @@ class Vehicle:
 
     async def call(self, method, **data):
         """Make remote method call."""
-        try:
-            if not await self._connection.validate_login:
-                _LOGGER.warning('Session expired, reconnecting to carnet.')
-                await self._connection._login()
-            res = await self.post(method, **data)
-            if res.get('errorCode') != '0':
-                _LOGGER.warning('Failed to execute')
-                return False
-            else:
-                _LOGGER.debug('Message delivered')
-                return res
-        except RequestException as error:
-            _LOGGER.warning('Failure to execute: %s', error)
+        # try:
+        if not await self._connection.validate_login:
+            _LOGGER.warning('Session expired, reconnecting to carnet.')
+            await self._connection._login()
+        res = await self.post(method, **data)
+        if res.get('errorCode') != '0':
+            _LOGGER.warning('Failed to execute')
+            return False
+        else:
+            _LOGGER.debug('Message delivered')
+            return res
+        # except RequestException as error:
+        #     _LOGGER.warning('Failure to execute: %s', error)
 
     @ property
     def attrs(self):
