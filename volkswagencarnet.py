@@ -329,7 +329,7 @@ class Connection:
             raise
 
     async def _logout(self):
-        self.post('-/logout/revoke')
+        await self.post('-/logout/revoke')
 
     def _make_url(self, ref, rel=None):
         return urljoin(rel or self._session_auth_ref_url, ref)
@@ -485,6 +485,9 @@ class Vehicle:
         self.data = data
         self.vin = vin
         self._connection = conn
+
+    async def update(self):
+        await self._connection.update()
 
     async def get(self, query):
         """Perform a query to the online service."""
@@ -1052,6 +1055,7 @@ class Vehicle:
             if not resp:
                 _LOGGER.warning('Failed to lock car')
             else:
+                await self.update()
                 return resp
         else:
             _LOGGER.error('Invalid SPIN provided')
@@ -1062,6 +1066,7 @@ class Vehicle:
             if not resp:
                 _LOGGER.warning('Failed to unlock car')
             else:
+                await self.update()
                 return resp
         else:
             _LOGGER.error('Invalid SPIN provided')
@@ -1073,6 +1078,7 @@ class Vehicle:
             if not resp:
                 _LOGGER.warning('Failed to start climatisation')
             else:
+                await self.update()
                 return resp
         else:
             _LOGGER.error('No climatization support.')
@@ -1084,6 +1090,7 @@ class Vehicle:
             if not resp:
                 _LOGGER.warning('Failed to stop climatisation')
             else:
+                await self.update()
                 return resp
         else:
             _LOGGER.error('No climatization support.')
@@ -1095,6 +1102,7 @@ class Vehicle:
             if not resp:
                 _LOGGER.warning('Failed to start window heater')
             else:
+                await self.update()
                 return resp
         else:
             _LOGGER.error('No climatization support.')
@@ -1106,6 +1114,7 @@ class Vehicle:
             if not resp:
                 _LOGGER.warning('Failed to stop window heater')
         else:
+            await self.update()
             _LOGGER.error('No window heating support.')
 
     async def start_combustion_engine_heating(self, spin):
@@ -1115,6 +1124,7 @@ class Vehicle:
                 if not resp:
                     _LOGGER.warning('Failed to start combustion engine heating')
                 else:
+                    await self.update()
                     return resp
             else:
                 _LOGGER.error('No combustion engine heating support.')
@@ -1127,6 +1137,7 @@ class Vehicle:
             if not resp:
                 _LOGGER.warning('Failed to stop combustion engine heating')
             else:
+                await self.update()
                 return resp
         else:
             _LOGGER.error('No combustion engine heating support.')
@@ -1138,6 +1149,7 @@ class Vehicle:
             if not resp:
                 _LOGGER.warning('Failed to start combustion climatisation')
             else:
+                await self.update()
                 return resp
         else:
             _LOGGER.error('No combution climatization support.')
@@ -1149,6 +1161,7 @@ class Vehicle:
             if not resp:
                 _LOGGER.warning('Failed to stop combustion climatisation')
             else:
+                await self.update()
                 return resp
         else:
             _LOGGER.error('No combustion climatization support.')
@@ -1160,6 +1173,7 @@ class Vehicle:
             if not resp:
                 _LOGGER.warning('Failed to start charging')
             else:
+                await self.update()
                 return resp
         else:
             _LOGGER.error('No charging support.')
@@ -1171,6 +1185,7 @@ class Vehicle:
             if not resp:
                 _LOGGER.warning('Failed to stop charging')
             else:
+                await self.update()
                 return resp
         else:
             _LOGGER.error('No charging support.')
@@ -1182,6 +1197,7 @@ class Vehicle:
             if not resp:
                 _LOGGER.warning('Failed to set target temperature for climatisation')
             else:
+                await self.update()
                 return resp
         else:
             _LOGGER.error('No climatisation support.')
