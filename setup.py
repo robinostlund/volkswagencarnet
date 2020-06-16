@@ -21,11 +21,7 @@ setup(
         "__init__"
     ],
     provides=["volkswagencarnet"],
-    install_requires=[
-        'requests',
-        'lxml',
-        'beautifulsoup4'
-    ],
+    install_requires=list(open("requirements.txt").read().strip().split("\n")),
     use_scm_version=True,
     setup_requires=[
         'setuptools_scm',
