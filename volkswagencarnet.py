@@ -6,8 +6,6 @@ import time
 import logging
 import asyncio
 
-# from requests import Session, RequestException
-# from requests.packages.urllib3 import disable_warnings
 from sys import version_info, argv
 from datetime import timedelta, datetime
 from urllib.parse import urlsplit, urljoin, parse_qs, urlparse
@@ -21,17 +19,10 @@ from aiohttp.hdrs import METH_GET, METH_POST
 
 version_info >= (3, 0) or exit('Python 3 required')
 
-# __version__ = '4.1.31'
-
-# logging.basicConfig(level=logging.DEBUG)
-
 _LOGGER = logging.getLogger(__name__)
 
 
 TIMEOUT = timedelta(seconds=30)
-
-# disable request ssl verification due to vw having issues with ca.
-# disable_warnings()
 
 HEADERS_SESSION = {
     'Accept': 'application/json, text/plain, */*',
@@ -322,6 +313,7 @@ class Connection:
                 self._session_first_update = True
 
             _LOGGER.debug('Updating vehicle status from carnet')
+            # fetch vehicles
             if not self._state or reset:
                 _LOGGER.debug('Querying vehicles')
                 # owners_verification = self.post(f'/portal/group/{self._session_guest_language_id}/edit-profile/-/profile/get-vehicles-owners-verification')
@@ -349,77 +341,148 @@ class Connection:
                     for vehicle in loaded_vehicles.get('fullyLoadedVehiclesResponse').get('completeVehicles'):
                         self._state.update({vehicle['vin']: vehicle})
 
-            for vin, vehicle in self._state.items():
-                rel = self._session_base + vehicle['dashboardUrl'] + '/'
+            # get vehicle data
+            # for vin, vehicle in self._state.items():
+            for vehicle in self.vehicles:
+                # rel = self._session_base + vehicle['dashboardUrl'] + '/'
 
-                # fetch vehicle vsr data
-                try:
-                    vehicle_data = await self.post(
-                        url='-/vsr/get-vsr',
-                        rel=rel
-                    )
-                    if vehicle_data.get('errorCode', {}) == '0' and vehicle_data.get('vehicleStatusData', {}):
-                        self._state[vin]['vsr'] = vehicle_data.get('vehicleStatusData', {})
-                except Exception as err:
-                    _LOGGER.debug('Could not fetch vsr data: %s' % err)
+                # # fetch vehicle vsr data
+                # try:
+                #     vehicle_data = await self.post(
+                #         url='-/vsr/get-vsr',
+                #         rel=rel
+                #     )
+                #     if vehicle_data.get('errorCode', {}) == '0' and vehicle_data.get('vehicleStatusData', {}):
+                #         self._state[vin]['vsr'] = vehicle_data.get('vehicleStatusData', {})
+                # except Exception as err:
+                #     _LOGGER.debug('Could not fetch vsr data: %s' % err)
 
-                # request update of vehicle status data if not in progress
-                if request_data and vehicle_data.get('vehicleStatusData', {}).get('requestStatus', {}) != 'REQUEST_IN_PROGRESS':
-                    update_request = await self.post(
-                        url='-/vsr/request-vsr',
-                        rel=rel,
-                        dummy='data'
-                    )
-                    if update_request.get('errorCode') != '0':
-                        _LOGGER.error('Failed to request vehicle update')
+                # # request update of vehicle status data if not in progress
+                # if request_data and vehicle_data.get('vehicleStatusData', {}).get('requestStatus', {}) != 'REQUEST_IN_PROGRESS':
+                #     update_request = await self.post(
+                #         url='-/vsr/request-vsr',
+                #         rel=rel,
+                #         dummy='data'
+                #     )
+                #     if update_request.get('errorCode') != '0':
+                #         _LOGGER.error('Failed to request vehicle update')
 
-                # fetch vehicle emanage data
-                if not vehicle['engineTypeCombustian']:
-                    try:
-                        vehicle_emanager = await self.post('-/emanager/get-emanager', rel)
-                        if vehicle_emanager.get('errorCode', {}) == '0' and vehicle_emanager.get('EManager', {}):
-                            self._state[vin]['emanager'] = vehicle_emanager.get('EManager', {})
+                # # fetch vehicle emanage data
+                # if not vehicle['engineTypeCombustian']:
+                #     try:
+                #         vehicle_emanager = await self.post('-/emanager/get-emanager', rel)
+                #         if vehicle_emanager.get('errorCode', {}) == '0' and vehicle_emanager.get('EManager', {}):
+                #             self._state[vin]['emanager'] = vehicle_emanager.get('EManager', {})
 
-                    except Exception as err:
-                        _LOGGER.debug('Could not fetch emanager data: %s' % err)
+                #     except Exception as err:
+                #         _LOGGER.debug('Could not fetch emanager data: %s' % err)
 
-                # fetch vehicle location data
-                try:
-                    vehicle_location = await self.post('-/cf/get-location', rel)
-                    if vehicle_location.get('errorCode', {}) == '0' and vehicle_location.get('position', {}):
-                        self._state[vin]['position'] = vehicle_location.get('position', {})
-                except Exception as err:
-                    _LOGGER.debug('Could not fetch location data: %s' % err)
+                # # fetch vehicle location data
+                # try:
+                #     vehicle_location = await self.post('-/cf/get-location', rel)
+                #     if vehicle_location.get('errorCode', {}) == '0' and vehicle_location.get('position', {}):
+                #         self._state[vin]['position'] = vehicle_location.get('position', {})
+                # except Exception as err:
+                #     _LOGGER.debug('Could not fetch location data: %s' % err)
 
-                # fetch vehicle details data
-                try:
-                    vehicle_details = await self.post('-/vehicle-info/get-vehicle-details', rel)
-                    if vehicle_details.get('errorCode', {}) == '0' and vehicle_details.get('vehicleDetails', {}):
-                        self._state[vin]['vehicle-details'] = vehicle_details.get('vehicleDetails', {})
-                except Exception as err:
-                    _LOGGER.debug('Could not fetch details data: %s' % err)
+                # # fetch vehicle details data
+                # try:
+                #     vehicle_details = await self.post('-/vehicle-info/get-vehicle-details', rel)
+                #     if vehicle_details.get('errorCode', {}) == '0' and vehicle_details.get('vehicleDetails', {}):
+                #         self._state[vin]['vehicle-details'] = vehicle_details.get('vehicleDetails', {})
+                # except Exception as err:
+                #     _LOGGER.debug('Could not fetch details data: %s' % err)
 
-                # fetch combustion engine remote auxiliary heating status data
-                if vehicle['engineTypeCombustian']:
-                    try:
-                        vehicle_rah_status = await self.post('-/rah/get-status')
-                        if vehicle_rah_status.get('errorCode', {}) == '0' and vehicle_rah_status.get('remoteAuxiliaryHeating', {}):
-                            self._state[vin]['remoteauxheating'] = vehicle_rah_status.get('remoteAuxiliaryHeating', {})
-                    except Exception as err:
-                        _LOGGER.debug('Could not fetch remoteAuxiliaryHeating data: %s' % err)
+                # # fetch combustion engine remote auxiliary heating status data
+                # if vehicle['engineTypeCombustian']:
+                #     try:
+                #         vehicle_rah_status = await self.post('-/rah/get-status')
+                #         if vehicle_rah_status.get('errorCode', {}) == '0' and vehicle_rah_status.get('remoteAuxiliaryHeating', {}):
+                #             self._state[vin]['remoteauxheating'] = vehicle_rah_status.get('remoteAuxiliaryHeating', {})
+                #     except Exception as err:
+                #         _LOGGER.debug('Could not fetch remoteAuxiliaryHeating data: %s' % err)
 
-                _LOGGER.debug('Car States: %s', self._state)
+                #_LOGGER.debug('Car States: %s', self._state)
+
+                # update data in all vehicles
+                # for vehicle in self.vehicles:
+                await vehicle.update()
 
             return True
-        except (IOError, OSError) as error:
-            _LOGGER.warning(
-                'Could not update information from carnet: %s', error)
+        except (IOError, OSError, LookupError) as error:
+            _LOGGER.warning('Could not update information from carnet: %s', error)
+
+    async def update_vehicle(self, vehicle):
+
+        dashboard_url = self._session_base + vehicle.data['dashboardUrl'] + '/'
+
+        # fetch vehicle vsr data
+        try:
+            response = await self.post(
+                url='-/vsr/get-vsr',
+                rel=dashboard_url
+            )
+            if response.get('errorCode', {}) == '0' and response.get('vehicleStatusData', {}):
+                self._state[vehicle.vin]['vsr'] = response.get('vehicleStatusData', {})
+        except Exception as err:
+            _LOGGER.debug('Could not fetch vsr data: %s' % err)
+
+        # request update of vehicle status data if not in progress
+        # if self._state[vehicle.vin].get('vsr', {}).get('vehicleStatusData', {}).get('requestStatus', {}) != 'REQUEST_IN_PROGRESS':
+        #     response = await self.post(
+        #         url='-/vsr/request-vsr',
+        #         rel=dashboard_url,
+        #         dummy='data'
+        #     )
+        #     if response.get('errorCode') != '0':
+        #         _LOGGER.error('Failed to request vehicle update')
+
+        # fetch vehicle emanage data
+        if not self._state[vehicle.vin].get('vsr', {}).get('engineTypeCombustian'):
+            try:
+                response = await self.post('-/emanager/get-emanager', dashboard_url)
+                if response.get('errorCode', {}) == '0' and response.get('EManager', {}):
+                    self._state[vehicle.vin]['emanager'] = response.get('EManager', {})
+
+            except Exception as err:
+                _LOGGER.debug('Could not fetch emanager data: %s' % err)
+
+        # fetch vehicle location data
+        try:
+            response = await self.post('-/cf/get-location', dashboard_url)
+            if response.get('errorCode', {}) == '0' and response.get('position', {}):
+                self._state[vehicle.vin]['position'] = response.get('position', {})
+        except Exception as err:
+            _LOGGER.debug('Could not fetch location data: %s' % err)
+
+        # fetch vehicle details data
+        try:
+            response = await self.post('-/vehicle-info/get-vehicle-details', dashboard_url)
+            if response.get('errorCode', {}) == '0' and response.get('vehicleDetails', {}):
+                self._state[vehicle.vin]['vehicle-details'] = response.get('vehicleDetails', {})
+        except Exception as err:
+            _LOGGER.debug('Could not fetch details data: %s' % err)
+
+        # fetch combustion engine remote auxiliary heating status data
+        if self._state[vehicle.vin].get('engineTypeCombustian', False):
+            try:
+                response = await self.post('-/rah/get-status', dashboard_url)
+                if response.get('errorCode', {}) == '0' and response.get('remoteAuxiliaryHeating', {}):
+                    self._state[vehicle.vin]['remoteauxheating'] = response.get('remoteAuxiliaryHeating', {})
+            except Exception as err:
+                _LOGGER.debug('Could not fetch remoteAuxiliaryHeating data: %s' % err)
 
     def vehicle(self, vin):
         """Return vehicle for given vin."""
-        return next((vehicle for vehicle in self.vehicles if vehicle.vin.lower() == vin.lower()), None)
+        return next(
+            (
+                vehicle
+                for vehicle in self.vehicles
+                if vehicle.unique_id == vin.lower()
+            ), None
+        )
 
-    @ property
+    @property
     def vehicles(self):
         """Return vehicle state."""
         return (Vehicle(self, vin, data) for vin, data in self._state.items())
@@ -431,7 +494,6 @@ class Connection:
     async def validate_login(self):
         try:
             messages = await self.post('-/msgc/get-new-messages')
-            print(messages)
             if messages.get('errorCode', {}) == '0':
                 return True
             else:
@@ -452,7 +514,8 @@ class Vehicle:
         self._connection = conn
 
     async def update(self):
-        await self._connection.update(request_data=False)
+        # await self._connection.update(request_data=False)
+        await self._connection.update_vehicle(self)
 
     async def get(self, query):
         """Perform a query to the online service."""
