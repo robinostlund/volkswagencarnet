@@ -52,31 +52,11 @@ BASE_SESSION = 'https://www.portal.volkswagen-we.com/'
 BASE_AUTH = 'https://identity.vwgroup.io'
 
 
-# def _obj_parser(obj):
-#     """Parse datetime (only Python3 because of timezone)."""
-#     for key, val in obj.items():
-#         try:
-#             obj[key] = datetime.strptime(val, '%Y-%m-%dT%H:%M:%S%z')
-#         except (TypeError, ValueError):
-#             pass
-#     return obj
-
-
-# class TimeoutRequestsSession(Session):
-#     def request(self, *args, **kwargs):
-#         if kwargs.get('timeout') is None:
-#             kwargs['timeout'] = 60
-#         # ignore ssl verification due to vw having issues with ca.
-#         kwargs['verify'] = False
-#         return super(TimeoutRequestsSession, self).request(*args, **kwargs)
-
-
 class Connection:
     """ Connection to Volkswagen Carnet """
 
     def __init__(self, session, username, password, guest_lang='en'):
         """ Initialize """
-        # self._session = TimeoutRequestsSession()
         self._session = session
         self._session_headers = HEADERS_SESSION.copy()
         self._session_base = BASE_SESSION
@@ -97,7 +77,6 @@ class Connection:
 
     async def _login(self):
         """ Reset session in case we would like to login again """
-        # self._session = TimeoutRequestsSession()
         self._session_headers = HEADERS_SESSION.copy()
         self._session_auth_headers = HEADERS_AUTH.copy()
 
@@ -291,20 +270,6 @@ class Connection:
             _LOGGER.error('Failed to login to carnet, %s' % error)
             self._session_logged_in = False
             return False
-
-    # async def _request(self, method, ref, rel=None):
-    #     url = urljoin(rel or self._session_auth_ref_url, ref)
-    #     try:
-    #         _LOGGER.debug('Request for %s', url)
-    #         res = method(url, headers=self._session_headers)
-    #         res.raise_for_status()
-    #         res = res.json(object_hook=_obj_parser)
-    #         _LOGGER.debug('Received %s', res)
-    #         return res
-    #     except RequestException as error:
-    #         _LOGGER.warning(
-    #             'Failure when communcating with the server: %s, url: %s', error, url)
-    #         raise
 
     async def _request(self, method, url, **kwargs):
         """Perform a query to the vw carnet"""
@@ -1047,6 +1012,20 @@ class Vehicle:
             return False
 
     # actions
+    async def trigger_request_update(self):
+        if self.is_request_in_progress_supported:
+            if not self.request_in_progress:
+                resp = await self.call('-/vsr/request-vsr', dummy='data')
+                if resp.get('errorCode') != '0':
+                    _LOGGER.error('Failed to request vehicle update')
+                else:
+                    await self.update()
+                    return resp
+            else:
+                _LOGGER.warning('Request update is already in progress')
+        else:
+            _LOGGER.error('No request update support.')
+
     async def lock_car(self, spin):
         if spin:
             resp = await self.call('-/vsr/remote-lock', spin=spin)
