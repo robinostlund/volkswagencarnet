@@ -877,9 +877,9 @@ class Vehicle:
             return True
 
     @ property
-    def window_closed(self):
-        if self.window_supported:
-            windows = self.data.get('vsr', {}).get('windows', {})
+    def windows_closed(self):
+        if self.is_windows_closed_supported:
+            windows = self.data.get('vsr', {}).get('carRenderData', {}).get('windows', {})
             windows_closed = True
             for window in windows:
                 if windows[window] != 3:
@@ -887,9 +887,9 @@ class Vehicle:
             return windows_closed
 
     @ property
-    def is_window_closed_supported(self):
+    def is_windows_closed_supported(self):
         """Return true if window state is supported"""
-        check = self.data.get('vsr', {}).get('windowStatusSupported', {})
+        check = self.data.get('vsr', {}).get('windowStatusSupported', False)
         if check:
             return True
 
@@ -897,10 +897,8 @@ class Vehicle:
     def charging_time_left(self):
         if self.is_charging_time_left_supported:
             if self.external_power:
-                hours = self.data.get('emanager', {}).get('rbc', {}).get(
-                    'status', {}).get('chargingRemaningHour', {})
-                minutes = self.data.get('emanager', {}).get('rbc', {}).get(
-                    'status', {}).get('chargingRemaningMinute', {})
+                hours = self.data.get('emanager', {}).get('rbc', {}).get('status', {}).get('chargingRemaningHour', {})
+                minutes = self.data.get('emanager', {}).get('rbc', {}).get('status', {}).get('chargingRemaningMinute', {})
                 if hours and minutes:
                     # return 0 if we are not able to convert the values we get from carnet.
                     try:
@@ -966,8 +964,8 @@ class Vehicle:
     @ property
     def is_parking_lights_on(self):
         """Parking light state"""
-        if self.parking_light_supported:
-            state = self.data.get('carRenderData', {}).get('parkingLights', {})
+        if self.is_parking_light_supported:
+            state = self.data.get('vsr', {}).get('carRenderData', {}).get('parkingLights', {})
             if state != 2:
                 return False
             else:
@@ -1010,7 +1008,7 @@ class Vehicle:
         """Return status of Window status."""
         if self.is_windows_closed_supported:
             state = True
-            check = self.data.get('vsr', {}).get('windows', {})
+            check = self.data.get('vsr', {}).get('carRenderData', {}).get('windows', {})
             for window in check:
                 if check[window] != 3:
                     state = False

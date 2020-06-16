@@ -561,6 +561,7 @@ def create_instruments():
             attr="windows_closed",
             name="Windows closed",
             device_class="window",
+            reverse_state=True
         ),
         BinarySensor(
             attr="request_in_progress",
