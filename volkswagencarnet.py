@@ -803,9 +803,9 @@ class Vehicle:
     def electric_climatisation(self):
         """Return status of climatisation."""
         if self.is_electric_climatisation_supported:
-            type = self.data.get('emanager', {}).get('rpc', {}).get('settings', {}).get('electric', False)
+            climatisation_type = self.data.get('emanager', {}).get('rpc', {}).get('settings', {}).get('electric', False)
             status = self.data.get('emanager', {}).get('rpc', {}).get('status', {}).get('climatisationState', {})
-            if status in ['HEATING', 'COOLING'] and not type:
+            if status in ['HEATING', 'COOLING'] and climatisation_type is True:
                 return True
             else:
                 return False
@@ -985,9 +985,9 @@ class Vehicle:
     def is_electric_climatisation_on(self):
         """Return status of climatisation."""
         if self.is_electric_climatisation_supported:
-            type = self.data.get('emanager', {}).get('rpc', {}).get('settings', {}).get('electric', False)
+            climatisation_type = self.data.get('emanager', {}).get('rpc', {}).get('settings', {}).get('electric', False)
             status = self.data.get('emanager', {}).get('rpc', {}).get('status', {}).get('climatisationState', {})
-            if type and status in ['HEATING', 'COOLING']:
+            if status in ['HEATING', 'COOLING'] and climatisation_type is True:
                 return True
             else:
                 return False
@@ -996,9 +996,9 @@ class Vehicle:
     def is_combustion_climatisation_on(self):
         """Return status of climatisation."""
         if self.is_combustion_climatisation_supported:
-            type = self.data.get('emanager', {}).get('rpc', {}).get('settings', {}).get('electric', False)
+            climatisation_type = self.data.get('emanager', {}).get('rpc', {}).get('settings', {}).get('electric', False)
             status = self.data.get('emanager', {}).get('rpc', {}).get('status', {}).get('climatisationState', {})
-            if not type and status in ['HEATING', 'COOLING']:
+            if status in ['HEATING', 'COOLING'] and climatisation_type is False:
                 return True
             else:
                 return False
