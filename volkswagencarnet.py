@@ -292,12 +292,10 @@ class Connection:
 
     async def get(self, url, rel=None):
         """Perform a get query to the online service."""
-        # return self._request(self._session.get, ref, rel)
         return await self._request(METH_GET, self._make_url(url, rel))
 
     async def post(self, url, rel=None, **data):
         """Perform a post query to the online service."""
-        # return self._request(partial(self._session.post, json=data), ref, rel)
         return await self._request(
             METH_POST, self._make_url(url, rel), json=data
         )
@@ -312,10 +310,9 @@ class Connection:
             else:
                 self._session_first_update = True
 
-            _LOGGER.debug('Updating vehicle status from carnet')
             # fetch vehicles
             if not self._state or reset:
-                _LOGGER.debug('Querying vehicles')
+                _LOGGER.debug('Fetching vehicles')
                 # owners_verification = self.post(f'/portal/group/{self._session_guest_language_id}/edit-profile/-/profile/get-vehicles-owners-verification')
 
                 # get vehicles
@@ -341,137 +338,66 @@ class Connection:
                     for vehicle in loaded_vehicles.get('fullyLoadedVehiclesResponse').get('completeVehicles'):
                         vehicle_url = self._session_base + vehicle.get('dashboardUrl') + '/'
                         self._state.update({vehicle_url: vehicle})
-                        # self._state.update({vehicle['vin']: vehicle})
 
             # get vehicle data
-            # for vin, vehicle in self._state.items():
             for vehicle in self.vehicles:
                 # update data in all vehicles
                 await vehicle.update()
-                # rel = self._session_base + vehicle['dashboardUrl'] + '/'
-
-                # # fetch vehicle vsr data
-                # try:
-                #     vehicle_data = await self.post(
-                #         url='-/vsr/get-vsr',
-                #         rel=rel
-                #     )
-                #     if vehicle_data.get('errorCode', {}) == '0' and vehicle_data.get('vehicleStatusData', {}):
-                #         self._state[vin]['vsr'] = vehicle_data.get('vehicleStatusData', {})
-                # except Exception as err:
-                #     _LOGGER.debug('Could not fetch vsr data: %s' % err)
-
-                # # request update of vehicle status data if not in progress
-                # if request_data and vehicle_data.get('vehicleStatusData', {}).get('requestStatus', {}) != 'REQUEST_IN_PROGRESS':
-                #     update_request = await self.post(
-                #         url='-/vsr/request-vsr',
-                #         rel=rel,
-                #         dummy='data'
-                #     )
-                #     if update_request.get('errorCode') != '0':
-                #         _LOGGER.error('Failed to request vehicle update')
-
-                # # fetch vehicle emanage data
-                # if not vehicle['engineTypeCombustian']:
-                #     try:
-                #         vehicle_emanager = await self.post('-/emanager/get-emanager', rel)
-                #         if vehicle_emanager.get('errorCode', {}) == '0' and vehicle_emanager.get('EManager', {}):
-                #             self._state[vin]['emanager'] = vehicle_emanager.get('EManager', {})
-
-                #     except Exception as err:
-                #         _LOGGER.debug('Could not fetch emanager data: %s' % err)
-
-                # # fetch vehicle location data
-                # try:
-                #     vehicle_location = await self.post('-/cf/get-location', rel)
-                #     if vehicle_location.get('errorCode', {}) == '0' and vehicle_location.get('position', {}):
-                #         self._state[vin]['position'] = vehicle_location.get('position', {})
-                # except Exception as err:
-                #     _LOGGER.debug('Could not fetch location data: %s' % err)
-
-                # # fetch vehicle details data
-                # try:
-                #     vehicle_details = await self.post('-/vehicle-info/get-vehicle-details', rel)
-                #     if vehicle_details.get('errorCode', {}) == '0' and vehicle_details.get('vehicleDetails', {}):
-                #         self._state[vin]['vehicle-details'] = vehicle_details.get('vehicleDetails', {})
-                # except Exception as err:
-                #     _LOGGER.debug('Could not fetch details data: %s' % err)
-
-                # # fetch combustion engine remote auxiliary heating status data
-                # if vehicle['engineTypeCombustian']:
-                #     try:
-                #         vehicle_rah_status = await self.post('-/rah/get-status')
-                #         if vehicle_rah_status.get('errorCode', {}) == '0' and vehicle_rah_status.get('remoteAuxiliaryHeating', {}):
-                #             self._state[vin]['remoteauxheating'] = vehicle_rah_status.get('remoteAuxiliaryHeating', {})
-                #     except Exception as err:
-                #         _LOGGER.debug('Could not fetch remoteAuxiliaryHeating data: %s' % err)
-
-                # _LOGGER.debug('Car States: %s', self._state)
-
-                # update data in all vehicles
-                # for vehicle in self.vehicles:
-                # await vehicle.update()
-
             return True
         except (IOError, OSError, LookupError) as error:
             _LOGGER.warning(f'Could not update information from carnet: {error}')
 
     async def update_vehicle(self, vehicle):
         url = vehicle._url
+        _LOGGER.debug(f'Updating vehicle status {vehicle.vin}')
 
         # fetch vehicle status data
-        try:
-            response = await self.post(url='-/vsr/get-vsr', rel=url)
-            if response.get('errorCode', {}) == '0' and response.get('vehicleStatusData', {}):
-                self._state[url].update(
-                    {'vehicleStatus': response.get('vehicleStatusData', {})}
-                )
-        except Exception as err:
-            _LOGGER.debug('Could not fetch vsr data: %s' % err)
+        response = await self.post(url='-/vsr/get-vsr', rel=url)
+        if response.get('errorCode', {}) == '0' and response.get('vehicleStatusData', {}):
+            self._state[url].update(
+                {'vehicleStatus': response.get('vehicleStatusData', {})}
+            )
+        else:
+            _LOGGER.debug(f'Could not fetch vsr data: {response}')
 
         # fetch vehicle emanage data
         if not vehicle.attrs.get('engineTypeCombustian'):
             # if not vehicle.attrs.get('vehicleStatus', {}).get('engineTypeCombustian'):
-            try:
-                response = await self.post('-/emanager/get-emanager', url)
-                if response.get('errorCode', {}) == '0' and response.get('EManager', {}):
-                    self._state[url].update(
-                        {'vehicleEmanager': response.get('EManager', {})}
-                    )
-
-            except Exception as err:
-                _LOGGER.debug('Could not fetch emanager data: %s' % err)
+            response = await self.post('-/emanager/get-emanager', url)
+            if response.get('errorCode', {}) == '0' and response.get('EManager', {}):
+                self._state[url].update(
+                    {'vehicleEmanager': response.get('EManager', {})}
+                )
+            else:
+                _LOGGER.debug(f'Could not fetch emanager data: {response}')
 
         # fetch vehicle location data
-        try:
-            response = await self.post('-/cf/get-location', url)
-            if response.get('errorCode', {}) == '0' and response.get('position', {}):
-                self._state[url].update(
-                    {'vehiclePosition': response.get('position', {})}
-                )
-        except Exception as err:
-            _LOGGER.debug('Could not fetch location data: %s' % err)
+        response = await self.post('-/cf/get-location', url)
+        if response.get('errorCode', {}) == '0' and response.get('position', {}):
+            self._state[url].update(
+                {'vehiclePosition': response.get('position', {})}
+            )
+        else:
+            _LOGGER.debug(f'Could not fetch location data: {response}')
 
         # fetch vehicle details data
-        try:
-            response = await self.post('-/vehicle-info/get-vehicle-details', url)
-            if response.get('errorCode', {}) == '0' and response.get('vehicleDetails', {}):
-                self._state[url].update(
-                    {'vehicleDetails': response.get('vehicleDetails', {})}
-                )
-        except Exception as err:
-            _LOGGER.debug('Could not fetch details data: %s' % err)
+        response = await self.post('-/vehicle-info/get-vehicle-details', url)
+        if response.get('errorCode', {}) == '0' and response.get('vehicleDetails', {}):
+            self._state[url].update(
+                {'vehicleDetails': response.get('vehicleDetails', {})}
+            )
+        else:
+            _LOGGER.debug(f'Could not fetch details data: {response}')
 
         # fetch combustion engine remote auxiliary heating status data
         if vehicle.attrs.get('engineTypeCombustian', False):
-            try:
-                response = await self.post('-/rah/get-status', url)
-                if response.get('errorCode', {}) == '0' and response.get('remoteAuxiliaryHeating', {}):
-                    self._state[url].update(
-                        {'vehicleRemoteAuxiliaryHeating': response.get('remoteAuxiliaryHeating', {})}
-                    )
-            except Exception as err:
-                _LOGGER.debug('Could not fetch remoteAuxiliaryHeating data: %s' % err)
+            response = await self.post('-/rah/get-status', url)
+            if response.get('errorCode', {}) == '0' and response.get('remoteAuxiliaryHeating', {}):
+                self._state[url].update(
+                    {'vehicleRemoteAuxiliaryHeating': response.get('remoteAuxiliaryHeating', {})}
+                )
+            else:
+                _LOGGER.debug(f'Could not fetch remoteAuxiliaryHeating data: {response}')
 
         _LOGGER.debug(f'{vehicle.unique_id} data: {self._state[url]}')
 
@@ -512,8 +438,6 @@ class Connection:
 
 class Vehicle:
     def __init__(self, conn, url):
-        # self.data = data
-        # self.vin = vin
         self._connection = conn
         self._url = url
 
@@ -523,31 +447,30 @@ class Vehicle:
 
     async def get(self, query):
         """Perform a query to the online service."""
-        rel = self._connection._session_base + self.attrs.get('dashboardUrl') + '/'
-        req = await self._connection.get(query, rel)
+        req = await self._connection.get(query, self.url)
         return req
 
     async def post(self, query, **data):
         """Perform a query to the online service."""
-        rel = self._connection._session_base + self.attrs.get('dashboardUrl') + '/'
-        req = await self._connection.post(query, rel, **data)
+        req = await self._connection.post(query, self._url, **data)
         return req
 
     async def call(self, method, **data):
         """Make remote method call."""
-        # try:
-        if not await self._connection.validate_login:
-            _LOGGER.warning('Session expired, reconnecting to carnet.')
-            await self._connection._login()
-        res = await self.post(method, **data)
-        if res.get('errorCode') != '0':
-            _LOGGER.warning('Failed to execute')
-            return False
-        else:
-            _LOGGER.debug('Message delivered')
-            return res
-        # except RequestException as error:
-        #     _LOGGER.warning('Failure to execute: %s', error)
+        try:
+            if not await self._connection.validate_login:
+                _LOGGER.warning('Session expired, reconnecting to carnet.')
+                await self._connection._login()
+
+            res = await self.post(method, **data)
+            if res.get('errorCode') != '0':
+                _LOGGER.warning('Failed to execute')
+                return
+            else:
+                _LOGGER.debug('Message delivered')
+                return True
+        except Exception as error:
+            _LOGGER.warning(f'Failure to execute: {error}')
 
     @ property
     def attrs(self):
@@ -574,236 +497,191 @@ class Vehicle:
     @ property
     def last_connected(self):
         """Return when vehicle was last connected to carnet"""
-        if self.is_last_connected_supported:
-            last_connected = self.attrs.get('vehicleDetails', {}).get('lastConnectionTimeStamp', {})
-            if last_connected:
-                last_connected = last_connected[0] + last_connected[1]
-                date_patterns = ["%d.%m.%Y%H:%M", "%d-%m-%Y%H:%M"]
-                for date_pattern in date_patterns:
-                    try:
-                        return datetime.strptime(last_connected, date_pattern).strftime("%Y-%m-%d %H:%M:%S")
-                    except ValueError:
-                        pass
+        last_connected = self.attrs.get('vehicleDetails').get('lastConnectionTimeStamp')
+        if last_connected:
+            last_connected = f'{last_connected[0]}  {last_connected[1]}'
+            date_patterns = ["%d.%m.%Y %H:%M", "%d-%m-%Y %H:%M"]
+            for date_pattern in date_patterns:
+                try:
+                    return datetime.strptime(last_connected, date_pattern).strftime("%Y-%m-%d %H:%M:%S")
+                except ValueError:
+                    pass
+        return last_connected
 
     @ property
     def is_last_connected_supported(self):
         """Return when vehicle was last connected to carnet"""
-        check = self.attrs.get('vehicleDetails', {}).get('lastConnectionTimeStamp', {})
-        if check:
-            return True
+        return self.attrs.get('vehicleDetails', {}).get('lastConnectionTimeStamp', [])
 
-    @ property
+    @property
     def climatisation_target_temperature(self):
-        if self.is_climatisation_supported:
-            temperature = self.attrs.get('vehicleEmanager', {}).get('rpc', {}).get('settings', {}).get('targetTemperature', {})
-            if temperature:
-                return temperature
+        return self.attrs.get('vehicleEmanager').get('rpc').get('settings').get('targetTemperature')
 
-    @ property
+    @property
     def is_climatisation_target_temperature_supported(self):
-        if self.is_climatisation_supported:
-            return True
+        return self.is_climatisation_supported
 
     @ property
     def climatisation_without_external_power(self):
-        if self.is_climatisation_without_external_power_supported:
-            return self.attrs.get('vehicleEmanager', {}).get('rpc', {}).get('settings', {}).get('climatisationWithoutHVPower', {})
+        return self.attrs.get('vehicleEmanager').get('rpc').get('settings').get('climatisationWithoutHVPower', False)
 
-    @ property
+    @property
     def is_climatisation_without_external_power_supported(self):
-        if self.is_climatisation_supported:
-            return True
+        return self.is_climatisation_supported
 
     @ property
     def service_inspection(self):
         """Return time left for service inspection"""
-        if self.is_service_inspection_supported:
-            check = self.attrs.get('vehicleDetails', {}).get('serviceInspectionData', {})
-            if check:
-                return check
+        return self.attrs.get('vehicleDetails', {}).get('serviceInspectionData', '')
 
     @ property
     def is_service_inspection_supported(self):
-        check = self.attrs.get('vehicleDetails', {}).get('serviceInspectionData', {})
-        if check:
-            return True
+        return self.attrs.get('vehicleDetails', {}).get('serviceInspectionData', False)
 
     @ property
     def oil_inspection(self):
         """Return time left for service inspection"""
-        if self.is_service_inspection_supported:
-            check = self.attrs.get('vehicleDetails', {}).get('oilInspectionData', {})
-            if check:
-                return check
+        return self.attrs.get('vehicleDetails', {}).get('oilInspectionData', '')
 
     @ property
     def is_oil_inspection_supported(self):
-        check = self.attrs.get('vehicleDetails', {}).get('oilInspectionData', {})
-        if check:
-            return True
+        return self.attrs.get('vehicleDetails', {}).get('oilInspectionData', False)
 
     @ property
     def adblue_level(self):
-        if self.is_adblue_level_supported:
-            return self.attrs.get('vehicleStatus', {}).get('adBlueLevel', 0)
+        return self.attrs.get('vehicleStatus', {}).get('adBlueLevel', 0)
 
     @ property
     def is_adblue_level_supported(self):
-        check = self.attrs.get('vehicleStatus', {}).get('adBlueEnabled', {})
-        if isinstance(check, bool) and check:
-            return True
+        return self.attrs.get('vehicleStatus', {}).get('adBlueEnabled', False)
 
     @ property
     def battery_level(self):
-        if self.is_battery_level_supported:
-            return self.attrs.get('vehicleStatus', {}).get('batteryLevel', 0)
+        return self.attrs.get('vehicleStatus', {}).get('batteryLevel', 0)
 
     @ property
     def is_battery_level_supported(self):
-        check = self.attrs.get('vehicleStatus', {}).get('batteryLevel', {})
+        check = self.attrs.get('vehicleStatus', {}).get('batteryLevel', False)
         if isinstance(check, int):
             return True
 
     @ property
     def charge_max_ampere(self):
         """Return charge max ampere"""
-        if self.is_charge_max_ampere_supported:
-            return self.attrs.get('vehicleEmanager', {}).get('rbc', {}).get('settings', {}).get('chargerMaxCurrent', {})
+        return self.attrs.get('vehicleEmanager').get('rbc').get('settings').get('chargerMaxCurrent')
 
     @ property
     def is_charge_max_ampere_supported(self):
-        check = self.attrs.get('vehicleEmanager', {}).get('rbc', {}).get('settings', {}).get('chargerMaxCurrent', {})
+        check = self.attrs.get('vehicleEmanager', {}).get('rbc', {}).get('settings', {}).get('chargerMaxCurrent', False)
         if isinstance(check, int):
             return True
 
     @ property
     def parking_light(self):
         """Return true if parking light is on"""
-        if self.is_parking_light_supported:
-            check = self.attrs.get('vehicleStatus', {}).get('carRenderData', {}).get('parkingLights', {})
-            if check != 2:
-                return True
-            else:
-                return False
+        response = self.attrs.get('vehicleStatus').get('carRenderData').get('parkingLights')
+        if response != 2:
+            return True
+        else:
+            return False
 
     @ property
     def is_parking_light_supported(self):
         """Return true if parking light is supported"""
-        check = self.attrs.get('vehicleStatus', {}).get('carRenderData', {}).get('parkingLights', {})
+        check = self.attrs.get('vehicleStatus', {}).get('carRenderData', {}).get('parkingLights', False)
         if isinstance(check, int):
             return True
 
     @ property
     def distance(self):
-        if self.is_distance_supported:
-            value = self.attrs.get('vehicleDetails', {}).get('distanceCovered', None).replace('.', '').replace(',', '').replace('--', '')
-            if value:
-                return int(value)
+        value = self.attrs.get('vehicleDetails').get('distanceCovered').replace('.', '').replace(',', '').replace('--', '')
+        if value:
+            return int(value)
 
     @ property
     def is_distance_supported(self):
         """Return true if distance is supported"""
-        check = self.attrs.get('vehicleDetails', {}).get('distanceCovered', {})
-        if check:
-            return True
+        return self.attrs.get('vehicleDetails', {}).get('distanceCovered', {})
 
     @ property
     def position(self):
         """Return  position."""
-        if self.is_position_supported:
-            return self.attrs.get('vehiclePosition')
+        return self.attrs.get('vehiclePosition')
 
     @ property
     def is_position_supported(self):
         """Return true if vehichle has position."""
-        check = self.attrs.get('vehiclePosition', {}).get('lng', {})
-        if check:
-            return True
+        return self.attrs.get('vehiclePosition', {}).get('lng', False)
 
     @ property
     def model(self):
         """Return model"""
-        if self.is_model_supported:
-            return self.attrs.get('model')
+        return self.attrs.get('model')
 
     @ property
     def is_model_supported(self):
-        check = self.attrs.get('model')
-        if check:
-            return True
+        return self.attrs.get('model', False)
 
     @ property
     def model_year(self):
         """Return model year"""
-        if self.is_model_year_supported:
-            return self.attrs.get('modelYear', {})
+        return self.attrs.get('modelYear')
 
     @ property
     def is_model_year_supported(self):
-        check = self.attrs.get('modelYear', {})
-        if check:
-            return True
+        return self.attrs.get('modelYear', False)
 
     @ property
     def model_image(self):
         """Return model image"""
-        if self.is_model_image_supported:
-            return self.attrs.get('imageUrl', {})
+        return self.attrs.get('imageUrl', {})
 
     @ property
     def is_model_image_supported(self):
-        check = self.attrs.get('imageUrl', {})
-        if check:
-            return True
+        return self.attrs.get('imageUrl', False)
 
     @ property
     def charging(self):
         """Return status of charging."""
-        if self.is_charging_supported:
-            status = self.attrs.get('vehicleEmanager', {}).get('rbc', {}).get('status', {}).get('chargingState', {})
-            if status == 'CHARGING':
-                return True
-            else:
-                return False
+        response = self.attrs.get('vehicleEmanager', {}).get('rbc', {}).get('status', {}).get('chargingState', {})
+        if response == 'CHARGING':
+            return True
+        else:
+            return False
 
     @ property
     def is_charging_supported(self):
         """Return true if vehichle has heater."""
-        check = self.attrs.get('vehicleEmanager', {}).get('rbc', {}).get('status', {}).get('batteryPercentage', {})
-        if check:
-            return True
+        return self.attrs.get('vehicleEmanager', {}).get('rbc', {}).get('status', {}).get('batteryPercentage', False)
 
-    @ property
+    @property
     def electric_range(self):
-        if self.is_electric_range_supported:
-            return self.attrs.get('vehicleStatus', {}).get('batteryRange', {})
+        return self.attrs.get('vehicleStatus', {}).get('batteryRange', {})
 
     @ property
     def is_electric_range_supported(self):
-        check = self.attrs.get('vehicleStatus', {}).get('batteryRange', {})
-        if isinstance(check, int):
+        response = self.attrs.get('vehicleStatus', {}).get('batteryRange', False)
+        if isinstance(response, int):
             return True
 
     @ property
     def combustion_range(self):
-        if self.is_combustion_range_supported:
-            return self.attrs.get('vehicleStatus', {}).get('fuelRange', {})
+        return self.attrs.get('vehicleStatus').get('fuelRange')
 
     @ property
     def is_combustion_range_supported(self):
-        check = self.attrs.get('vehicleStatus', {}).get('fuelRange', {})
-        if isinstance(check, int):
+        response = self.attrs.get('vehicleStatus', {}).get('fuelRange', False)
+        if isinstance(response, int):
             return True
 
     @ property
     def combined_range(self):
-        if self.is_combined_range_supported:
-            return self.attrs.get('vehicleStatus', {}).get('totalRange', {})
+        return self.attrs.get('vehicleStatus', {}).get('totalRange', 0)
 
     @ property
     def is_combined_range_supported(self):
-        check = self.attrs.get('vehicleStatus', {}).get('totalRange', {})
-        if isinstance(check, int):
+        response = self.attrs.get('vehicleStatus', {}).get('totalRange', False)
+        if isinstance(response, int):
             return True
 
     @ property
@@ -820,37 +698,32 @@ class Vehicle:
     @ property
     def external_power(self):
         """Return true if external power is connected."""
-        if self.is_external_power_supported:
-            check = self.attrs.get('vehicleEmanager', {}).get('rbc', {}).get('status', {}).get('pluginState', {})
-            if check == 'CONNECTED':
-                return True
-            else:
-                return False
+        check = self.attrs.get('vehicleEmanager', {}).get('rbc', {}).get('status', {}).get('pluginState', {})
+        if check == 'CONNECTED':
+            return True
+        else:
+            return False
 
     @ property
     def is_external_power_supported(self):
         """External power supported."""
-        if self.is_charging_supported:
-            check = self.attrs.get('vehicleEmanager', {}).get('rbc', {}).get('status', {}).get('pluginState', {})
-            if check:
-                return True
+        return self.attrs.get('vehicleEmanager', {}).get('rbc', {}).get('status', {}).get('pluginState', False)
 
     @ property
     def electric_climatisation(self):
         """Return status of climatisation."""
-        if self.is_electric_climatisation_supported:
-            climatisation_type = self.attrs.get('vehicleEmanager', {}).get('rpc', {}).get('settings', {}).get('electric', False)
-            status = self.attrs.get('vehicleEmanager', {}).get('rpc', {}).get('status', {}).get('climatisationState', {})
-            if status in ['HEATING', 'COOLING'] and climatisation_type is True:
-                return True
-            else:
-                return False
+        climatisation_type = self.attrs.get('vehicleEmanager', {}).get('rpc', {}).get('settings', {}).get('electric', False)
+        status = self.attrs.get('vehicleEmanager', {}).get('rpc', {}).get('status', {}).get('climatisationState', '')
+        if status in ['HEATING', 'COOLING'] and climatisation_type is True:
+            return True
+        else:
+            return False
 
     @ property
     def is_climatisation_supported(self):
         """Return true if vehichle has heater."""
-        check = self.attrs.get('vehicleEmanager', {}).get('rpc', {}).get('climaterActionState', {})
-        if check == 'AVAILABLE' or check == 'NO_PLUGIN':
+        response = self.attrs.get('vehicleEmanager', {}).get('rpc', {}).get('climaterActionState', '')
+        if response == 'AVAILABLE' or response == 'NO_PLUGIN':
             return True
 
     @ property
@@ -861,13 +734,12 @@ class Vehicle:
     @ property
     def combustion_climatisation(self):
         """Return status of combustion climatisation."""
-        if self.is_combustion_climatisation_supported:
-            climatisation_type = self.attrs.get('vehicleEmanager', {}).get('rpc', {}).get('settings', {}).get('electric', False)
-            status = self.attrs.get('vehicleEmanager', {}).get('rpc', {}).get('status', {}).get('climatisationState', '')
-            if status and status in ['HEATING', 'COOLING'] and climatisation_type is False:
-                return True
-            else:
-                return False
+        climatisation_type = self.attrs.get('vehicleEmanager', {}).get('rpc', {}).get('settings', {}).get('electric', False)
+        status = self.attrs.get('vehicleEmanager', {}).get('rpc', {}).get('status', {}).get('climatisationState', '')
+        if status and status in ['HEATING', 'COOLING'] and climatisation_type is False:
+            return True
+        else:
+            return False
 
     @ property
     def is_combustion_climatisation_supported(self):
@@ -880,132 +752,115 @@ class Vehicle:
     @ property
     def window_heater(self):
         """Return status of window heater."""
-        if self.is_window_heater_supported:
-            ret = False
-            status_front = self.attrs.get('vehicleEmanager', {}).get('rpc', {}).get('status', {}).get('windowHeatingStateFront', {})
-            if status_front == 'ON':
-                ret = True
+        ret = False
+        status_front = self.attrs.get('vehicleEmanager', {}).get('rpc', {}).get('status', {}).get('windowHeatingStateFront', '')
+        if status_front == 'ON':
+            ret = True
 
-            status_rear = self.attrs.get('vehicleEmanager', {}).get('rpc', {}).get('status', {}).get('windowHeatingStateRear', {})
-            if status_rear == 'ON':
-                ret = True
-            return ret
+        status_rear = self.attrs.get('vehicleEmanager', {}).get('rpc', {}).get('status', {}).get('windowHeatingStateRear', '')
+        if status_rear == 'ON':
+            ret = True
+        return ret
 
     @ property
     def is_window_heater_supported(self):
         """Return true if vehichle has heater."""
         if self.is_electric_climatisation_supported:
-            check = self.attrs.get('vehicleEmanager', {}).get('rpc', {}).get('status', {}).get('windowHeatingAvailable', {})
-            if check:
-                return True
+            return self.attrs.get('vehicleEmanager', {}).get('rpc', {}).get('status', {}).get('windowHeatingAvailable', False)
 
     @ property
     def combustion_engine_heating(self):
         """Return status of combustion engine heating."""
-        if self.is_combustion_engine_heating_supported:
-            return self.attrs.get('vehicleRemoteAuxiliaryHeating', {}).get('status', {}).get('active', False)
+        return self.attrs.get('vehicleRemoteAuxiliaryHeating', {}).get('status', {}).get('active', False)
 
     @ property
     def is_combustion_engine_heating_supported(self):
         """Return true if vehichle has combustion engine heating."""
-        check = self.attrs.get('vehicleRemoteAuxiliaryHeating', {})
-        if check:
-            return True
+        return self.attrs.get('vehicleRemoteAuxiliaryHeating', False)
 
     @ property
     def windows_closed(self):
-        if self.is_windows_closed_supported:
-            windows = self.attrs.get('vehicleStatus', {}).get('carRenderData', {}).get('windows', {})
-            windows_closed = True
-            for window in windows:
-                if windows[window] != 3:
-                    windows_closed = False
-            return windows_closed
+        windows = self.attrs.get('vehicleStatus', {}).get('carRenderData', {}).get('windows', [])
+        windows_closed = True
+        for window in windows:
+            if windows[window] != 3:
+                windows_closed = False
+        return windows_closed
 
     @ property
     def is_windows_closed_supported(self):
         """Return true if window state is supported"""
-        check = self.attrs.get('vehicleStatus', {}).get('windowStatusSupported', False)
-        if check:
-            return True
+        return self.attrs.get('vehicleStatus', {}).get('windowStatusSupported', False)
 
     @ property
     def charging_time_left(self):
-        if self.is_charging_time_left_supported:
-            if self.external_power:
-                hours = self.attrs.get('vehicleEmanager', {}).get('rbc', {}).get('status', {}).get('chargingRemaningHour', {})
-                minutes = self.attrs.get('vehicleEmanager', {}).get('rbc', {}).get('status', {}).get('chargingRemaningMinute', {})
-                if hours and minutes:
-                    # return 0 if we are not able to convert the values we get from carnet.
-                    try:
-                        return (int(hours) * 60) + int(minutes)
-                    except Exception:
-                        pass
-            return 0
+        if self.external_power:
+            hours = self.attrs.get('vehicleEmanager', {}).get('rbc', {}).get('status', {}).get('chargingRemaningHour', 0)
+            minutes = self.attrs.get('vehicleEmanager', {}).get('rbc', {}).get('status', {}).get('chargingRemaningMinute', 0)
+            if hours and minutes:
+                # return 0 if we are not able to convert the values we get from carnet.
+                try:
+                    return (int(hours) * 60) + int(minutes)
+                except Exception:
+                    pass
+        return 0
 
     @ property
     def is_charging_time_left_supported(self):
-        if self.is_charging_supported:
-            return True
+        return self.is_charging_supported
 
     @ property
     def door_locked(self):
-        if self.is_door_locked_supported:
-            lock_data = self.attrs.get('vehicleStatus', {}).get('lockData', {})
-            vehicle_locked = True
-            for lock in lock_data:
-                if lock == 'trunk':
-                    continue
-                if lock_data[lock] != 2:
-                    vehicle_locked = False
-            return vehicle_locked
+        lock_data = self.attrs.get('vehicleStatus', {}).get('lockData', [])
+        vehicle_locked = True
+        for lock in lock_data:
+            if lock == 'trunk':
+                continue
+            if lock_data[lock] != 2:
+                vehicle_locked = False
+        return vehicle_locked
 
     @ property
     def is_door_locked_supported(self):
-        check = self.attrs.get('vehicleStatus', {}).get('lockData', {})
-        if len(check) > 0:
+        response = self.attrs.get('vehicleStatus', {}).get('lockData', [])
+        if len(response) > 0:
             return True
 
     @ property
     def trunk_locked(self):
-        if self.is_trunk_locked_supported:
-            trunk_lock_data = self.attrs.get('vehicleStatus', {}).get('lockData', {}).get('trunk')
-            if trunk_lock_data != 2:
-                return False
-            else:
-                return True
-
-    @ property
-    def is_trunk_locked_supported(self):
-        check = self.attrs.get('vehicleStatus', {}).get('lockData', {}).get('trunk')
-        if check:
+        trunk_lock_data = self.attrs.get('vehicleStatus', {}).get('lockData', {}).get('trunk')
+        if trunk_lock_data != 2:
+            return False
+        else:
             return True
 
     @ property
+    def is_trunk_locked_supported(self):
+        return self.attrs.get('vehicleStatus', {}).get('lockData', {}).get('trunk', False)
+
+    @property
     def request_in_progress(self):
-        if self.is_request_in_progress_supported:
-            check = self.attrs.get('vehicleStatus', {}).get('requestStatus', {})
-            if check == 'REQUEST_IN_PROGRESS':
-                return True
-            else:
-                return False
+        check = self.attrs.get('vehicleStatus', {}).get('requestStatus', {})
+        if check == 'REQUEST_IN_PROGRESS':
+            return True
+        else:
+            return False
 
     @ property
     def is_request_in_progress_supported(self):
-        check = self.attrs.get('vehicleStatus', {}).get('requestStatus', {})
-        if check or check is None:
+        response = self.attrs.get('vehicleStatus', {}).get('requestStatus', {})
+        if response or response is None:
             return True
 
     # states
     @ property
     def is_parking_lights_on(self):
         """Parking light state"""
-        if self.is_parking_light_supported:
-            state = self.attrs.get('vehicleStatus', {}).get('carRenderData', {}).get('parkingLights', {})
-            if state != 2:
-                return False
-            else:
-                return True
+        response = self.attrs.get('vehicleStatus', {}).get('carRenderData', {}).get('parkingLights', 0)
+        if response != 2:
+            return False
+        else:
+            return True
 
     @ property
     def is_doors_locked(self):
