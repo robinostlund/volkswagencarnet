@@ -312,33 +312,37 @@ class Connection:
                 self._session_first_update = True
 
             # fetch vehicles
-            if not self._state or reset:
-                _LOGGER.debug('Fetching vehicles')
-                # owners_verification = self.post(f'/portal/group/{self._session_guest_language_id}/edit-profile/-/profile/get-vehicles-owners-verification')
+            # if not self._state or reset:
+            _LOGGER.debug('Fetching vehicles')
+            # owners_verification = self.post(f'/portal/group/{self._session_guest_language_id}/edit-profile/-/profile/get-vehicles-owners-verification')
 
-                # get vehicles
+            # get vehicles
+            loaded_vehicles = await self.post(
+                url='-/mainnavigation/get-fully-loaded-cars'
+            )
+
+            # load all not loaded vehicles
+            if loaded_vehicles.get('fullyLoadedVehiclesResponse', {}).get('vehiclesNotFullyLoaded', []):
+                for vehicle in loaded_vehicles.get('fullyLoadedVehiclesResponse').get('vehiclesNotFullyLoaded'):
+                    vehicle_vin = vehicle.get('vin')
+                    await self.post(
+                        url=f'-/mainnavigation/load-car-details/{vehicle_vin}'
+                    )
+
+                # update loaded cars
                 loaded_vehicles = await self.post(
                     url='-/mainnavigation/get-fully-loaded-cars'
                 )
 
-                # load all not loaded vehicles
-                if loaded_vehicles.get('fullyLoadedVehiclesResponse', {}).get('vehiclesNotFullyLoaded', []):
-                    for vehicle in loaded_vehicles.get('fullyLoadedVehiclesResponse').get('vehiclesNotFullyLoaded'):
-                        vehicle_vin = vehicle.get('vin')
-                        await self.post(
-                            url=f'-/mainnavigation/load-car-details/{vehicle_vin}'
-                        )
-
-                    # update loaded cars
-                    loaded_vehicles = await self.post(
-                        url='-/mainnavigation/get-fully-loaded-cars'
-                    )
-
-                # update vehicles
-                if loaded_vehicles.get('fullyLoadedVehiclesResponse', {}).get('completeVehicles', []):
-                    for vehicle in loaded_vehicles.get('fullyLoadedVehiclesResponse').get('completeVehicles'):
-                        vehicle_url = self._session_base + vehicle.get('dashboardUrl') + '/'
+            # update vehicles
+            if loaded_vehicles.get('fullyLoadedVehiclesResponse', {}).get('completeVehicles', []):
+                for vehicle in loaded_vehicles.get('fullyLoadedVehiclesResponse').get('completeVehicles'):
+                    vehicle_url = self._session_base + vehicle.get('dashboardUrl') + '/'
+                    if vehicle_url not in self._state:
                         self._state.update({vehicle_url: vehicle})
+                    else:
+                        for key, value in vehicle.items():
+                            self._state[vehicle_url].update({key: value})
 
             # get vehicle data
             for vehicle in self.vehicles:
