@@ -913,7 +913,7 @@ class Vehicle:
         if response:
             return True
 
-    @ property
+    @property
     def trip_last_average_fuel_consumption(self):
         return self.trip_last_entry.get('averageFuelConsumption')
 
@@ -923,12 +923,22 @@ class Vehicle:
         if response:
             return True
 
-    @ property
+    @property
     def trip_last_duration(self):
         return self.trip_last_entry.get('tripDuration')
 
     @property
     def is_trip_last_duration_supported(self):
+        response = self.trip_last_entry
+        if response:
+            return True
+
+    @ property
+    def trip_last_length(self):
+        return self.trip_last_entry.get('tripLength')
+
+    @property
+    def is_trip_last_length_supported(self):
         response = self.trip_last_entry
         if response:
             return True

@@ -573,6 +573,12 @@ def create_instruments():
             icon="mdi:clock",
             unit="min",
         ),
+        Sensor(
+            attr="trip_last_length",
+            name="Last trip length",
+            icon="mdi:speedometer",
+            unit="km",
+        ),
         BinarySensor(
             attr="external_power",
             name="External power",
