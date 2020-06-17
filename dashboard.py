@@ -571,7 +571,7 @@ def create_instruments():
             attr="trip_last_duration",
             name="Last trip duration",
             icon="mdi:clock",
-            unit="sec",
+            unit="min",
         ),
         BinarySensor(
             attr="external_power",
