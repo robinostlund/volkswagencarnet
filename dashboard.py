@@ -504,7 +504,7 @@ def create_instruments():
         Sensor(
             attr="oil_inspection",
             name="Oil inspection",
-            icon="mdi:garage",
+            icon="mdi:oil",
             unit="",
         ),
         Sensor(
@@ -522,7 +522,7 @@ def create_instruments():
         Sensor(
             attr="electric_range",
             name="Electric range",
-            icon="mdi:car",
+            icon="mdi:car-electric",
             unit="km",
         ),
         Sensor(
@@ -578,6 +578,24 @@ def create_instruments():
             name="Last trip length",
             icon="mdi:speedometer",
             unit="km",
+        ),
+        Sensor(
+            attr="trip_last_recuperation",
+            name="Last trip recuperation",
+            icon="mdi:battery-plus",
+            unit="r",
+        ),
+        Sensor(
+            attr="trip_last_average_auxillary_consumption",
+            name="Last trip average auxillary consumption",
+            icon="mdi:flash",
+            unit="kWh",
+        ),
+        Sensor(
+            attr="trip_last_total_electric_consumption",
+            name="Last trip total electric consumption",
+            icon="mdi:car-battery",
+            unit="kWh/100 km",
         ),
         BinarySensor(
             attr="external_power",

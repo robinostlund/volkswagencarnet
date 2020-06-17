@@ -924,6 +924,16 @@ class Vehicle:
             return True
 
     @property
+    def trip_last_average_auxillary_consumption(self):
+        return self.trip_last_entry.get('averageAuxiliaryConsumption')
+
+    @property
+    def is_trip_last_average_auxillary_consumption_supported(self):
+        response = self.trip_last_entry
+        if response:
+            return True
+
+    @property
     def trip_last_duration(self):
         return self.trip_last_entry.get('tripDuration')
 
@@ -939,6 +949,26 @@ class Vehicle:
 
     @property
     def is_trip_last_length_supported(self):
+        response = self.trip_last_entry
+        if response:
+            return True
+
+    @property
+    def trip_last_recuperation(self):
+        return self.trip_last_entry.get('recuperation')
+
+    @property
+    def is_trip_last_recuperation_supported(self):
+        response = self.trip_last_entry
+        if response:
+            return True
+
+    @property
+    def trip_last_total_electric_consumption(self):
+        return self.trip_last_entry.get('totalElectricConsumption')
+
+    @property
+    def is_trip_last_total_electric_consumption_supported(self):
         response = self.trip_last_entry
         if response:
             return True
@@ -1033,7 +1063,7 @@ class Vehicle:
         if self.is_request_in_progress_supported:
             if not self.request_in_progress:
                 resp = await self.call('-/vsr/request-vsr', dummy='data')
-                if resp.get('errorCode') != '0':
+                if (resp and resp.get('errorCode') != '0') or not resp:
                     _LOGGER.error('Failed to request vehicle update')
                 else:
                     await self.update()

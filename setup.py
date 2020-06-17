@@ -8,7 +8,7 @@ with open(path.join(this_directory, 'README.md'), encoding='utf-8') as f:
 
 setup(
     name='volkswagencarnet',
-    description='Communicate with Volkswagen Carnet',
+    description='Communicate with Volkswagen WeConnect',
     author='Robin Ostlund',
     author_email='me@robinostlund.name',
     url='https://github.com/robinostlund/volkswagencarnet',
