@@ -352,11 +352,24 @@ class Connection:
         url = vehicle._url
         _LOGGER.debug(f'Updating vehicle status {vehicle.vin}')
 
-        # get new messages
-        response = await self.post('-/msgc/get-new-messages')
+        # get new messages, needs to be here fot be able to get latest vehicle status
+        response = await self.post('-/msgc/get-new-messages', rel=url)
         # messageList
-        if not response.get('errorCode', {}) == '0':
+        if response.get('errorCode', {}) == '0':
+            self._state[url].update(
+                {'vehicleMessagesNew': response.get('response', {})}
+            )
+        else:
             _LOGGER.debug(f'Could not fetch new messages: {response}')
+
+        response = await self.post('-/msgc/get-latest-messages', rel=url)
+        # messageList
+        if response.get('errorCode', {}) == '0':
+            self._state[url].update(
+                {'vehicleMessagesLatest': response.get('messageList', {})}
+            )
+        else:
+            _LOGGER.debug(f'Could not fetch latest messages: {response}')
 
         # fetch vehicle status data
         response = await self.post(url='-/vsr/get-vsr', rel=url)
