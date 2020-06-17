@@ -296,9 +296,10 @@ class Connection:
 
     async def post(self, url, rel=None, **data):
         """Perform a post query to the online service."""
-        return await self._request(
-            METH_POST, self._make_url(url, rel), json=data
-        )
+        if data:
+            return await self._request(METH_POST, self._make_url(url, rel), json=data)
+        else:
+            return await self._request(METH_POST, self._make_url(url, rel))
 
     async def update(self, reset=False):
         """Update status."""
