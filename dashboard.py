@@ -77,8 +77,15 @@ class Sensor(Instrument):
         self.unit = unit
 
     def configurate(self, scandinavian_miles=False, **config):
-        if self.unit and scandinavian_miles and "km" in self.unit:
-            self.unit = "mil"
+        if self.unit and scandinavian_miles:
+            if "km" in self.unit:
+                self.unit = "mil"
+            elif "km/h" in self.unit:
+                self.unit = "mil/h"
+            elif "l/100 km" in self.unit:
+                self.unit = "l/100 mil"
+            elif "l/100 km" in self.unit:
+                self.unit = "kWh/100 mil"
 
     @property
     def is_mutable(self):
@@ -94,7 +101,7 @@ class Sensor(Instrument):
     @property
     def state(self):
         val = super().state
-        if val and "mil" in self.unit:
+        if val and self.unit in ['mil', 'mil/h']:
             return val / 10
         else:
             return val
@@ -542,6 +549,30 @@ def create_instruments():
             icon="mdi:thermometer",
             unit="°C",
         ),
+        Sensor(
+            attr="trip_last_average_speed",
+            name="Last trip average speed",
+            icon="mdi:speedometer",
+            unit="km/h",
+        ),
+        Sensor(
+            attr="trip_last_average_electric_consumption",
+            name="Last trip average electric consumption",
+            icon="mdi:battery",
+            unit="kWh/100 km",
+        ),
+        Sensor(
+            attr="trip_last_average_fuel_consumption",
+            name="Last trip average fuel consumption",
+            icon="mdi:fuel",
+            unit="l/100 km",
+        ),
+        Sensor(
+            attr="trip_last_duration",
+            name="Last trip duration",
+            icon="mdi:clock",
+            unit="sec",
+        ),
         BinarySensor(
             attr="external_power",
             name="External power",
@@ -574,7 +605,7 @@ def create_instruments():
             name="Windows closed",
             device_class="window",
             reverse_state=True
-        ),
+        )
         # BinarySensor(
         #     attr="request_in_progress",
         #     name="Request in progress",
