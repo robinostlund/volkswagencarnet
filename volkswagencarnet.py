@@ -414,7 +414,6 @@ class Connection:
 
             return True
         except (IOError, OSError, LookupError) as error:
-            print(error)
             _LOGGER.warning(f'Could not update information from carnet: {error}')
 
     async def update_vehicle(self, vehicle):
