@@ -924,6 +924,16 @@ class Vehicle:
             return True
 
     @property
+    def trip_last_average_auxillary_consumption(self):
+        return self.trip_last_entry.get('averageAuxiliaryConsumption')
+
+    @property
+    def is_trip_last_average_auxillary_consumption_supported(self):
+        response = self.trip_last_entry
+        if response:
+            return True
+
+    @property
     def trip_last_duration(self):
         return self.trip_last_entry.get('tripDuration')
 
@@ -939,6 +949,26 @@ class Vehicle:
 
     @property
     def is_trip_last_length_supported(self):
+        response = self.trip_last_entry
+        if response:
+            return True
+
+    @property
+    def trip_last_recuperation(self):
+        return self.trip_last_entry.get('recuperation')
+
+    @property
+    def is_trip_last_recuperation_supported(self):
+        response = self.trip_last_entry
+        if response:
+            return True
+
+    @property
+    def trip_last_total_electric_consumption(self):
+        return self.trip_last_entry.get('totalElectricConsumption')
+
+    @property
+    def is_trip_last_total_electric_consumption_supported(self):
         response = self.trip_last_entry
         if response:
             return True
