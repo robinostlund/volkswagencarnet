@@ -352,6 +352,12 @@ class Connection:
         url = vehicle._url
         _LOGGER.debug(f'Updating vehicle status {vehicle.vin}')
 
+        # get new messages
+        response = await self.post('-/msgc/get-new-messages')
+        # messageList
+        if not response.get('errorCode', {}) == '0':
+            _LOGGER.debug(f'Could not fetch new messages: {response}')
+
         # fetch vehicle status data
         response = await self.post(url='-/vsr/get-vsr', rel=url)
         if response.get('errorCode', {}) == '0' and response.get('vehicleStatusData', {}):
