@@ -276,7 +276,7 @@ class Connection:
             ) as response:
                 response.raise_for_status()
                 res = await response.json(loads=json_loads)
-                _LOGGER.debug("Received %s", res)
+                _LOGGER.debug(f'Received [{response.status}] response: {res}')
                 return res
         except Exception as error:
             _LOGGER.warning(
@@ -362,7 +362,6 @@ class Connection:
 
         # fetch vehicle emanage data
         if not vehicle.attrs.get('engineTypeCombustian'):
-            # if not vehicle.attrs.get('vehicleStatus', {}).get('engineTypeCombustian'):
             response = await self.post('-/emanager/get-emanager', url)
             if response.get('errorCode', {}) == '0' and response.get('EManager', {}):
                 self._state[url].update(
@@ -397,7 +396,7 @@ class Connection:
                     {'vehicleRemoteAuxiliaryHeating': response.get('remoteAuxiliaryHeating', {})}
                 )
             else:
-                _LOGGER.debug(f'Could not fetch remoteAuxiliaryHeating data: {response}')
+                _LOGGER.debug(f'Could not fetch remote auxiliary heating data: {response}')
 
         _LOGGER.debug(f'{vehicle.unique_id} data: {self._state[url]}')
 
