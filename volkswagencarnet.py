@@ -1063,7 +1063,7 @@ class Vehicle:
         if self.is_request_in_progress_supported:
             if not self.request_in_progress:
                 resp = await self.call('-/vsr/request-vsr', dummy='data')
-                if resp.get('errorCode') != '0':
+                if (resp and resp.get('errorCode') != '0') or not resp:
                     _LOGGER.error('Failed to request vehicle update')
                 else:
                     await self.update()
