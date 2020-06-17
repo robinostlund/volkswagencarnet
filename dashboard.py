@@ -37,7 +37,7 @@ class Instrument:
 
     @property
     def vehicle_name(self):
-        return self.vehicle.vin.lower()
+        return self.vehicle.vin
 
     @property
     def full_name(self):
@@ -87,9 +87,9 @@ class Sensor(Instrument):
     @property
     def str_state(self):
         if self.unit:
-            return "%s %s" % (self.state, self.unit)
+            return f'{self.state} {self.unit}'
         else:
-            return "%s" % self.state
+            return f'{self.state}'
 
     @property
     def state(self):
@@ -301,10 +301,6 @@ class DoorLock(Instrument):
     async def unlock(self):
         return await self.vehicle.unlock_car(self.spin)
 
-    @property
-    def assumed_state(self):
-        return True
-
 
 class TrunkLock(Instrument):
     def __init__(self):
@@ -326,15 +322,11 @@ class TrunkLock(Instrument):
     def is_locked(self):
         return self.state
 
-    def lock(self):
+    async def lock(self):
         return None
 
-    def unlock(self):
+    async def unlock(self):
         return None
-
-    @property
-    def assumed_state(self):
-        return True
 
 # Switches
 
