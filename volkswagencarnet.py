@@ -418,7 +418,6 @@ class Connection:
 
     async def update_vehicle(self, vehicle):
         url = vehicle._url
-        # dashboard_url = self._session_base + vehicle.attrs['dashboardUrl'] + '/'
 
         # fetch vehicle status data
         try:
