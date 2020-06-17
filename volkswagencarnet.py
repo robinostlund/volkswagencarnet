@@ -421,6 +421,15 @@ class Connection:
             else:
                 _LOGGER.debug(f'Could not fetch remote auxiliary heating data: {response}')
 
+        # fetch latest trips
+        response = await self.post('-/rts/get-latest-trip-statistics', url)
+        if response.get('errorCode', {}) == '0' and response.get('rtsViewModel', {}):
+            self._state[url].update(
+                {'vehicleLastTrips': response.get('rtsViewModel', {})}
+            )
+        else:
+            _LOGGER.debug(f'Could not fetch last trips data: {response}')
+
         _LOGGER.debug(f'{vehicle.unique_id} data: {self._state[url]}')
 
     def vehicle(self, vin):
@@ -872,6 +881,56 @@ class Vehicle:
     def is_request_in_progress_supported(self):
         response = self.attrs.get('vehicleStatus', {}).get('requestStatus', {})
         if response or response is None:
+            return True
+
+    # trips
+    @property
+    def trip_last_entry(self):
+        last_trip = {}
+        for trip in self.attrs.get('vehicleLastTrips', {}).get('tripStatistics', []):
+            if isinstance(trip, dict) and 'tripStatistics' in trip:
+                for trip_entry in trip.get('tripStatistics'):
+                    last_trip = trip_entry
+        return last_trip
+
+    @ property
+    def trip_last_average_speed(self):
+        return self.trip_last_entry.get('averageSpeed')
+
+    @ property
+    def is_trip_last_average_speed_supported(self):
+        response = self.trip_last_entry
+        if response:
+            return True
+
+    @ property
+    def trip_last_average_electric_consumption(self):
+        return self.trip_last_entry.get('averageElectricConsumption')
+
+    @property
+    def is_trip_last_average_electric_consumption_supported(self):
+        response = self.trip_last_entry
+        if response:
+            return True
+
+    @ property
+    def trip_last_average_fuel_consumption(self):
+        return self.trip_last_entry.get('averageFuelConsumption')
+
+    @property
+    def is_trip_last_average_fuel_consumption_supported(self):
+        response = self.trip_last_entry
+        if response:
+            return True
+
+    @ property
+    def trip_last_duration(self):
+        return self.trip_last_entry.get('tripDuration')
+
+    @property
+    def is_trip_last_duration_supported(self):
+        response = self.trip_last_entry
+        if response:
             return True
 
     # states
