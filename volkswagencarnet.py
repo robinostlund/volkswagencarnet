@@ -301,7 +301,7 @@ class Connection:
         else:
             return await self._request(METH_POST, self._make_url(url, rel))
 
-    async def update(self, reset=False):
+    async def update(self):
         """Update status."""
         try:
             if self._session_first_update:
@@ -312,7 +312,6 @@ class Connection:
                 self._session_first_update = True
 
             # fetch vehicles
-            # if not self._state or reset:
             _LOGGER.debug('Fetching vehicles')
             # owners_verification = self.post(f'/portal/group/{self._session_guest_language_id}/edit-profile/-/profile/get-vehicles-owners-verification')
 
