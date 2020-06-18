@@ -62,7 +62,6 @@ class Connection:
         self._session_auth_password = password
 
         _LOGGER.debug('Using service <%s>', self._session_base)
-        _LOGGER.debug('User: <%s>', self._session_auth_username)
 
         self._state = {}
 
@@ -633,7 +632,7 @@ class Vehicle:
     @ property
     def is_distance_supported(self):
         """Return true if distance is supported"""
-        if isinstance(self.attrs.get('vehicleDetails', {}).get('distanceCovered', False), int):
+        if self.attrs.get('vehicleDetails', {}).get('distanceCovered', False):
             return True
 
     @ property
@@ -903,6 +902,8 @@ class Vehicle:
 
     @ property
     def is_trip_last_average_speed_supported(self):
+        # if self.attrs.get('vehicleLastTrips', {}).get('serviceConfiguration', {}).get('triptype_cyclic', False):
+        #     return True
         response = self.trip_last_entry
         if response and isinstance(response.get('averageSpeed'), float):
             return True
