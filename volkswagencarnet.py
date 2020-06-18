@@ -542,7 +542,8 @@ class Vehicle:
     @ property
     def is_last_connected_supported(self):
         """Return when vehicle was last connected to carnet"""
-        return self.attrs.get('vehicleDetails', {}).get('lastConnectionTimeStamp', [])
+        if self.attrs.get('vehicleDetails', {}).get('lastConnectionTimeStamp', []):
+            return True
 
     @property
     def climatisation_target_temperature(self):
@@ -567,7 +568,8 @@ class Vehicle:
 
     @ property
     def is_service_inspection_supported(self):
-        return self.attrs.get('vehicleDetails', {}).get('serviceInspectionData', False)
+        if self.attrs.get('vehicleDetails', {}).get('serviceInspectionData', False):
+            return True
 
     @ property
     def oil_inspection(self):
@@ -576,7 +578,8 @@ class Vehicle:
 
     @ property
     def is_oil_inspection_supported(self):
-        return self.attrs.get('vehicleDetails', {}).get('oilInspectionData', False)
+        if self.attrs.get('vehicleDetails', {}).get('oilInspectionData', False):
+            return True
 
     @ property
     def adblue_level(self):
@@ -584,7 +587,8 @@ class Vehicle:
 
     @ property
     def is_adblue_level_supported(self):
-        return self.attrs.get('vehicleStatus', {}).get('adBlueEnabled', False)
+        if self.attrs.get('vehicleStatus', {}).get('adBlueEnabled', False):
+            return True
 
     @ property
     def battery_level(self):
@@ -592,8 +596,7 @@ class Vehicle:
 
     @ property
     def is_battery_level_supported(self):
-        check = self.attrs.get('vehicleStatus', {}).get('batteryLevel', False)
-        if isinstance(check, int):
+        if isinstance(self.attrs.get('vehicleStatus', {}).get('batteryLevel', False), int):
             return True
 
     @ property
@@ -603,8 +606,7 @@ class Vehicle:
 
     @ property
     def is_charge_max_ampere_supported(self):
-        check = self.attrs.get('vehicleEmanager', {}).get('rbc', {}).get('settings', {}).get('chargerMaxCurrent', False)
-        if isinstance(check, int):
+        if isinstance(self.attrs.get('vehicleEmanager', {}).get('rbc', {}).get('settings', {}).get('chargerMaxCurrent', False), int):
             return True
 
     @ property
@@ -619,8 +621,7 @@ class Vehicle:
     @ property
     def is_parking_light_supported(self):
         """Return true if parking light is supported"""
-        check = self.attrs.get('vehicleStatus', {}).get('carRenderData', {}).get('parkingLights', False)
-        if isinstance(check, int):
+        if isinstance(self.attrs.get('vehicleStatus', {}).get('carRenderData', {}).get('parkingLights', False), int):
             return True
 
     @ property
@@ -632,7 +633,8 @@ class Vehicle:
     @ property
     def is_distance_supported(self):
         """Return true if distance is supported"""
-        return self.attrs.get('vehicleDetails', {}).get('distanceCovered', {})
+        if isinstance(self.attrs.get('vehicleDetails', {}).get('distanceCovered', False), int):
+            return True
 
     @ property
     def position(self):
@@ -642,7 +644,8 @@ class Vehicle:
     @ property
     def is_position_supported(self):
         """Return true if vehichle has position."""
-        return self.attrs.get('vehiclePosition', {}).get('lng', False)
+        if self.attrs.get('vehiclePosition', {}).get('lng', False):
+            return True
 
     @ property
     def model(self):
@@ -651,7 +654,8 @@ class Vehicle:
 
     @ property
     def is_model_supported(self):
-        return self.attrs.get('model', False)
+        if self.attrs.get('model', False):
+            return True
 
     @ property
     def model_year(self):
@@ -660,16 +664,18 @@ class Vehicle:
 
     @ property
     def is_model_year_supported(self):
-        return self.attrs.get('modelYear', False)
+        if self.attrs.get('modelYear', False):
+            return True
 
     @ property
     def model_image(self):
         """Return model image"""
-        return self.attrs.get('imageUrl', {})
+        return self.attrs.get('imageUrl')
 
     @ property
     def is_model_image_supported(self):
-        return self.attrs.get('imageUrl', False)
+        if self.attrs.get('imageUrl', False):
+            return True
 
     @ property
     def charging(self):
@@ -683,26 +689,25 @@ class Vehicle:
     @ property
     def is_charging_supported(self):
         """Return true if vehichle has heater."""
-        return self.attrs.get('vehicleEmanager', {}).get('rbc', {}).get('status', {}).get('batteryPercentage', False)
+        if isinstance(self.attrs.get('vehicleEmanager', {}).get('rbc', {}).get('status', {}).get('batteryPercentage', False), int):
+            return True
 
     @property
     def electric_range(self):
-        return self.attrs.get('vehicleStatus', {}).get('batteryRange', {})
+        return self.attrs.get('vehicleStatus', {}).get('batteryRange', 0)
 
     @ property
     def is_electric_range_supported(self):
-        response = self.attrs.get('vehicleStatus', {}).get('batteryRange', False)
-        if isinstance(response, int):
+        if isinstance(self.attrs.get('vehicleStatus', {}).get('batteryRange', False), int):
             return True
 
     @ property
     def combustion_range(self):
-        return self.attrs.get('vehicleStatus').get('fuelRange')
+        return self.attrs.get('vehicleStatus').get('fuelRange', 0)
 
     @ property
     def is_combustion_range_supported(self):
-        response = self.attrs.get('vehicleStatus', {}).get('fuelRange', False)
-        if isinstance(response, int):
+        if isinstance(self.attrs.get('vehicleStatus', {}).get('fuelRange', False), int):
             return True
 
     @ property
@@ -711,19 +716,16 @@ class Vehicle:
 
     @ property
     def is_combined_range_supported(self):
-        response = self.attrs.get('vehicleStatus', {}).get('totalRange', False)
-        if isinstance(response, int):
+        if isinstance(self.attrs.get('vehicleStatus', {}).get('totalRange', False), int):
             return True
 
     @ property
     def fuel_level(self):
-        if self.is_fuel_level_supported:
-            return self.attrs.get('vehicleStatus', {}).get('fuelLevel', {})
+        return self.attrs.get('vehicleStatus', {}).get('fuelLevel', {})
 
     @ property
     def is_fuel_level_supported(self):
-        check = self.attrs.get('vehicleStatus', {}).get('fuelLevel', {})
-        if isinstance(check, int):
+        if isinstance(self.attrs.get('vehicleStatus', {}).get('fuelLevel', {}), int):
             return True
 
     @ property
@@ -775,9 +777,7 @@ class Vehicle:
     @ property
     def is_combustion_climatisation_supported(self):
         """Return true if vehichle has combustion climatisation."""
-        check = self.is_climatisation_supported
-        check2 = self.attrs.get('vehicleEmanager', {}).get('rdt', {}).get('auxHeatingAllowed', False)
-        if check and check2:
+        if self.is_climatisation_supported and self.attrs.get('vehicleEmanager', {}).get('rdt', {}).get('auxHeatingAllowed', False):
             return True
 
     @ property
@@ -797,7 +797,8 @@ class Vehicle:
     def is_window_heater_supported(self):
         """Return true if vehichle has heater."""
         if self.is_electric_climatisation_supported:
-            return self.attrs.get('vehicleEmanager', {}).get('rpc', {}).get('status', {}).get('windowHeatingAvailable', False)
+            if self.attrs.get('vehicleEmanager', {}).get('rpc', {}).get('status', {}).get('windowHeatingAvailable', False):
+                return True
 
     @ property
     def combustion_engine_heating(self):
@@ -807,7 +808,8 @@ class Vehicle:
     @ property
     def is_combustion_engine_heating_supported(self):
         """Return true if vehichle has combustion engine heating."""
-        return self.attrs.get('vehicleRemoteAuxiliaryHeating', False)
+        if self.attrs.get('vehicleRemoteAuxiliaryHeating', False):
+            return True
 
     @ property
     def windows_closed(self):
@@ -821,7 +823,8 @@ class Vehicle:
     @ property
     def is_windows_closed_supported(self):
         """Return true if window state is supported"""
-        return self.attrs.get('vehicleStatus', {}).get('windowStatusSupported', False)
+        if self.attrs.get('vehicleStatus', {}).get('windowStatusSupported', False):
+            return True
 
     @ property
     def charging_time_left(self):
@@ -867,7 +870,8 @@ class Vehicle:
 
     @ property
     def is_trunk_locked_supported(self):
-        return self.attrs.get('vehicleStatus', {}).get('lockData', {}).get('trunk', False)
+        if self.attrs.get('vehicleStatus', {}).get('lockData', {}).get('trunk', False):
+            return True
 
     @property
     def request_in_progress(self):
@@ -900,7 +904,7 @@ class Vehicle:
     @ property
     def is_trip_last_average_speed_supported(self):
         response = self.trip_last_entry
-        if response:
+        if response and isinstance(response.get('averageSpeed'), float):
             return True
 
     @ property
@@ -910,7 +914,7 @@ class Vehicle:
     @property
     def is_trip_last_average_electric_consumption_supported(self):
         response = self.trip_last_entry
-        if response:
+        if response and isinstance(response.get('averageElectricConsumption'), float):
             return True
 
     @property
@@ -920,7 +924,7 @@ class Vehicle:
     @property
     def is_trip_last_average_fuel_consumption_supported(self):
         response = self.trip_last_entry
-        if response:
+        if response and isinstance(response.get('averageFuelConsumption'), float):
             return True
 
     @property
@@ -930,7 +934,7 @@ class Vehicle:
     @property
     def is_trip_last_average_auxillary_consumption_supported(self):
         response = self.trip_last_entry
-        if response:
+        if response and isinstance(response.get('averageAuxiliaryConsumption'), float):
             return True
 
     @property
@@ -940,7 +944,7 @@ class Vehicle:
     @property
     def is_trip_last_duration_supported(self):
         response = self.trip_last_entry
-        if response:
+        if response and isinstance(response.get('tripDuration'), int):
             return True
 
     @ property
@@ -950,7 +954,7 @@ class Vehicle:
     @property
     def is_trip_last_length_supported(self):
         response = self.trip_last_entry
-        if response:
+        if response and isinstance(response.get('tripLength'), float):
             return True
 
     @property
@@ -960,7 +964,7 @@ class Vehicle:
     @property
     def is_trip_last_recuperation_supported(self):
         response = self.trip_last_entry
-        if response:
+        if response and isinstance(response.get('recuperation'), int):
             return True
 
     @property
@@ -970,7 +974,7 @@ class Vehicle:
     @property
     def is_trip_last_total_electric_consumption_supported(self):
         response = self.trip_last_entry
-        if response:
+        if response and isinstance(response.get('totalElectricConsumption'), int):
             return True
 
     # states
