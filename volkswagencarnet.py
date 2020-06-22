@@ -812,7 +812,7 @@ class Vehicle:
 
     @ property
     def windows_closed(self):
-        windows = self.attrs.get('vehicleStatus', {}).get('carRenderData', {}).get('windows', [])
+        windows = self.attrs.get('vehicleStatus', {}).get('carRenderData', {}).get('windows', {})
         windows_closed = True
         for window in windows:
             if windows[window] != 3:
@@ -824,6 +824,54 @@ class Vehicle:
         """Return true if window state is supported"""
         if self.attrs.get('vehicleStatus', {}).get('windowStatusSupported', False):
             return True
+
+    @property
+    def window_closed_left_front(self):
+        windows = self.attrs.get('vehicleStatus', {}).get('carRenderData', {}).get('windows', {})
+        if windows.get('left_front', 0) == 3:
+            return True
+        return False
+
+    @ property
+    def is_window_closed_left_front_supported(self):
+        """Return true if window state is supported"""
+        return self.is_windows_closed_supported
+
+    @property
+    def window_closed_right_front(self):
+        windows = self.attrs.get('vehicleStatus', {}).get('carRenderData', {}).get('windows', {})
+        if windows.get('right_front', 0) == 3:
+            return True
+        return False
+
+    @ property
+    def is_window_closed_right_front_supported(self):
+        """Return true if window state is supported"""
+        return self.is_windows_closed_supported
+
+    @property
+    def window_closed_left_back(self):
+        windows = self.attrs.get('vehicleStatus', {}).get('carRenderData', {}).get('windows', {})
+        if windows.get('left_back', 0) == 3:
+            return True
+        return False
+
+    @ property
+    def is_window_closed_left_back_supported(self):
+        """Return true if window state is supported"""
+        return self.is_windows_closed_supported
+
+    @property
+    def window_closed_right_back(self):
+        windows = self.attrs.get('vehicleStatus', {}).get('carRenderData', {}).get('windows', {})
+        if windows.get('right_back', 0) == 3:
+            return True
+        return False
+
+    @ property
+    def is_window_closed_right_back_supported(self):
+        """Return true if window state is supported"""
+        return self.is_windows_closed_supported
 
     @ property
     def charging_time_left(self):
@@ -988,7 +1036,7 @@ class Vehicle:
         else:
             return True
 
-    @ property
+    @property
     def is_doors_locked(self):
         """Door lock status."""
         state = True

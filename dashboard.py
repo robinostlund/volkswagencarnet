@@ -629,6 +629,30 @@ def create_instruments():
             name="Windows closed",
             device_class="window",
             reverse_state=True
+        ),
+        BinarySensor(
+            attr="window_closed_left_front",
+            name="Window closed left front",
+            device_class="window",
+            reverse_state=True
+        ),
+        BinarySensor(
+            attr="window_closed_left_back",
+            name="Window closed left back",
+            device_class="window",
+            reverse_state=True
+        ),
+        BinarySensor(
+            attr="window_closed_right_front",
+            name="Window closed right front",
+            device_class="window",
+            reverse_state=True
+        ),
+        BinarySensor(
+            attr="window_closed_right_back",
+            name="Window closed right back",
+            device_class="window",
+            reverse_state=True
         )
         # BinarySensor(
         #     attr="request_in_progress",
