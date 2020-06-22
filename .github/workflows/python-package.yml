@@ -3,8 +3,8 @@
 
 name: Test Python Package
 
-on: [push]
-#on: [push, pull_request]
+#on: [push]
+on: [push, pull_request]
 
 jobs:
   build:
