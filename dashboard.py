@@ -576,20 +576,20 @@ def create_instruments():
         Sensor(
             attr="trip_last_length",
             name="Last trip length",
-            icon="mdi:speedometer",
+            icon="mdi:map-marker-distance",
             unit="km",
         ),
         Sensor(
             attr="trip_last_recuperation",
             name="Last trip recuperation",
             icon="mdi:battery-plus",
-            unit="r",
+            unit="kWh/100 km",
         ),
         Sensor(
             attr="trip_last_average_auxillary_consumption",
             name="Last trip average auxillary consumption",
             icon="mdi:flash",
-            unit="kWh",
+            unit="kWh/100 km",
         ),
         Sensor(
             attr="trip_last_total_electric_consumption",
