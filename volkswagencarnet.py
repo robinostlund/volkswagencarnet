@@ -1013,7 +1013,7 @@ class Vehicle:
     @property
     def is_trip_last_recuperation_supported(self):
         response = self.trip_last_entry
-        if response and isinstance(response.get('recuperation'), int):
+        if response and isinstance(response.get('recuperation'), float):
             return True
 
     @property
@@ -1023,7 +1023,7 @@ class Vehicle:
     @property
     def is_trip_last_total_electric_consumption_supported(self):
         response = self.trip_last_entry
-        if response and isinstance(response.get('totalElectricConsumption'), int):
+        if response and isinstance(response.get('totalElectricConsumption'), float):
             return True
 
     # states
