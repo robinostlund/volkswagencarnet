@@ -105,7 +105,7 @@ async def main():
     async with ClientSession() as session:
         connection = volkswagencarnet.Connection(session, VW_USERNAME, VW_PASSWORD)
         if await connection._login():
-            if await connection.update(request_data=False):
+            if await connection.update():
                 # Print overall state
                 pprint.pprint(connection._state)
 
