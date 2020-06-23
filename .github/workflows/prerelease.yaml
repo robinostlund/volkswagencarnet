@@ -2,7 +2,7 @@ name: Pre Release
 
 on:
   release:
-    types: [created, edited, unpublished, prereleased]
+    types: [published, created, edited, unpublished, prereleased]
 
 jobs:
   build:
