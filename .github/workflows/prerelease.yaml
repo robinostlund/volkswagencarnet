@@ -6,7 +6,7 @@ on:
 
 jobs:
   build:
-    name: Upload Package to PyPi Test Repository
+    name: Upload Package to PyPi Test
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
