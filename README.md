@@ -50,7 +50,7 @@ from aiohttp import ClientSession
 logging.basicConfig(level=logging.DEBUG)
 
 VW_USERNAME='test@example.com'
-VW_PASSWORD='mysecretpassword
+VW_PASSWORD='mysecretpassword'
 
 
 COMPONENTS = {
