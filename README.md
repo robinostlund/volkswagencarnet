@@ -2,15 +2,13 @@
 
 [![buy me a coffee](https://www.buymeacoffee.com/assets/img/custom_images/yellow_img.png)](https://www.buymeacoffee.com/robinostlund)
 
-![Python package](https://github.com/robinostlund/volkswagencarnet/workflows/Python%20package/badge.svg)
-![Upload Python Package](https://github.com/robinostlund/volkswagencarnet/workflows/Upload%20Python%20Package/badge.svg)
+![Release](https://img.shields.io/github/workflow/status/robinostlund/volkswagencarnet/Release)
+![PyPi](https://img.shields.io/pypi/v/volkswagencarnet)
+![Version](https://img.shields.io/github/v/release/robinostlund/volkswagencarnet)
 
-![Downloads a day](https://img.shields.io/pypi/dd/volkswagencarnet?label=Downloads)
-![Downloads a week](https://img.shields.io/pypi/dw/volkswagencarnet?label=Downloads%20)
-![Downloads a month](https://img.shields.io/pypi/dm/volkswagencarnet?label=Downloads%20)
-
-![Latest PyPi Version](https://img.shields.io/pypi/v/volkswagencarnet?label=Latest%20PyPi%20Version)
-![Latest Github Tag](https://img.shields.io/github/v/tag/robinostlund/volkswagencarnet?label=Latest%20Github%20Tag)
+![Downloads a day](https://img.shields.io/pypi/dd/volkswagencarnet)
+![Downloads a week](https://img.shields.io/pypi/dw/volkswagencarnet)
+![Downloads a month](https://img.shields.io/pypi/dm/volkswagencarnet)
 
 ## Information
 
