@@ -263,25 +263,25 @@ class Connection:
 
     async def _request(self, method, url, **kwargs):
         """Perform a query to the vw carnet"""
-        try:
-            _LOGGER.debug("Request for %s", url)
+        # try:
+        _LOGGER.debug("Request for %s", url)
 
-            async with self._session.request(
-                method,
-                url,
-                headers=self._session_headers,
-                timeout=ClientTimeout(total=TIMEOUT.seconds),
-                **kwargs
-            ) as response:
-                response.raise_for_status()
-                res = await response.json(loads=json_loads)
-                _LOGGER.debug(f'Received [{response.status}] response: {res}')
-                return res
-        except Exception as error:
-            _LOGGER.warning(
-                "Failure when communcating with the server: %s", error
-            )
-            raise
+        async with self._session.request(
+            method,
+            url,
+            headers=self._session_headers,
+            timeout=ClientTimeout(total=TIMEOUT.seconds),
+            **kwargs
+        ) as response:
+            response.raise_for_status()
+            res = await response.json(loads=json_loads)
+            _LOGGER.debug(f'Received [{response.status}] response: {res}')
+            return res
+        # except Exception as error:
+        #     _LOGGER.warning(
+        #         "Failure when communcating with the server: %s", error
+        #     )
+        #     raise
 
     async def _logout(self):
         await self.post('-/logout/revoke')
@@ -519,11 +519,12 @@ class Vehicle:
 
             res = await self.post(method, **data)
             if res.get('errorCode') != '0':
-                _LOGGER.warning('Failed to execute')
+                _LOGGER.warning(f'Failed to execute {method}')
                 return
             else:
                 _LOGGER.debug('Message delivered')
                 return True
+
         except Exception as error:
             _LOGGER.warning(f'Failure to execute: {error}')
 
