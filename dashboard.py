@@ -66,9 +66,11 @@ class Instrument:
         supported = 'is_' + self.attr + "_supported"
         if hasattr(self.vehicle, supported):
             return getattr(self.vehicle, supported)
-        if hasattr(self.vehicle, self.attr):
-            return True
-        return self.vehicle.has_attr(self.attr)
+        else:
+            return False
+        # if hasattr(self.vehicle, self.attr):
+        #     return True
+        # return self.vehicle.has_attr(self.attr)
 
 
 class Sensor(Instrument):
