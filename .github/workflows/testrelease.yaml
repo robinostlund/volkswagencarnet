@@ -2,7 +2,8 @@ name: Test Release
 
 on:
   release:
-    types: [published, created, edited, unpublished, prereleased, released]
+    #types: [published, created, edited, unpublished, prereleased, released]
+    types: [prereleased]
 
 jobs:
   build:
