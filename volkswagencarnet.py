@@ -355,79 +355,104 @@ class Connection:
         _LOGGER.debug(f'Updating vehicle status {vehicle.vin}')
 
         # get new messages, needs to be here fot be able to get latest vehicle status
-        response = await self.post('-/msgc/get-new-messages', rel=url)
-        # messageList
-        if response.get('errorCode', {}) == '0':
-            self._state[url].update(
-                {'vehicleMessagesNew': response.get('response', {})}
-            )
-        else:
-            _LOGGER.debug(f'Could not fetch new messages: {response}')
+        try:
+            response = await self.post('-/msgc/get-new-messages', rel=url)
+            # messageList
+            if response.get('errorCode', {}) == '0':
+                self._state[url].update(
+                    {'vehicleMessagesNew': response.get('response', {})}
+                )
+            else:
+                _LOGGER.debug(f'Could not fetch new messages: {response}')
+        except Exception as err:
+            _LOGGER.debug(f'Could not fetch new messages: {err}')
 
-        response = await self.post('-/msgc/get-latest-messages', rel=url)
-        # messageList
-        if response.get('errorCode', {}) == '0':
-            self._state[url].update(
-                {'vehicleMessagesLatest': response.get('messageList', {})}
-            )
-        else:
-            _LOGGER.debug(f'Could not fetch latest messages: {response}')
+        # get latest messages
+        try:
+            response = await self.post('-/msgc/get-latest-messages', rel=url)
+            # messageList
+            if response.get('errorCode', {}) == '0':
+                self._state[url].update(
+                    {'vehicleMessagesLatest': response.get('messageList', {})}
+                )
+            else:
+                _LOGGER.debug(f'Could not fetch latest messages: {response}')
+        except Exception as err:
+            _LOGGER.debug(f'Could not fetch latest messages: {err}')
 
         # fetch vehicle status data
-        response = await self.post(url='-/vsr/get-vsr', rel=url)
-        if response.get('errorCode', {}) == '0' and response.get('vehicleStatusData', {}):
-            self._state[url].update(
-                {'vehicleStatus': response.get('vehicleStatusData', {})}
-            )
-        else:
-            _LOGGER.debug(f'Could not fetch vsr data: {response}')
+        try:
+            response = await self.post(url='-/vsr/get-vsr', rel=url)
+            if response.get('errorCode', {}) == '0' and response.get('vehicleStatusData', {}):
+                self._state[url].update(
+                    {'vehicleStatus': response.get('vehicleStatusData', {})}
+                )
+            else:
+                _LOGGER.debug(f'Could not fetch vsr data: {response}')
+        except Exception as err:
+            _LOGGER.debug(f'Could not fetch vsr data: {err}')
 
         # fetch vehicle emanage data
-        if not vehicle.attrs.get('engineTypeCombustian'):
-            response = await self.post('-/emanager/get-emanager', url)
-            if response.get('errorCode', {}) == '0' and response.get('EManager', {}):
-                self._state[url].update(
-                    {'vehicleEmanager': response.get('EManager', {})}
-                )
-            else:
-                _LOGGER.debug(f'Could not fetch emanager data: {response}')
+        try:
+            if not vehicle.attrs.get('engineTypeCombustian'):
+                response = await self.post('-/emanager/get-emanager', url)
+                if response.get('errorCode', {}) == '0' and response.get('EManager', {}):
+                    self._state[url].update(
+                        {'vehicleEmanager': response.get('EManager', {})}
+                    )
+                else:
+                    _LOGGER.debug(f'Could not fetch emanager data: {response}')
+        except Exception as err:
+            _LOGGER.debug(f'Could not fetch emanager data: {err}')
 
         # fetch vehicle location data
-        response = await self.post('-/cf/get-location', url)
-        if response.get('errorCode', {}) == '0' and response.get('position', {}):
-            self._state[url].update(
-                {'vehiclePosition': response.get('position', {})}
-            )
-        else:
-            _LOGGER.debug(f'Could not fetch location data: {response}')
-
-        # fetch vehicle details data
-        response = await self.post('-/vehicle-info/get-vehicle-details', url)
-        if response.get('errorCode', {}) == '0' and response.get('vehicleDetails', {}):
-            self._state[url].update(
-                {'vehicleDetails': response.get('vehicleDetails', {})}
-            )
-        else:
-            _LOGGER.debug(f'Could not fetch details data: {response}')
-
-        # fetch combustion engine remote auxiliary heating status data
-        if vehicle.attrs.get('engineTypeCombustian', False):
-            response = await self.post('-/rah/get-status', url)
-            if response.get('errorCode', {}) == '0' and response.get('remoteAuxiliaryHeating', {}):
+        try:
+            response = await self.post('-/cf/get-location', url)
+            if response.get('errorCode', {}) == '0' and response.get('position', {}):
                 self._state[url].update(
-                    {'vehicleRemoteAuxiliaryHeating': response.get('remoteAuxiliaryHeating', {})}
+                    {'vehiclePosition': response.get('position', {})}
                 )
             else:
-                _LOGGER.debug(f'Could not fetch remote auxiliary heating data: {response}')
+                _LOGGER.debug(f'Could not fetch location data: {response}')
+        except Exception as err:
+            _LOGGER.debug(f'Could not fetch location data: {err}')
+
+        # fetch vehicle details data
+        try:
+            response = await self.post('-/vehicle-info/get-vehicle-details', url)
+            if response.get('errorCode', {}) == '0' and response.get('vehicleDetails', {}):
+                self._state[url].update(
+                    {'vehicleDetails': response.get('vehicleDetails', {})}
+                )
+            else:
+                _LOGGER.debug(f'Could not fetch details data: {response}')
+        except Exception as err:
+            _LOGGER.debug(f'Could not fetch details data: {err}')
+
+        # fetch combustion engine remote auxiliary heating status data
+        try:
+            if vehicle.attrs.get('engineTypeCombustian', False):
+                response = await self.post('-/rah/get-status', url)
+                if response.get('errorCode', {}) == '0' and response.get('remoteAuxiliaryHeating', {}):
+                    self._state[url].update(
+                        {'vehicleRemoteAuxiliaryHeating': response.get('remoteAuxiliaryHeating', {})}
+                    )
+                else:
+                    _LOGGER.debug(f'Could not fetch remote auxiliary heating data: {response}')
+        except Exception as err:
+            _LOGGER.debug(f'Could not fetch remote auxiliary heating data: {err}')
 
         # fetch latest trips
-        response = await self.post('-/rts/get-latest-trip-statistics', url)
-        if response.get('errorCode', {}) == '0' and response.get('rtsViewModel', {}):
-            self._state[url].update(
-                {'vehicleLastTrips': response.get('rtsViewModel', {})}
-            )
-        else:
-            _LOGGER.debug(f'Could not fetch last trips data: {response}')
+        try:
+            response = await self.post('-/rts/get-latest-trip-statistics', url)
+            if response.get('errorCode', {}) == '0' and response.get('rtsViewModel', {}):
+                self._state[url].update(
+                    {'vehicleLastTrips': response.get('rtsViewModel', {})}
+                )
+            else:
+                _LOGGER.debug(f'Could not fetch last trips data: {response}')
+        except Exception as err:
+            _LOGGER.debug(f'Could not fetch last trips data: {err}')
 
         _LOGGER.debug(f'{vehicle.unique_id} data: {self._state[url]}')
 
