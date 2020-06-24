@@ -365,7 +365,7 @@ class Connection:
             else:
                 _LOGGER.debug(f'Could not fetch new messages: {response}')
         except Exception as err:
-            _LOGGER.debug(f'Could not fetch new messages: {err}')
+            _LOGGER.debug(f'Could not fetch new messages, error: {err}')
 
         # get latest messages
         try:
@@ -378,7 +378,7 @@ class Connection:
             else:
                 _LOGGER.debug(f'Could not fetch latest messages: {response}')
         except Exception as err:
-            _LOGGER.debug(f'Could not fetch latest messages: {err}')
+            _LOGGER.debug(f'Could not fetch latest messages, error: {err}')
 
         # fetch vehicle status data
         try:
@@ -390,7 +390,7 @@ class Connection:
             else:
                 _LOGGER.debug(f'Could not fetch vsr data: {response}')
         except Exception as err:
-            _LOGGER.debug(f'Could not fetch vsr data: {err}')
+            _LOGGER.debug(f'Could not fetch vsr data, error: {err}')
 
         # fetch vehicle emanage data
         try:
@@ -403,7 +403,7 @@ class Connection:
                 else:
                     _LOGGER.debug(f'Could not fetch emanager data: {response}')
         except Exception as err:
-            _LOGGER.debug(f'Could not fetch emanager data: {err}')
+            _LOGGER.debug(f'Could not fetch emanager data, error: {err}')
 
         # fetch vehicle location data
         try:
@@ -415,7 +415,7 @@ class Connection:
             else:
                 _LOGGER.debug(f'Could not fetch location data: {response}')
         except Exception as err:
-            _LOGGER.debug(f'Could not fetch location data: {err}')
+            _LOGGER.debug(f'Could not fetch location data, error: {err}')
 
         # fetch vehicle details data
         try:
@@ -427,11 +427,11 @@ class Connection:
             else:
                 _LOGGER.debug(f'Could not fetch details data: {response}')
         except Exception as err:
-            _LOGGER.debug(f'Could not fetch details data: {err}')
+            _LOGGER.debug(f'Could not fetch details data, error: {err}')
 
         # fetch combustion engine remote auxiliary heating status data
-        try:
-            if vehicle.attrs.get('engineTypeCombustian', False):
+        if vehicle.attrs.get('engineTypeCombustian', False):
+            try:
                 response = await self.post('-/rah/get-status', url)
                 if response.get('errorCode', {}) == '0' and response.get('remoteAuxiliaryHeating', {}):
                     self._state[url].update(
@@ -439,8 +439,8 @@ class Connection:
                     )
                 else:
                     _LOGGER.debug(f'Could not fetch remote auxiliary heating data: {response}')
-        except Exception as err:
-            _LOGGER.debug(f'Could not fetch remote auxiliary heating data: {err}')
+            except Exception as err:
+                _LOGGER.debug(f'Could not fetch remote auxiliary heating data, error: {err}')
 
         # fetch latest trips
         try:
@@ -452,7 +452,7 @@ class Connection:
             else:
                 _LOGGER.debug(f'Could not fetch last trips data: {response}')
         except Exception as err:
-            _LOGGER.debug(f'Could not fetch last trips data: {err}')
+            _LOGGER.debug(f'Could not fetch last trips data, error: {err}')
 
         _LOGGER.debug(f'{vehicle.unique_id} data: {self._state[url]}')
 
