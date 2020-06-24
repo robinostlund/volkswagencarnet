@@ -2,7 +2,7 @@ name: Test Release
 
 on:
   release:
-    types: [published, created, edited, unpublished, prereleased]
+    types: [created, edited, unpublished, prereleased]
 
 jobs:
   build:
@@ -24,7 +24,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install setuptools setuptools-scm wheel twine
 
-      - name: Build and publish to pypi
+      - name: Build and publish to pypi test
         env:
           TWINE_USERNAME: ${{ secrets.PYPI_USERNAME_TEST }}
           TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD_TEST }}
