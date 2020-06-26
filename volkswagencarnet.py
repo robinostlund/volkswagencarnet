@@ -1256,7 +1256,7 @@ async def main():
     else:
         logging.basicConfig(level=logging.ERROR)
 
-    async with ClientSession() as session:
+    async with ClientSession(headers={'Connection': 'keep-alive'}) as session:
         connection = Connection(session, **read_config())
         if await connection._login():
             if await connection.update():
