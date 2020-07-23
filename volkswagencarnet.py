@@ -65,6 +65,9 @@ class Connection:
 
         self._state = {}
 
+    def _clear_cookies(self):
+        self._session._cookie_jar._cookies.clear()
+
     async def _login(self):
         """ Reset session in case we would like to login again """
         self._session_headers = HEADERS_SESSION.copy()
@@ -78,7 +81,7 @@ class Connection:
 
         try:
             # remove cookies from session as we are doing a new login
-            self._session._cookie_jar._cookies.clear()
+            self._clear_cookies()
 
             # Request landing page and get CSFR:
             req = await self._session.get(
@@ -257,7 +260,6 @@ class Connection:
             return True
 
         except Exception as error:
-            raise error
             _LOGGER.error('Failed to login to carnet, %s' % error)
             self._session_logged_in = False
             return False
@@ -287,7 +289,7 @@ class Connection:
     async def _logout(self):
         await self.post('-/logout/revoke')
         # remove cookies from session as we have logged out
-        self._session._cookie_jar._cookies.clear()
+        self._clear_cookies()
 
     def _make_url(self, ref, rel=None):
         return urljoin(rel or self._session_auth_ref_url, ref)
