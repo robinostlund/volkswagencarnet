@@ -77,6 +77,9 @@ class Connection:
             return req.split('_')[1].lower()
 
         try:
+            # remove cookies from session as we are doing a new login
+            self._session._cookie_jar._cookies.clear()
+
             # Request landing page and get CSFR:
             req = await self._session.get(
                 url=self._session_base + '/portal/en_GB/web/guest/home'
@@ -93,7 +96,6 @@ class Connection:
             )
             if req.status != 200:
                 return ""
-
             response_data = await req.json()
             lg_url = response_data.get("loginURL").get("path")
 
@@ -233,6 +235,7 @@ class Connection:
 
             # get: https://www.portal.volkswagen-we.com/portal/user/xxx/v_8xxx
             ref_url_7 = req.headers.get('location')
+
             req = await self._session.get(
                 url=ref_url_7,
                 allow_redirects=False,
@@ -244,9 +247,6 @@ class Connection:
             # We have a new CSRF
             csrf = extract_csrf(await req.text())
 
-            # cookie = self._session.cookies.get_dict()
-            # cookie = req.cookies
-
             self._session_guest_language_id = extract_guest_language_id(req.cookies.get('GUEST_LANGUAGE_ID').value)
 
             # Update headers for requests
@@ -257,6 +257,7 @@ class Connection:
             return True
 
         except Exception as error:
+            raise error
             _LOGGER.error('Failed to login to carnet, %s' % error)
             self._session_logged_in = False
             return False
@@ -285,6 +286,8 @@ class Connection:
 
     async def _logout(self):
         await self.post('-/logout/revoke')
+        # remove cookies from session as we have logged out
+        self._session._cookie_jar._cookies.clear()
 
     def _make_url(self, ref, rel=None):
         return urljoin(rel or self._session_auth_ref_url, ref)
@@ -303,15 +306,12 @@ class Connection:
     async def update(self):
         """Update status."""
         try:
-            # if self._session_first_update:
-            #     if not await self.validate_login:
-            #         _LOGGER.warning('Session expired, creating new login session to carnet.')
-            #         await self._login()
-            # else:
-            #     self._session_first_update = True
-
-            # relogin to vw carnet to prevent that no updates occur
-            await self._login()
+            if self._session_first_update:
+                if not await self.validate_login:
+                    _LOGGER.warning('Session expired, creating new login session to carnet.')
+                    await self._login()
+            else:
+                self._session_first_update = True
 
             # fetch vehicles
             _LOGGER.debug('Fetching vehicles')
@@ -1265,7 +1265,7 @@ async def main():
             if await connection.update():
                 for vehicle in connection.vehicles:
                     print(vehicle)
-
+            await connection._logout()
 
 if __name__ == "__main__":
     loop = asyncio.get_event_loop()
