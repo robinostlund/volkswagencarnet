@@ -303,17 +303,20 @@ class Connection:
     async def update(self):
         """Update status."""
         try:
-            if self._session_first_update:
-                if not await self.validate_login:
-                    _LOGGER.warning('Session expired, creating new login session to carnet.')
-                    await self._login()
-            else:
-                self._session_first_update = True
+            # if self._session_first_update:
+            #     if not await self.validate_login:
+            #         _LOGGER.warning('Session expired, creating new login session to carnet.')
+            #         await self._login()
+            # else:
+            #     self._session_first_update = True
+
+            # relogin to vw carnet to prevent that no updates occur
+            await self._login()
 
             # fetch vehicles
             _LOGGER.debug('Fetching vehicles')
-            # owners_verification = self.post(f'/portal/group/{self._session_guest_language_id}/edit-profile/-/profile/get-vehicles-owners-verification')
 
+            # owners_verification = self.post(f'/portal/group/{self._session_guest_language_id}/edit-profile/-/profile/get-vehicles-owners-verification')
             # get vehicles
             loaded_vehicles = await self.post(
                 url='-/mainnavigation/get-fully-loaded-cars'
