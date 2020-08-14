@@ -770,7 +770,8 @@ class Vehicle:
     @property
     def is_external_power_supported(self):
         """External power supported."""
-        return self.attrs.get('vehicleEmanager', {}).get('rbc', {}).get('status', {}).get('pluginState', False)
+        if self.attrs.get('vehicleEmanager', {}).get('rbc', {}).get('status', {}).get('pluginState', False):
+            return True
 
     @property
     def electric_climatisation(self):
@@ -912,8 +913,10 @@ class Vehicle:
 
     @property
     def is_sunroof_closed_supported(self):
+        print(self.attrs.get('vehicleStatus', {}))
+        print(self.attrs.get('vehicleStatus', {}).get('carRenderData', {}))
         """Return true if sunroof state is supported"""
-        if type(self.attrs.get('vehicleStatus', {}).get('carRenderData', {}).get('sunroof', False)) in (float, int):
+        if self.attrs.get('vehicleStatus', {}).get('carRenderData', {}).get('sunroof', 0):
             return True
 
     @property
@@ -949,6 +952,54 @@ class Vehicle:
         response = self.attrs.get('vehicleStatus', {}).get('lockData', [])
         if len(response) > 0:
             return True
+
+    @property
+    def door_closed_left_front(self):
+        doors = self.attrs.get('vehicleStatus', {}).get('carRenderData', {}).get('doors', {})
+        if doors.get('left_front', 0) == 3:
+            return True
+        return False
+
+    @property
+    def is_door_closed_left_front_supported(self):
+        """Return true if window state is supported"""
+        return self.is_windows_closed_supported
+
+    @property
+    def door_closed_right_front(self):
+        doors = self.attrs.get('vehicleStatus', {}).get('carRenderData', {}).get('doors', {})
+        if doors.get('right_front', 0) == 3:
+            return True
+        return False
+
+    @property
+    def is_door_closed_right_front_supported(self):
+        """Return true if window state is supported"""
+        return self.is_windows_closed_supported
+
+    @property
+    def door_closed_left_back(self):
+        doors = self.attrs.get('vehicleStatus', {}).get('carRenderData', {}).get('doors', {})
+        if doors.get('left_back', 0) == 3:
+            return True
+        return False
+
+    @property
+    def is_door_closed_left_back_supported(self):
+        """Return true if window state is supported"""
+        return self.is_windows_closed_supported
+
+    @property
+    def door_closed_right_back(self):
+        doors = self.attrs.get('vehicleStatus', {}).get('carRenderData', {}).get('doors', {})
+        if doors.get('right_back', 0) == 3:
+            return True
+        return False
+
+    @property
+    def is_door_closed_right_back_supported(self):
+        """Return true if window state is supported"""
+        return self.is_windows_closed_supported
 
     @property
     def trunk_locked(self):
@@ -1278,7 +1329,10 @@ async def main():
         if await connection._login():
             if await connection.update():
                 for vehicle in connection.vehicles:
-                    print(vehicle)
+                    print(f'Vehicle id: {vehicle}')
+                    print('Supported sensors:')
+                    for instrument in vehicle.dashboard().instruments:
+                        print(f' - {instrument.name} (domain:{instrument.component})')
             await connection._logout()
 
 if __name__ == "__main__":
