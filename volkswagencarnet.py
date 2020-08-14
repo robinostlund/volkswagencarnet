@@ -913,8 +913,6 @@ class Vehicle:
 
     @property
     def is_sunroof_closed_supported(self):
-        print(self.attrs.get('vehicleStatus', {}))
-        print(self.attrs.get('vehicleStatus', {}).get('carRenderData', {}))
         """Return true if sunroof state is supported"""
         if self.attrs.get('vehicleStatus', {}).get('carRenderData', {}).get('sunroof', 0):
             return True
@@ -998,6 +996,17 @@ class Vehicle:
 
     @property
     def is_door_closed_right_back_supported(self):
+        """Return true if window state is supported"""
+        return self.is_windows_closed_supported
+
+    @property
+    def trunk_closed(self):
+        state = self.attrs.get('vehicleStatus', {}).get('carRenderData', {}).get('doors', {}).get('trunk', '')
+        state_value = state == 3
+        return state_value
+
+    @property
+    def is_trunk_closed_supported(self):
         """Return true if window state is supported"""
         return self.is_windows_closed_supported
 
