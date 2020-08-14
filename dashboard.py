@@ -621,6 +621,30 @@ def create_instruments():
             reverse_state=True
         ),
         BinarySensor(
+            attr="door_closed_left_front",
+            name="Door closed left front",
+            device_class="door",
+            reverse_state=True
+        ),
+        BinarySensor(
+            attr="door_closed_right_front",
+            name="Door closed right front",
+            device_class="door",
+            reverse_state=True
+        ),
+        BinarySensor(
+            attr="door_closed_left_back",
+            name="Door closed left back",
+            device_class="door",
+            reverse_state=True
+        ),
+        BinarySensor(
+            attr="door_closed_right_back",
+            name="Door closed right back",
+            device_class="door",
+            reverse_state=True
+        ),
+        BinarySensor(
             attr="trunk_locked",
             name="Trunk locked",
             device_class="lock",
