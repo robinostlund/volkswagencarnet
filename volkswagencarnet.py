@@ -912,18 +912,9 @@ class Vehicle:
 
     @ property
     def is_sunroof_closed_supported(self):
-        """Return true if window state is supported"""
-        return self.is_windows_closed_supported
-
-    #@ property
-    #def hood_closed(self):
-    #    state_hood = self.attrs.get('vehicleStatus', {}).get('carRenderData', {}).get('hood', 0)
-    #    hood_closed = state_hood == 3
-    #    return hood_closed
-
-    #@ property
-    #def is_hood_closed_supported(self):
-    #    return False
+        """Return true if sunroof state is supported"""
+        if type(self.attrs.get('vehicleStatus', {}).get('carRenderData', {}).get('sunroof', False)) in (float, int):
+            return True
 
     @ property
     def charging_time_left(self):
