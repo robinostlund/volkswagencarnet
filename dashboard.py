@@ -627,6 +627,12 @@ def create_instruments():
             reverse_state=True
         ),
         BinarySensor(
+            attr="sunroof_closed",
+            name="Sunroof closed",
+            device_class="window",
+            reverse_state=True
+        ),
+        BinarySensor(
             attr="windows_closed",
             name="Windows closed",
             device_class="window",

@@ -905,6 +905,18 @@ class Vehicle:
         return self.is_windows_closed_supported
 
     @ property
+    def sunroof_closed(self):
+        state_sunroof = self.attrs.get('vehicleStatus', {}).get('carRenderData', {}).get('sunroof', 0)
+        sunroof_closed = state_sunroof == 3
+        return sunroof_closed
+
+    @ property
+    def is_sunroof_closed_supported(self):
+        """Return true if sunroof state is supported"""
+        if type(self.attrs.get('vehicleStatus', {}).get('carRenderData', {}).get('sunroof', False)) in (float, int):
+            return True
+
+    @ property
     def charging_time_left(self):
         if self.external_power:
             hours = self.attrs.get('vehicleEmanager', {}).get('rbc', {}).get('status', {}).get('chargingRemaningHour', 0)
