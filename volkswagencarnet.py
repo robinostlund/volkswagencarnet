@@ -577,7 +577,7 @@ class Vehicle:
 
     @property
     def climatisation_target_temperature(self):
-        return self.attrs.get('vehicleEmanager').get('rpc').get('settings').get('targetTemperature')
+        return self.attrs.get('vehicleEmanager').get('rpc').get('settings').get('targetTemperature', 0)
 
     @property
     def is_climatisation_target_temperature_supported(self):
