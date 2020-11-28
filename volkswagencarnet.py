@@ -1300,6 +1300,14 @@ class Vehicle:
         else:
             _LOGGER.error('No climatisation support.')
 
+    async def request_report(self):
+        """Request car to report its state when connected."""
+        resp = await self.call('-/vhr/create-report')
+        if not resp:
+            _LOGGER.warning('Failed to request new report generation')
+        else:
+            return resp
+
     async def get_status(self, timeout=10):
         """Check status from call"""
         retry_counter = 0
