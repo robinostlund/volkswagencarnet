@@ -12,7 +12,7 @@ from urllib.parse import urlsplit, urljoin, parse_qs, urlparse
 from json import dumps as to_json
 from collections import OrderedDict
 from bs4 import BeautifulSoup
-from utilities import find_path, is_valid_path, read_config, json_loads
+from vw_utilities import find_path, is_valid_path, read_config, json_loads
 
 from aiohttp import ClientSession, ClientTimeout
 from aiohttp.hdrs import METH_GET, METH_POST
@@ -544,7 +544,7 @@ class Vehicle:
         return find_path(self.attrs, attr)
 
     def dashboard(self, **config):
-        from dashboard import Dashboard
+        from vw_dashboard import Dashboard
         return Dashboard(self, **config)
 
     @property
