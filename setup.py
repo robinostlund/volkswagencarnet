@@ -16,8 +16,8 @@ setup(
     long_description_content_type='text/markdown',
     py_modules=[
         "volkswagencarnet",
-        "dashboard",
-        "utilities",
+        "vw_dashboard",
+        "vw_utilities",
         "__init__"
     ],
     provides=["volkswagencarnet"],
