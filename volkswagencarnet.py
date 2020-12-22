@@ -25,6 +25,7 @@ _LOGGER = logging.getLogger(__name__)
 TIMEOUT = timedelta(seconds=30)
 
 HEADERS_SESSION = {
+    'Connection': 'keep-alive',
     'Accept': 'application/json, text/plain, */*',
     'Content-Type': 'application/json;charset=UTF-8',
     'User-Agent': 'Mozilla/5.0 (Linux; Android 6.0.1; D5803 Build/23.5.A.1.291; wv) \
@@ -32,6 +33,7 @@ HEADERS_SESSION = {
 }
 
 HEADERS_AUTH = {
+    'Connection': 'keep-alive',
     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,\
         image/apng,*/*;q=0.8,application/signed-exchange;v=b3',
     'Content-Type': 'application/x-www-form-urlencoded',
@@ -85,7 +87,8 @@ class Connection:
 
             # Request landing page and get CSFR:
             req = await self._session.get(
-                url=self._session_base + '/portal/en_GB/web/guest/home'
+                url=self._session_base + '/portal/en_GB/web/guest/home',
+                headers={'Connection': 'keep-alive'}
             )
             if req.status != 200:
                 return ""
@@ -1296,6 +1299,14 @@ class Vehicle:
                 return resp
         else:
             _LOGGER.error('No climatisation support.')
+
+    async def request_report(self):
+        """Request car to report its state when connected."""
+        resp = await self.call('-/vhr/create-report')
+        if not resp:
+            _LOGGER.warning('Failed to request new report generation')
+        else:
+            return resp
 
     async def get_status(self, timeout=10):
         """Check status from call"""
