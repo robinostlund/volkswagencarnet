@@ -2,6 +2,8 @@
 # Thanks to molobrakos
 
 import logging
+from typing import Union
+
 from vw_utilities import camel2slug
 
 _LOGGER = logging.getLogger(__name__)
@@ -207,7 +209,7 @@ class ElectricClimatisationClimate(Climate):
         super().__init__(attr="electric_climatisation", name="Electric Climatisation", icon="mdi:radiator")
 
     @property
-    def hvac_mode(self):
+    def hvac_mode(self) -> Union[str, bool]:
         return self.vehicle.electric_climatisation
 
     @property
@@ -232,7 +234,7 @@ class CombustionClimatisationClimate(Climate):
         self.spin = config.get('spin', '')
 
     @property
-    def hvac_mode(self):
+    def hvac_mode(self) -> Union[str, bool]:
         return self.vehicle.combustion_climatisation
 
     @property
@@ -365,7 +367,7 @@ class ElectricClimatisation(Switch):
 
     @property
     def state(self):
-        return self.vehicle.electric_climatisation
+        return self.vehicle.electric_climatisation is not False
 
     async def turn_on(self):
         await self.vehicle.start_electric_climatisation()
@@ -447,7 +449,7 @@ class CombustionClimatisation(Switch):
 
     @property
     def state(self):
-        return self.vehicle.combustion_climatisation
+        return self.vehicle.combustion_climatisation is not False
 
     async def turn_on(self):
         await self.vehicle.start_combustion_climatisation(self.spin)
