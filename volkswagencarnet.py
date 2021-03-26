@@ -841,6 +841,27 @@ class Vehicle:
         return self.attrs.get('vehicleRemoteAuxiliaryHeating', {}).get('status', {}).get('active', False)
 
     @property
+    def combustion_engine_heating_attributes(self):
+        """Return attributes of combustion engine heating."""
+        attrs = {}
+        status = self.attrs.get('vehicleRemoteAuxiliaryHeating', {}).get('status', {})
+        if not status:
+            return attrs
+
+        attrs['mode'] = status.get('operationMode', 'HEATING').capitalize()
+
+        if 'ventilationOnly' in status and status.get('operationMode', False):
+            attrs['ventilation'] = True
+
+        if 'remainingTime' in status:
+            attrs['remaining_time'] = status['remainingTime']
+
+        if 'outdoorTemp' in status:
+            attrs['outdoor_temperature'] = status['outdoorTemp']
+
+        return attrs
+
+    @property
     def is_combustion_engine_heating_supported(self):
         """Return true if vehichle has combustion engine heating."""
         if self.attrs.get('vehicleRemoteAuxiliaryHeating', False):
