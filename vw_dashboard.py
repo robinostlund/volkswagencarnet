@@ -437,6 +437,10 @@ class CombustionEngineHeating(Switch):
     def assumed_state(self):
         return False
 
+    @property
+    def attributes(self):
+        return self.vehicle.combustion_engine_heating_attributes
+
 
 class CombustionClimatisation(Switch):
     def __init__(self):
