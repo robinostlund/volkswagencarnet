@@ -8,6 +8,7 @@ import asyncio
 
 from sys import version_info, argv
 from datetime import timedelta, datetime
+from typing import Union
 from urllib.parse import urlsplit, urljoin, parse_qs, urlparse
 from json import dumps as to_json
 from collections import OrderedDict
@@ -777,12 +778,12 @@ class Vehicle:
             return True
 
     @property
-    def electric_climatisation(self):
+    def electric_climatisation(self) -> Union[str, bool]:
         """Return status of climatisation."""
         climatisation_type = self.attrs.get('vehicleEmanager', {}).get('rpc', {}).get('settings', {}).get('electric', False)
         status = self.attrs.get('vehicleEmanager', {}).get('rpc', {}).get('status', {}).get('climatisationState', '')
         if status in ['HEATING', 'COOLING'] and climatisation_type is True:
-            return True
+            return status
         else:
             return False
 
@@ -799,12 +800,12 @@ class Vehicle:
         return self.is_climatisation_supported
 
     @property
-    def combustion_climatisation(self):
+    def combustion_climatisation(self) -> Union[str, bool]:
         """Return status of combustion climatisation."""
         climatisation_type = self.attrs.get('vehicleEmanager', {}).get('rpc', {}).get('settings', {}).get('electric', False)
         status = self.attrs.get('vehicleEmanager', {}).get('rpc', {}).get('status', {}).get('climatisationState', '')
         if status and status in ['HEATING', 'COOLING'] and climatisation_type is False:
-            return True
+            return status
         else:
             return False
 
