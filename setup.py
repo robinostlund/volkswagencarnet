@@ -14,13 +14,6 @@ setup(
     url='https://github.com/robinostlund/volkswagencarnet',
     long_description=long_description,
     long_description_content_type='text/markdown',
-    py_modules=[
-        "volkswagencarnet",
-        "vw_dashboard",
-        "vw_utilities",
-        "__init__"
-    ],
-    provides=["volkswagencarnet"],
     install_requires=list(open("requirements.txt").read().strip().split("\n")),
     use_scm_version=True,
     setup_requires=[
