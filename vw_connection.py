@@ -19,8 +19,8 @@ from json import dumps as to_json
 import aiohttp
 from bs4 import BeautifulSoup
 from base64 import b64encode
-from pyweconnect.utilities import read_config, json_loads
-from pyweconnect.vehicle import Vehicle
+from vw_utilities import read_config, json_loads
+from vw_vehicle import Vehicle
 
 from aiohttp import ClientSession, ClientTimeout
 from aiohttp.hdrs import METH_GET, METH_POST
