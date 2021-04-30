@@ -19,7 +19,7 @@ setup(
         "vw_vehicle",
         "vw_dashboard",
         "vw_utilities",
-        "const",
+        "vw_const",
         "__init__"
     ],
     provides=["volkswagencarnet"],
