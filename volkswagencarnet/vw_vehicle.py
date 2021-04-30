@@ -8,7 +8,7 @@ from collections import OrderedDict
 from datetime import datetime, timedelta, timezone
 from json import dumps as to_json
 
-from vw_utilities import find_path, is_valid_path
+from volkswagencarnet.vw_utilities import find_path, is_valid_path
 
 _LOGGER = logging.getLogger(__name__)
 
