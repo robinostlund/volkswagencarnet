@@ -1,4 +1,4 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 # read the contents of your README file
 from os import path
@@ -14,6 +14,15 @@ setup(
     url='https://github.com/robinostlund/volkswagencarnet',
     long_description=long_description,
     long_description_content_type='text/markdown',
+    py_modules=[
+        "vw_connection",
+        "vw_vehicle",
+        "vw_dashboard",
+        "vw_utilities",
+        "const",
+        "__init__"
+    ],
+    provides=["volkswagencarnet"],
     install_requires=list(open("requirements.txt").read().strip().split("\n")),
     use_scm_version=True,
     setup_requires=[
