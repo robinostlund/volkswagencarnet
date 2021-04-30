@@ -2,7 +2,7 @@
 # Thanks to molobrakos
 
 import logging
-from volkswagencarnet.vw_utilities import camel2slug
+from pyweconnect.utilities import camel2slug
 
 _LOGGER = logging.getLogger(__name__)
 
