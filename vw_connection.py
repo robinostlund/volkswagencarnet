@@ -25,7 +25,7 @@ from vw_vehicle import Vehicle
 from aiohttp import ClientSession, ClientTimeout
 from aiohttp.hdrs import METH_GET, METH_POST
 
-from const import (
+from vw_const import (
     BRAND,
     COUNTRY,
     HEADERS_SESSION,
