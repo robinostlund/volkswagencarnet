@@ -1505,12 +1505,12 @@ class Vehicle:
             return True
 
     @property
-    def trip_last_average_electric_consumption(self):
+    def trip_last_average_electric_engine_consumption(self):
         value = self.trip_last_entry.get('averageElectricEngineConsumption')
         return float(value / 10)
 
     @property
-    def is_trip_last_average_electric_consumption_supported(self):
+    def is_trip_last_average_electric_engine_consumption_supported(self):
         response = self.trip_last_entry
         if response and type(response.get('averageElectricEngineConsumption', None)) in (float, int):
             return True
@@ -1533,6 +1533,17 @@ class Vehicle:
     def is_trip_last_average_auxillary_consumption_supported(self):
         response = self.trip_last_entry
         if response and type(response.get('averageAuxiliaryConsumption', None)) in (float, int):
+            return True
+
+    @property
+    def trip_last_average_aux_consumer_consumption(self):
+        value = self.trip_last_entry.get('averageAuxConsumerConsumption')
+        return float(value / 10)
+
+    @property
+    def is_trip_last_average_aux_consumer_consumption_supported(self):
+        response = self.trip_last_entry
+        if response and type(response.get('averageAuxConsumerConsumption', None)) in (float, int):
             return True
 
     @property
@@ -1565,6 +1576,17 @@ class Vehicle:
         # Not implemented
         response = self.trip_last_entry
         if response and type(response.get('recuperation', None)) in (float, int):
+            return True
+
+    @property
+    def trip_last_average_recuperation(self):
+        value = self.trip_last_entry.get('averageRecuperation')
+        return float(value / 10)
+
+    @property
+    def is_trip_last_average_recuperation_supported(self):
+        response = self.trip_last_entry
+        if response and type(response.get('averageRecuperation', None)) in (float, int):
             return True
 
     @property
