@@ -756,8 +756,20 @@ def create_instruments():
             unit="kWh/100 km",
         ),
         Sensor(
+            attr="trip_last_average_recuperation",
+            name="Last trip average recuperation",
+            icon="mdi:battery-plus",
+            unit="kWh/100 km",
+        ),
+        Sensor(
             attr="trip_last_average_auxillary_consumption",
             name="Last trip average auxillary consumption",
+            icon="mdi:flash",
+            unit="kWh/100 km",
+        ),
+        Sensor(
+            attr="trip_last_average_aux_consumer_consumption",
+            name="Last trip average auxillary consumer consumption",
             icon="mdi:flash",
             unit="kWh/100 km",
         ),
