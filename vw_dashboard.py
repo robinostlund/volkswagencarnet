@@ -726,8 +726,8 @@ def create_instruments():
             unit="km/h",
         ),
         Sensor(
-            attr="trip_last_average_electric_consumption",
-            name="Last trip average electric consumption",
+            attr="trip_last_average_electric_engine_consumption",
+            name="Last trip average electric engine consumption",
             icon="mdi:car-battery",
             unit="kWh/100 km",
         ),

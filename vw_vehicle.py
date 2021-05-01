@@ -1505,12 +1505,12 @@ class Vehicle:
             return True
 
     @property
-    def trip_last_average_electric_consumption(self):
+    def trip_last_average_electric_engine_consumption(self):
         value = self.trip_last_entry.get('averageElectricEngineConsumption')
         return float(value / 10)
 
     @property
-    def is_trip_last_average_electric_consumption_supported(self):
+    def is_trip_last_average_electric_engine_consumption_supported(self):
         response = self.trip_last_entry
         if response and type(response.get('averageElectricEngineConsumption', None)) in (float, int):
             return True
