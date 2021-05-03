@@ -51,7 +51,7 @@ class Connection:
     """ Connection to VW-Group Connect services """
 
     # Init connection class
-    def __init__(self, session, username, password, fulldebug=False, interval=timedelta(minutes=5)):
+    def __init__(self, session, username, password, fulldebug=False, country=COUNTRY, interval=timedelta(minutes=5)):
         """ Initialize """
         self._x_client_id = None
         self._session = session
@@ -69,6 +69,7 @@ class Connection:
         self._session_auth_username = username
         self._session_auth_password = password
         self._session_tokens = {}
+        self._session_country = country.upper()
 
         self._vin = ""
         self._vehicles = []
@@ -108,7 +109,7 @@ class Connection:
         await self.set_token('vwg')
         self._session_headers.pop('Content-Type', None)
         loaded_vehicles = await self.get(
-            url=f'https://msg.volkswagen.de/fs-car/usermanagement/users/v1/{BRAND}/{COUNTRY}/vehicles'
+            url=f'https://msg.volkswagen.de/fs-car/usermanagement/users/v1/{BRAND}/{self._session_country}/vehicles'
         )
         # Add Vehicle class object for all VIN-numbers from account
         if loaded_vehicles.get('userVehicles') is not None:
@@ -133,7 +134,7 @@ class Connection:
             ts = "%d" % (time.time())
             sha256 = hashlib.sha256()
             sha256.update(ts.encode())
-            return (b64encode(sha256.digest()).decode('utf-8')[:-1])
+            return b64encode(sha256.digest()).decode('utf-8')[:-1]
 
         def base64URLEncode(s):
             return base64.urlsafe_b64encode(s).rstrip(b'=')
@@ -158,13 +159,13 @@ class Connection:
             if req.status != 200:
                 return False
             response_data = await req.json()
-            authorizationEndpoint = response_data['authorization_endpoint']
-            authissuer = response_data['issuer']
+            authorization_endpoint = response_data['authorization_endpoint']
+            auth_issuer = response_data['issuer']
 
             # Get authorization page (login page)
             # https://identity.vwgroup.io/oidc/v1/authorize?nonce={NONCE}&state={STATE}&response_type={TOKEN_TYPES}&scope={SCOPE}&redirect_uri={APP_URI}&client_id={CLIENT_ID}
             if self._session_fulldebug:
-                _LOGGER.debug(f'Get authorization page from "{authorizationEndpoint}"')
+                _LOGGER.debug(f'Get authorization page from "{authorization_endpoint}"')
                 self._session_auth_headers.pop('Referer', None)
                 self._session_auth_headers.pop('Origin', None)
                 _LOGGER.debug(f'Request headers: "{self._session_auth_headers}"')
@@ -177,7 +178,7 @@ class Connection:
                 challenge = base64URLEncode(hashlib.sha256(code_verifier).digest())
 
                 req = await self._session.get(
-                    url=authorizationEndpoint + \
+                    url=authorization_endpoint + \
                         '?redirect_uri=' + APP_URI + \
                         '&prompt=login' + \
                         '&nonce=' + getNonce() + \
@@ -212,7 +213,7 @@ class Connection:
                     _LOGGER.warning(f'Unable to fetch authorization endpoint.')
                     raise Exception('Missing "location" header')
             except Exception as error:
-                _LOGGER.warning('Failed to get authorization endpoint.')
+                _LOGGER.warning('Failed to get authorization endpoint')
                 raise error
             if req.status != 200:
                 raise Exception('Fetching authorization endpoint failed')
@@ -220,19 +221,19 @@ class Connection:
                 _LOGGER.debug('Got authorization endpoint')
             try:
                 response_data = await req.text()
-                responseSoup = BeautifulSoup(response_data, 'html.parser')
+                response_soup = BeautifulSoup(response_data, 'html.parser')
                 mailform = dict([(t['name'], t['value']) for t in
-                                 responseSoup.find('form', id='emailPasswordForm').find_all('input', type='hidden')])
+                                 response_soup.find('form', id='emailPasswordForm').find_all('input', type='hidden')])
                 mailform['email'] = self._session_auth_username
-                pe_url = authissuer + responseSoup.find('form', id='emailPasswordForm').get('action')
+                pe_url = auth_issuer + response_soup.find('form', id='emailPasswordForm').get('action')
             except Exception as e:
                 _LOGGER.error('Failed to extract user login form.')
                 raise e
 
             # POST email
             # https://identity.vwgroup.io/signin-service/v1/{CLIENT_ID}/login/identifier
-            self._session_auth_headers['Referer'] = authorizationEndpoint
-            self._session_auth_headers['Origin'] = authissuer
+            self._session_auth_headers['Referer'] = authorization_endpoint
+            self._session_auth_headers['Origin'] = auth_issuer
             req = await self._session.post(
                 url=pe_url,
                 headers=self._session_auth_headers,
@@ -242,11 +243,11 @@ class Connection:
                 raise Exception('POST password request failed')
             try:
                 response_data = await req.text()
-                responseSoup = BeautifulSoup(response_data, 'html.parser')
-                pwform = dict([(t['name'], t['value']) for t in
-                               responseSoup.find('form', id='credentialsForm').find_all('input', type='hidden')])
-                pwform['password'] = self._session_auth_password
-                pw_url = authissuer + responseSoup.find('form', id='credentialsForm').get('action')
+                response_soup = BeautifulSoup(response_data, 'html.parser')
+                pw_form = dict([(t['name'], t['value']) for t in
+                               response_soup.find('form', id='credentialsForm').find_all('input', type='hidden')])
+                pw_form['password'] = self._session_auth_password
+                pw_url = auth_issuer + response_soup.find('form', id='credentialsForm').get('action')
             except Exception as e:
                 _LOGGER.error('Failed to extract password login form.')
                 raise e
@@ -254,20 +255,20 @@ class Connection:
             # POST password
             # https://identity.vwgroup.io/signin-service/v1/{CLIENT_ID}/login/authenticate
             self._session_auth_headers['Referer'] = pe_url
-            self._session_auth_headers['Origin'] = authissuer
+            self._session_auth_headers['Origin'] = auth_issuer
             _LOGGER.debug('Authenticating with email and password.')
             if self._session_fulldebug:
                 _LOGGER.debug(f'Using login action url: "{pw_url}"')
             req = await self._session.post(
                 url=pw_url,
                 headers=self._session_auth_headers,
-                data=pwform,
+                data=pw_form,
                 allow_redirects=False
             )
             _LOGGER.debug('Parsing login response.')
             # Follow all redirects until we get redirected back to "our app"
             try:
-                maxDepth = 10
+                max_depth = 10
                 ref = req.headers['Location']
                 while not ref.startswith(APP_URI):
                     if self._session_fulldebug:
@@ -282,8 +283,8 @@ class Connection:
                         raise Exception('User appears unauthorized')
                     ref = response.headers['Location']
                     # Set a max limit on requests to prevent forever loop
-                    maxDepth -= 1
-                    if maxDepth == 0:
+                    max_depth -= 1
+                    if max_depth == 0:
                         _LOGGER.warning('Should have gotten a token by now.')
                         raise Exception('Too many redirects')
             except Exception as e:
@@ -310,18 +311,18 @@ class Connection:
             jwt_auth_code = parse_qs(urlparse(ref).fragment).get('code')[0]
             jwt_id_token = parse_qs(urlparse(ref).fragment).get('id_token')[0]
             # Exchange Auth code and id_token for new tokens with refresh_token (so we can easier fetch new ones later)
-            tokenBody = {
+            token_body = {
                 'auth_code': jwt_auth_code,
                 'id_token': jwt_id_token,
                 'code_verifier': code_verifier.decode(),
                 'brand': BRAND
             }
             _LOGGER.debug('Trying to fetch user identity tokens.')
-            tokenURL = 'https://tokenrefreshservice.apps.emea.vwapps.io/exchangeAuthCode'
+            token_url = 'https://tokenrefreshservice.apps.emea.vwapps.io/exchangeAuthCode'
             req = await self._session.post(
-                url=tokenURL,
+                url=token_url,
                 headers=self._session_auth_headers,
-                data=tokenBody,
+                data=token_body,
                 allow_redirects=False
             )
             if req.status != 200:
@@ -344,6 +345,7 @@ class Connection:
                 _LOGGER.debug('User identity token verified OK.')
         except Exception as error:
             _LOGGER.error(f'Login failed for {BRAND} account, {error}')
+            _LOGGER.exception(error)
             self._session_logged_in = False
             return False
         return True
@@ -508,7 +510,7 @@ class Connection:
     # Construct URL from request, home region and variables
     def _make_url(self, ref, vin=''):
         replacedUrl = re.sub('\$vin', vin, ref)
-        if ('://' in replacedUrl):
+        if '://' in replacedUrl:
             # already server contained in URL
             return replacedUrl
         elif 'rolesrights' in replacedUrl:
@@ -550,12 +552,9 @@ class Connection:
             return False
         try:
             await self.set_token('vwg')
-            response = await self.get('https://mal-1a.prd.ece.vwg-connect.com/api/cs/vds/v1/vehicles/$vin/homeRegion',
-                                      vin)
-            self._session_auth_ref_url = response['homeRegion']['baseUri']['content'].split('/api')[0].replace('mal-',
-                                                                                                               'fal-') if \
-            response['homeRegion']['baseUri'][
-                'content'] != 'https://mal-1a.prd.ece.vwg-connect.com/api' else 'https://msg.volkswagen.de'
+            response = await self.get('https://mal-1a.prd.ece.vwg-connect.com/api/cs/vds/v1/vehicles/$vin/homeRegion', vin)
+            self._session_auth_ref_url = response['homeRegion']['baseUri']['content'].split('/api')[0].replace('mal-', 'fal-') if \
+            response['homeRegion']['baseUri']['content'] != 'https://mal-1a.prd.ece.vwg-connect.com/api' else 'https://msg.volkswagen.de'
             self._session_spin_ref_url = response['homeRegion']['baseUri']['content'].split('/api')[0]
             return response['homeRegion']['baseUri']['content']
         except Exception as error:
@@ -619,7 +618,7 @@ class Connection:
             self._session_headers[
                 'Accept'] = 'application/vnd.vwg.mbb.vehicleDataDetail_v2_1_0+json, application/vnd.vwg.mbb.genericError_v1_0_2+json'
             response = await self.get(
-                f'fs-car/vehicleMgmt/vehicledata/v2/{BRAND}/{COUNTRY}/vehicles/$vin',
+                f'fs-car/vehicleMgmt/vehicledata/v2/{BRAND}/{self._session_country}/vehicles/$vin',
                 vin=vin
             )
             self._session_headers['Accept'] = 'application/json'
@@ -642,7 +641,7 @@ class Connection:
         try:
             await self.set_token('vwg')
             response = await self.get(
-                f'fs-car/bs/vsr/v1/{BRAND}/{COUNTRY}/vehicles/$vin/status',
+                f'fs-car/bs/vsr/v1/{BRAND}/{self._session_country}/vehicles/$vin/status',
                 vin=vin
             )
             if response.get('StoredVehicleDataResponse', {}).get('vehicleData', {}).get('data', {})[0].get('field', {})[
@@ -671,7 +670,7 @@ class Connection:
         try:
             await self.set_token('vwg')
             response = await self.get(
-                f'fs-car/bs/tripstatistics/v1/{BRAND}/{COUNTRY}/vehicles/$vin/tripdata/shortTerm?newest',
+                f'fs-car/bs/tripstatistics/v1/{BRAND}/{self._session_country}/vehicles/$vin/tripdata/shortTerm?newest',
                 vin=vin
             )
             if response.get('tripData', {}):
@@ -692,7 +691,7 @@ class Connection:
         try:
             await self.set_token('vwg')
             response = await self.get(
-                f'fs-car/bs/cf/v1/{BRAND}/{COUNTRY}/vehicles/$vin/position',
+                f'fs-car/bs/cf/v1/{BRAND}/{self._session_country}/vehicles/$vin/position',
                 vin=vin
             )
             if response.get('findCarResponse', {}):
@@ -724,7 +723,7 @@ class Connection:
         try:
             await self.set_token('vwg')
             response = await self.get(
-                f'fs-car/bs/departuretimer/v1/{BRAND}/{COUNTRY}/vehicles/$vin/timer',
+                f'fs-car/bs/departuretimer/v1/{BRAND}/{self._session_country}/vehicles/$vin/timer',
                 vin=vin
             )
             if response.get('timer', {}):
@@ -745,7 +744,7 @@ class Connection:
         try:
             await self.set_token('vwg')
             response = await self.get(
-                f'fs-car/bs/climatisation/v1/{BRAND}/{COUNTRY}/vehicles/$vin/climater',
+                f'fs-car/bs/climatisation/v1/{BRAND}/{self._session_country}/vehicles/$vin/climater',
                 vin=vin
             )
             if response.get('climater', {}):
@@ -766,7 +765,7 @@ class Connection:
         try:
             await self.set_token('vwg')
             response = await self.get(
-                f'fs-car/bs/batterycharge/v1/{BRAND}/{COUNTRY}/vehicles/$vin/charger',
+                f'fs-car/bs/batterycharge/v1/{BRAND}/{self._session_country}/vehicles/$vin/charger',
                 vin=vin
             )
             if response.get('charger', {}):
@@ -787,7 +786,7 @@ class Connection:
         try:
             await self.set_token('vwg')
             response = await self.get(
-                f'fs-car/bs/rs/v1/{BRAND}/{COUNTRY}/vehicles/$vin/status',
+                f'fs-car/bs/rs/v1/{BRAND}/{self._session_country}/vehicles/$vin/status',
                 vin=vin
             )
             if response.get('statusResponse', {}):
@@ -815,15 +814,15 @@ class Connection:
                     raise Exception(f'Login for {BRAND} account failed')
             await self.set_token('vwg')
             if sectionId == 'climatisation':
-                url = f'fs-car/bs/$sectionId/v1/{BRAND}/{COUNTRY}/vehicles/$vin/climater/actions/$requestId'
+                url = f'fs-car/bs/$sectionId/v1/{BRAND}/{self._session_country}/vehicles/$vin/climater/actions/$requestId'
             elif sectionId == 'batterycharge':
-                url = f'fs-car/bs/$sectionId/v1/{BRAND}/{COUNTRY}/vehicles/$vin/charger/actions/$requestId'
+                url = f'fs-car/bs/$sectionId/v1/{BRAND}/{self._session_country}/vehicles/$vin/charger/actions/$requestId'
             elif sectionId == 'departuretimer':
-                url = f'fs-car/bs/$sectionId/v1/{BRAND}/{COUNTRY}/vehicles/$vin/timer/actions/$requestId'
+                url = f'fs-car/bs/$sectionId/v1/{BRAND}/{self._session_country}/vehicles/$vin/timer/actions/$requestId'
             elif sectionId == 'vsr':
-                url = f'fs-car/bs/$sectionId/v1/{BRAND}/{COUNTRY}/vehicles/$vin/requests/$requestId/jobstatus'
+                url = f'fs-car/bs/$sectionId/v1/{BRAND}/{self._session_country}/vehicles/$vin/requests/$requestId/jobstatus'
             else:
-                url = f'fs-car/bs/$sectionId/v1/{BRAND}/{COUNTRY}/vehicles/$vin/requests/$requestId/status'
+                url = f'fs-car/bs/$sectionId/v1/{BRAND}/{self._session_country}/vehicles/$vin/requests/$requestId/status'
             url = re.sub('\$sectionId', sectionId, url)
             url = re.sub('\$requestId', requestId, url)
 
@@ -933,7 +932,7 @@ class Connection:
         """"Force vehicle data update."""
         try:
             await self.set_token('vwg')
-            response = await self.dataCall(f'fs-car/bs/vsr/v1/{BRAND}/{COUNTRY}/vehicles/$vin/requests', vin, data=None)
+            response = await self.dataCall(f'fs-car/bs/vsr/v1/{BRAND}/{self._session_country}/vehicles/$vin/requests', vin, data=None)
             if not response:
                 raise Exception('Invalid or no response')
             elif response == 429:
@@ -954,7 +953,7 @@ class Connection:
         try:
             await self.set_token('vwg')
             response = await self.dataCall(
-                f'fs-car/bs/batterycharge/v1/{BRAND}/{COUNTRY}/vehicles/$vin/charger/actions', vin, json=data)
+                f'fs-car/bs/batterycharge/v1/{BRAND}/{self._session_country}/vehicles/$vin/charger/actions', vin, json=data)
             if not response:
                 raise Exception('Invalid or no response')
             elif response == 429:
@@ -978,7 +977,7 @@ class Connection:
             if data.get('action', {}).get('settings', {}).get('heaterSource', None) == 'auxiliary':
                 self._session_headers['X-securityToken'] = await self.get_sec_token(vin=vin, spin=spin, action='rclima')
             response = await self.dataCall(
-                f'fs-car/bs/climatisation/v1/{BRAND}/{COUNTRY}/vehicles/$vin/climater/actions', vin, json=data)
+                f'fs-car/bs/climatisation/v1/{BRAND}/{self._session_country}/vehicles/$vin/climater/actions', vin, json=data)
             self._session_headers.pop('X-securityToken', None)
             if not response:
                 raise Exception('Invalid or no response')
@@ -1007,7 +1006,7 @@ class Connection:
             self._session_headers['Content-Type'] = 'application/vnd.vwg.mbb.RemoteStandheizung_v2_0_2+json'
             if not 'quickstop' in data:
                 self._session_headers['x-mbbSecToken'] = await self.get_sec_token(vin=vin, spin=spin, action='heating')
-            response = await self.dataCall(f'fs-car/bs/rs/v1/{BRAND}/{COUNTRY}/vehicles/$vin/action', vin=vin,
+            response = await self.dataCall(f'fs-car/bs/rs/v1/{BRAND}/{self._session_country}/vehicles/$vin/action', vin=vin,
                                            json=data)
             # Clean up headers
             self._session_headers.pop('x-mbbSecToken', None)
@@ -1045,7 +1044,7 @@ class Connection:
             else:
                 self._session_headers['X-mbbSecToken'] = await self.get_sec_token(vin=vin, spin=spin, action='lock')
             self._session_headers['Content-Type'] = 'application/vnd.vwg.mbb.RemoteLockUnlock_v1_0_0+xml'
-            response = await self.dataCall(f'fs-car/bs/rlu/v1/{BRAND}/{COUNTRY}/vehicles/$vin/actions', vin, data=data)
+            response = await self.dataCall(f'fs-car/bs/rlu/v1/{BRAND}/{self._session_country}/vehicles/$vin/actions', vin, data=data)
             # Clean up headers
             self._session_headers.pop('X-mbbSecToken', None)
             self._session_headers.pop('Content-Type', None)
