@@ -1,5 +1,7 @@
 .idea
+.DS_Store
 __pycache__
 build
 dist
 *.egg-info
+*vw.conf
