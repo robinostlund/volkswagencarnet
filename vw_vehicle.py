@@ -869,6 +869,7 @@ class Vehicle:
                 'remainingChargingTime', {}).get('content', 0)
             if minutes:
                 try:
+                    if minutes == -1: return "00:00"
                     if minutes == 65535: return "00:00"
                     return "%02d:%02d" % divmod(minutes, 60)
                 except Exception:
@@ -979,23 +980,26 @@ class Vehicle:
     def electric_range(self):
         value = -1
         if PRIMARY_RANGE in self.attrs.get('StoredVehicleDataResponseParsed') \
-                and self.attrs.get('StoredVehicleDataResponseParsed')[PRIMARY_DRIVE].get('value',UNSUPPORTED) == ENGINE_TYPE_ELECTRIC:
+                and self.attrs.get('StoredVehicleDataResponseParsed')[PRIMARY_DRIVE].get('value', UNSUPPORTED) == ENGINE_TYPE_ELECTRIC:
             value = self.attrs.get('StoredVehicleDataResponseParsed')[PRIMARY_RANGE].get('value', UNSUPPORTED)
 
         elif SECONDARY_RANGE in self.attrs.get('StoredVehicleDataResponseParsed') \
-                and self.attrs.get('StoredVehicleDataResponseParsed')[SECONDARY_DRIVE].get('value',UNSUPPORTED) == ENGINE_TYPE_ELECTRIC:
+                and self.attrs.get('StoredVehicleDataResponseParsed')[SECONDARY_DRIVE].get('value', UNSUPPORTED) == ENGINE_TYPE_ELECTRIC:
             value = self.attrs.get('StoredVehicleDataResponseParsed')[SECONDARY_RANGE].get('value', UNSUPPORTED)
         return int(value)
 
     @property
     def is_electric_range_supported(self):
+        supported = False
         if self.attrs.get('StoredVehicleDataResponseParsed', False):
-            if PRIMARY_RANGE in self.attrs.get('StoredVehicleDataResponseParsed'):
-                return self.attrs.get('StoredVehicleDataResponseParsed')[PRIMARY_DRIVE].get('value', UNSUPPORTED) == ENGINE_TYPE_ELECTRIC
+            if PRIMARY_RANGE in self.attrs.get('StoredVehicleDataResponseParsed') \
+                    and self.attrs.get('StoredVehicleDataResponseParsed')[PRIMARY_DRIVE].get('value', UNSUPPORTED) == ENGINE_TYPE_ELECTRIC:
+                supported = True
 
-            elif SECONDARY_RANGE in self.attrs.get('StoredVehicleDataResponseParsed'):
-                return self.attrs.get('StoredVehicleDataResponseParsed')[SECONDARY_DRIVE].get('value', UNSUPPORTED) == ENGINE_TYPE_ELECTRIC
-        return False
+            elif SECONDARY_RANGE in self.attrs.get('StoredVehicleDataResponseParsed') \
+                    and self.attrs.get('StoredVehicleDataResponseParsed')[SECONDARY_DRIVE].get('value', UNSUPPORTED) == ENGINE_TYPE_ELECTRIC:
+                supported = True
+        return supported
 
     @property
     def combustion_range(self):
@@ -1011,13 +1015,16 @@ class Vehicle:
 
     @property
     def is_combustion_range_supported(self):
+        supported = False
         if self.attrs.get('StoredVehicleDataResponseParsed', False):
-            if PRIMARY_RANGE in self.attrs.get('StoredVehicleDataResponseParsed'):
-                return self.attrs.get('StoredVehicleDataResponseParsed')[PRIMARY_DRIVE].get('value', UNSUPPORTED) in ENGINE_TYPE_COMBUSTION
+            if PRIMARY_RANGE in self.attrs.get('StoredVehicleDataResponseParsed') \
+                    and self.attrs.get('StoredVehicleDataResponseParsed')[PRIMARY_DRIVE].get('value', UNSUPPORTED) in ENGINE_TYPE_COMBUSTION:
+                supported = True
 
-            elif SECONDARY_RANGE in self.attrs.get('StoredVehicleDataResponseParsed'):
-                return self.attrs.get('StoredVehicleDataResponseParsed')[PRIMARY_DRIVE].get('value', UNSUPPORTED) in ENGINE_TYPE_COMBUSTION
-        return False
+            elif SECONDARY_RANGE in self.attrs.get('StoredVehicleDataResponseParsed') \
+                    and self.attrs.get('StoredVehicleDataResponseParsed')[PRIMARY_DRIVE].get('value', UNSUPPORTED) in ENGINE_TYPE_COMBUSTION:
+                supported = True
+        return supported
 
     @property
     def combined_range(self):
