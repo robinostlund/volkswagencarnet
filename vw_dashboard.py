@@ -114,15 +114,15 @@ class Sensor(Instrument):
     @property
     def state(self):
         val = super().state
-        if val and self.unit and "mi" in self.unit and self.convert == True:
-            return int(round(val / 1.609344))
-        elif val and self.unit and "mi/h" in self.unit and self.convert == True:
-            return int(round(val / 1.609344))
-        elif val and self.unit and "gal/100 mi" in self.unit and self.convert == True:
+        if val and self.unit and "mi" in self.unit and self.convert is True:
+            return round(int(val) * 0.6213712)
+        elif val and self.unit and "mi/h" in self.unit and self.convert is True:
+            return round(int(val) * 0.6213712)
+        elif val and self.unit and "gal/100 mi" in self.unit and self.convert is True:
             return round(val * 0.4251438, 1)
-        elif val and self.unit and "kWh/100 mi" in self.unit and self.convert == True:
+        elif val and self.unit and "kWh/100 mi" in self.unit and self.convert is True:
             return round(val * 0.4251438, 1)
-        elif val and self.unit and "°F" in self.unit and self.convert == True:
+        elif val and self.unit and "°F" in self.unit and self.convert is True:
             temp = round((val * 9 / 5) + 32, 1)
             return temp
         else:

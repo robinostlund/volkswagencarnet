@@ -11,7 +11,11 @@ sys.path.insert(0, myPath + '/../')
 
 @pytest.mark.asyncio
 async def test_volkswagencarnet():
+<<<<<<< Updated upstream
     import vw_connection
+=======
+    from vw_connection import Connection
+>>>>>>> Stashed changes
     async with ClientSession() as session:
         connection = vw_connection.Connection(session, 'test@example.com', 'test_password')
         # if await connection._login():
