@@ -12,6 +12,24 @@ from vw_utilities import find_path, is_valid_path
 
 _LOGGER = logging.getLogger(__name__)
 
+PRIMARY_RANGE = '0x0301030006'
+PRIMARY_DRIVE = '0x0301030007'
+SECONDARY_RANGE = '0x0301030008'
+SECONDARY_DRIVE = '0x0301030009'
+COMBINED_RANGE = '0x0301030005'
+
+ENGINE_TYPE_ELECTRIC = '3'
+ENGINE_TYPE_DIESEL = '5'
+ENGINE_TYPE_GASOLINE = '6'
+ENGINE_TYPE_COMBUSTION = [
+    ENGINE_TYPE_DIESEL,
+    ENGINE_TYPE_GASOLINE
+]
+
+FUEL_LEVEl = '0x030103000A'
+UNSUPPORTED = 0
+NO_VALUE = -1
+
 
 class Vehicle:
     def __init__(self, conn, url):
@@ -960,62 +978,74 @@ class Vehicle:
     @property
     def electric_range(self):
         value = -1
-        if '0x0301030008' in self.attrs.get('StoredVehicleDataResponseParsed'):
-            if 'value' in self.attrs.get('StoredVehicleDataResponseParsed')['0x0301030008']:
-                value = self.attrs.get('StoredVehicleDataResponseParsed')['0x0301030008'].get('value', 0)
+        if PRIMARY_RANGE in self.attrs.get('StoredVehicleDataResponseParsed') \
+                and self.attrs.get('StoredVehicleDataResponseParsed')[PRIMARY_DRIVE].get('value',UNSUPPORTED) == ENGINE_TYPE_ELECTRIC:
+            value = self.attrs.get('StoredVehicleDataResponseParsed')[PRIMARY_RANGE].get('value', UNSUPPORTED)
+
+        elif SECONDARY_RANGE in self.attrs.get('StoredVehicleDataResponseParsed') \
+                and self.attrs.get('StoredVehicleDataResponseParsed')[SECONDARY_DRIVE].get('value',UNSUPPORTED) == ENGINE_TYPE_ELECTRIC:
+            value = self.attrs.get('StoredVehicleDataResponseParsed')[SECONDARY_RANGE].get('value', UNSUPPORTED)
         return int(value)
 
     @property
     def is_electric_range_supported(self):
         if self.attrs.get('StoredVehicleDataResponseParsed', False):
-            if '0x0301030008' in self.attrs.get('StoredVehicleDataResponseParsed'):
-                if 'value' in self.attrs.get('StoredVehicleDataResponseParsed')['0x0301030008']:
-                    return True
+            if PRIMARY_RANGE in self.attrs.get('StoredVehicleDataResponseParsed'):
+                return self.attrs.get('StoredVehicleDataResponseParsed')[PRIMARY_DRIVE].get('value', UNSUPPORTED) == ENGINE_TYPE_ELECTRIC
+
+            elif SECONDARY_RANGE in self.attrs.get('StoredVehicleDataResponseParsed'):
+                return self.attrs.get('StoredVehicleDataResponseParsed')[SECONDARY_DRIVE].get('value', UNSUPPORTED) == ENGINE_TYPE_ELECTRIC
         return False
 
     @property
     def combustion_range(self):
         value = -1
-        if '0x0301030006' in self.attrs.get('StoredVehicleDataResponseParsed'):
-            if 'value' in self.attrs.get('StoredVehicleDataResponseParsed')['0x0301030006']:
-                value = self.attrs.get('StoredVehicleDataResponseParsed')['0x0301030006'].get('value', 0)
+        if PRIMARY_RANGE in self.attrs.get('StoredVehicleDataResponseParsed') \
+                and self.attrs.get('StoredVehicleDataResponseParsed')[PRIMARY_DRIVE].get('value', UNSUPPORTED) in ENGINE_TYPE_COMBUSTION:
+            value = self.attrs.get('StoredVehicleDataResponseParsed')[PRIMARY_RANGE].get('value', NO_VALUE)
+
+        elif SECONDARY_RANGE in self.attrs.get('StoredVehicleDataResponseParsed') \
+                and self.attrs.get('StoredVehicleDataResponseParsed')[SECONDARY_DRIVE].get('value', UNSUPPORTED) in ENGINE_TYPE_COMBUSTION:
+            value = self.attrs.get('StoredVehicleDataResponseParsed')[SECONDARY_RANGE].get('value', NO_VALUE)
         return int(value)
 
     @property
     def is_combustion_range_supported(self):
         if self.attrs.get('StoredVehicleDataResponseParsed', False):
-            if '0x0301030006' in self.attrs.get('StoredVehicleDataResponseParsed'):
-                return True
+            if PRIMARY_RANGE in self.attrs.get('StoredVehicleDataResponseParsed'):
+                return self.attrs.get('StoredVehicleDataResponseParsed')[PRIMARY_DRIVE].get('value', UNSUPPORTED) in ENGINE_TYPE_COMBUSTION
+
+            elif SECONDARY_RANGE in self.attrs.get('StoredVehicleDataResponseParsed'):
+                return self.attrs.get('StoredVehicleDataResponseParsed')[PRIMARY_DRIVE].get('value', UNSUPPORTED) in ENGINE_TYPE_COMBUSTION
         return False
 
     @property
     def combined_range(self):
         value = -1
-        if '0x0301030005' in self.attrs.get('StoredVehicleDataResponseParsed'):
-            if 'value' in self.attrs.get('StoredVehicleDataResponseParsed')['0x0301030005']:
-                value = self.attrs.get('StoredVehicleDataResponseParsed')['0x0301030005'].get('value', 0)
+        if COMBINED_RANGE in self.attrs.get('StoredVehicleDataResponseParsed'):
+            value = self.attrs.get('StoredVehicleDataResponseParsed')[COMBINED_RANGE].get('value', NO_VALUE)
         return int(value)
 
     @property
     def is_combined_range_supported(self):
         if self.attrs.get('StoredVehicleDataResponseParsed', False):
-            if '0x0301030005' in self.attrs.get('StoredVehicleDataResponseParsed'):
-                return True
+            if COMBINED_RANGE in self.attrs.get('StoredVehicleDataResponseParsed'):
+                return self.is_electric_range_supported and self.is_combustion_range_supported
         return False
 
     @property
     def fuel_level(self):
         value = -1
-        if '0x030103000A' in self.attrs.get('StoredVehicleDataResponseParsed'):
-            if 'value' in self.attrs.get('StoredVehicleDataResponseParsed')['0x030103000A']:
-                value = self.attrs.get('StoredVehicleDataResponseParsed')['0x030103000A'].get('value', 0)
+        if FUEL_LEVEl in self.attrs.get('StoredVehicleDataResponseParsed'):
+            if 'value' in self.attrs.get('StoredVehicleDataResponseParsed')[FUEL_LEVEl]:
+                value = self.attrs.get('StoredVehicleDataResponseParsed')[FUEL_LEVEl].get('value', 0)
         return int(value)
 
     @property
     def is_fuel_level_supported(self):
         if self.attrs.get('StoredVehicleDataResponseParsed', False):
-            if '0x030103000A' in self.attrs.get('StoredVehicleDataResponseParsed'):
-                return True
+            if FUEL_LEVEl in self.attrs.get('StoredVehicleDataResponseParsed'):
+                return self.is_combustion_range_supported
         return False
 
     # Climatisation settings
