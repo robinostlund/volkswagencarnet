@@ -26,7 +26,7 @@ ENGINE_TYPE_COMBUSTION = [
     ENGINE_TYPE_GASOLINE
 ]
 
-FUEL_LEVEl = '0x030103000A'
+FUEL_LEVEL = '0x030103000A'
 UNSUPPORTED = 0
 NO_VALUE = -1
 
@@ -1043,15 +1043,15 @@ class Vehicle:
     @property
     def fuel_level(self):
         value = -1
-        if FUEL_LEVEl in self.attrs.get('StoredVehicleDataResponseParsed'):
-            if 'value' in self.attrs.get('StoredVehicleDataResponseParsed')[FUEL_LEVEl]:
-                value = self.attrs.get('StoredVehicleDataResponseParsed')[FUEL_LEVEl].get('value', 0)
+        if FUEL_LEVEL in self.attrs.get('StoredVehicleDataResponseParsed'):
+            if 'value' in self.attrs.get('StoredVehicleDataResponseParsed')[FUEL_LEVEL]:
+                value = self.attrs.get('StoredVehicleDataResponseParsed')[FUEL_LEVEL].get('value', 0)
         return int(value)
 
     @property
     def is_fuel_level_supported(self):
         if self.attrs.get('StoredVehicleDataResponseParsed', False):
-            if FUEL_LEVEl in self.attrs.get('StoredVehicleDataResponseParsed'):
+            if FUEL_LEVEL in self.attrs.get('StoredVehicleDataResponseParsed'):
                 return self.is_combustion_range_supported
         return False
 
