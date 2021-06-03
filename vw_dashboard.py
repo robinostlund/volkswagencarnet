@@ -78,7 +78,7 @@ class Sensor(Instrument):
         self.unit = unit
         self.convert = False
 
-    def configurate(self, miles=False, **config):
+    def configurate(self, miles=False, scandinavian_miles=False, **config):
         if self.unit and miles:
             if "km" == self.unit:
                 self.unit = "mi"
@@ -92,6 +92,15 @@ class Sensor(Instrument):
             elif "kWh/100 km" == self.unit:
                 self.unit = "kWh/100 mi"
                 self.convert = True
+        elif self.unit and scandinavian_miles:
+            if "km" == self.unit:
+                self.unit = "mil"
+            elif "km/h" == self.unit:
+                self.unit = "mil/h"
+            elif "l/100 km" == self.unit:
+                self.unit = "l/100 mil"
+            elif "kWh/100 km" == self.unit:
+                self.unit = "kWh/100 mil"
 
         # Init placeholder for parking heater duration
         config.get('parkingheater', 30)
@@ -124,6 +133,8 @@ class Sensor(Instrument):
         elif val and self.unit and "°F" in self.unit and self.convert is True:
             temp = round((val * 9 / 5) + 32, 1)
             return temp
+        elif val and self.unit in ['mil', 'mil/h']:
+            return val / 10
         else:
             return val
 
