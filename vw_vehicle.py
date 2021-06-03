@@ -66,6 +66,7 @@ class Vehicle:
 
         # True if there's a new Terms And Condition to accept
         self.term_and_condition = False
+        self.is_term_and_condition_supported = True
 
     # API get and set functions #
     # Init and update vehicle data

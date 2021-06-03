@@ -6,6 +6,8 @@ from vw_utilities import camel2slug
 
 _LOGGER = logging.getLogger(__name__)
 
+TERMS_AND_CONDITION_ATTR = "term_and_condition"
+
 
 class Instrument:
     def __init__(self, component, attr, name, icon=None):
@@ -944,7 +946,7 @@ def create_instruments():
             device_class="connectivity"
         ),
         BinarySensor(
-            attr="term_and_condition",
+            attr=TERMS_AND_CONDITION_ATTR,
             name="Accept Term and Condition",
             device_class="connectivity"
         ),
