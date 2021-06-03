@@ -64,6 +64,9 @@ class Vehicle:
             # 'timerprogramming_v1': {'active': False}, # Not yet implemented
         }
 
+        # True if there's a new Terms And Condition to accept
+        self.term_and_condition = False
+
     # API get and set functions #
     # Init and update vehicle data
     async def discover(self):
@@ -78,7 +81,7 @@ class Vehicle:
             self.get_realcardata(),
             return_exceptions=True
         )
-        _LOGGER.info(f'Vehicle {self.vin} added. Homeregion is "{self._homeregion}"')
+        _LOGGER.info(f'Vehicle {self.vin} added. Home region is "{self._homeregion}"')
 
         _LOGGER.debug('Attempting discovery of supported API endpoints for vehicle.')
         operation_list = await self._connection.getOperationList(self.vin)

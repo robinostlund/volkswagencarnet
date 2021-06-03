@@ -14,7 +14,6 @@ class Instrument:
         self.name = name
         self.vehicle = None
         self.icon = icon
-        self.callback = None
 
     def __repr__(self):
         return self.full_name
@@ -302,6 +301,7 @@ class DoorLock(Instrument):
 
     def configurate(self, **config):
         self.spin = config.get('spin', '')
+        self.callback = config.get('update_callback', None)
 
     @property
     def is_mutable(self):
@@ -378,6 +378,9 @@ class TrunkLock(Instrument):
 class RequestUpdate(Switch):
     def __init__(self):
         super().__init__(attr="refresh_data", name="Force data refresh", icon="mdi:car-connected")
+
+    def configurate(self, **config):
+        self.callback = config.get('update_callback', None)
 
     @property
     def state(self):
@@ -927,6 +930,11 @@ def create_instruments():
         BinarySensor(
             attr="request_in_progress",
             name="Request in progress",
+            device_class="connectivity"
+        ),
+        BinarySensor(
+            attr="term_and_condition",
+            name="Accept Term and Condition",
             device_class="connectivity"
         ),
     ]

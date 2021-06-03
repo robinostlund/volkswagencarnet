@@ -47,6 +47,11 @@ _LOGGER = logging.getLogger(__name__)
 TIMEOUT = timedelta(seconds=30)
 
 
+class TermsAndConditionError(Exception):
+    """Raised when the input value is too small"""
+    pass
+
+
 class Connection:
     """ Connection to VW-Group Connect services """
 
@@ -302,8 +307,10 @@ class Connection:
                 if 'code' in ref:
                     _LOGGER.debug('Got code: %s' % ref)
                     pass
+                if 'terms-and-condition' in ref:
+                    raise TermsAndConditionError from e
                 else:
-                    _LOGGER.debug(f'Exception occured while logging in.')
+                    _LOGGER.debug(f'Exception occurred while logging in.')
                     raise e
             _LOGGER.debug('Login successful, received authorization code.')
 
@@ -347,7 +354,7 @@ class Connection:
             _LOGGER.error(f'Login failed for {BRAND} account, {error}')
             _LOGGER.exception(error)
             self._session_logged_in = False
-            return False
+            raise error
         return True
 
     async def _getAPITokens(self):
@@ -522,9 +529,14 @@ class Connection:
     async def update(self):
         """Update status."""
         if not self.logged_in:
-            if not await self._login():
-                _LOGGER.warning(f'Login for {BRAND} account failed!')
-                return False
+            try:
+                if not await self._login():
+                    _LOGGER.warning(f'Login for {BRAND} account failed!')
+                    return False
+            except TermsAndConditionError as e:
+                for vehicle in self.vehicles:
+                    vehicle.term_and_condition = True
+                raise e
         try:
             if not await self.validate_tokens:
                 _LOGGER.info(f'Session expired. Initiating new login for {BRAND} account.')
@@ -536,6 +548,7 @@ class Connection:
             # Get all Vehicle objects and update in parallell
             updatelist = []
             for vehicle in self.vehicles:
+                vehicle.term_and_condition = False
                 updatelist.append(vehicle.update())
             # Wait for all data updates to complete
             await asyncio.gather(*updatelist)
