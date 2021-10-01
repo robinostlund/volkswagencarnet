@@ -45,6 +45,7 @@ version_info >= (3, 0) or exit('Python 3 required')
 _LOGGER = logging.getLogger(__name__)
 
 TIMEOUT = timedelta(seconds=30)
+JWT_ALGORITHMS = ['RS256']
 
 
 class Connection:
@@ -589,7 +590,7 @@ class Connection:
         try:
             _LOGGER.debug("Attempting extraction of subject from identity token.")
             atoken = self._session_tokens['identity']['access_token']
-            subject = jwt.decode(atoken, verify=False).get('sub', None)
+            subject = jwt.decode(atoken, options={"verify_signature": False}, algorithms=JWT_ALGORITHMS).get('sub', None)
             await self.set_token('identity')
             self._session_headers['Accept'] = 'application/json'
             response = await self.get(
@@ -1073,8 +1074,8 @@ class Connection:
         """Function to validate expiry of tokens."""
         idtoken = self._session_tokens['identity']['id_token']
         atoken = self._session_tokens['vwg']['access_token']
-        id_exp = jwt.decode(idtoken, verify=False).get('exp', None)
-        at_exp = jwt.decode(atoken, verify=False).get('exp', None)
+        id_exp = jwt.decode(idtoken, options={"verify_signature": False}, algorithms=JWT_ALGORITHMS).get('exp', None)
+        at_exp = jwt.decode(atoken, options={"verify_signature": False}, algorithms=JWT_ALGORITHMS).get('exp', None)
         id_dt = datetime.fromtimestamp(int(id_exp))
         at_dt = datetime.fromtimestamp(int(at_exp))
         now = datetime.now()
@@ -1126,7 +1127,8 @@ class Connection:
                 token_kid = 'VWGMBB01DELIV1.' + token_kid
 
             pubkey = pubkeys[token_kid]
-            payload = jwt.decode(token, key=pubkey, algorithms=['RS256'], audience=audience)
+            
+            payload = jwt.decode(token, key=pubkey, algorithms=JWT_ALGORITHMS, audience=audience)
             return True
         except Exception as error:
             _LOGGER.debug(f'Failed to verify token, error: {error}')
