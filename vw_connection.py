@@ -193,7 +193,7 @@ class Connection:
                     allow_redirects=False
                 )
                 if req.headers.get('Location', False):
-                    ref = req.headers.get('Location', '')
+                    ref = urljoin(authorization_endpoint, req.headers.get('Location', ''))
                     if 'error' in ref:
                         error = parse_qs(urlparse(ref).query).get('error', '')[0]
                         if 'error_description' in ref:
@@ -270,7 +270,7 @@ class Connection:
             # Follow all redirects until we get redirected back to "our app"
             try:
                 max_depth = 10
-                ref = req.headers['Location']
+                ref = urljoin(pw_url, req.headers['Location'])
                 while not ref.startswith(APP_URI):
                     if self._session_fulldebug:
                         _LOGGER.debug(f'Following redirect to "{ref}"')
@@ -282,7 +282,7 @@ class Connection:
                     if not response.headers.get('Location', False):
                         _LOGGER.info(f'Login failed, does this account have any vehicle with connect services enabled?')
                         raise Exception('User appears unauthorized')
-                    ref = response.headers['Location']
+                    ref = urljoin(ref, response.headers['Location'])
                     # Set a max limit on requests to prevent forever loop
                     max_depth -= 1
                     if max_depth == 0:
