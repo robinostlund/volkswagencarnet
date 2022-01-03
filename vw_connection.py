@@ -536,9 +536,10 @@ class Connection:
             # Get all Vehicle objects and update in parallell
             updatelist = []
             for vehicle in self.vehicles:
-                updatelist.append(vehicle.update())
+                #updatelist.append(vehicle.update())
+                await vehicle.update()
             # Wait for all data updates to complete
-            await asyncio.gather(*updatelist)
+            #await asyncio.gather(*updatelist)
 
             return True
         except (IOError, OSError, LookupError, Exception) as error:
