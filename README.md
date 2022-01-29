@@ -105,7 +105,7 @@ async def main():
     """Main method."""
     async with ClientSession(headers={'Connection': 'keep-alive'}) as session:
         connection = volkswagencarnet.Connection(session, VW_USERNAME, VW_PASSWORD)
-        if await connection._login():
+        if await connection.doLogin():
             if await connection.update():
                 # Print overall state
                 pprint.pprint(connection._state)
