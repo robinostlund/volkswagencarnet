@@ -245,10 +245,30 @@ class Connection:
             try:
                 response_data = await req.text()
                 response_soup = BeautifulSoup(response_data, 'html.parser')
-                pw_form = dict([(t['name'], t['value']) for t in
-                               response_soup.find('form', id='credentialsForm').find_all('input', type='hidden')])
+                pw_form: dict[str, str] = {}
+                post_action = None
+                client_id = None
+                for d in response_soup.find_all('script'):
+                    if 'src' in d.attrs:
+                        continue
+                    if 'window._IDK' in d.string:
+                        if re.match('"errorCode":"', d.string) is not None:
+                            raise Exception('Error code in response')
+                        pw_form['relayState'] = re.search('"relayState":"([a-f0-9]*)"', d.string)[1]
+                        pw_form['hmac'] = re.search('"hmac":"([a-f0-9]*)"', d.string)[1]
+                        pw_form['email'] = re.search('"email":"([^"]*)"', d.string)[1]
+                        pw_form['_csrf'] = re.search('csrf_token:\\s*\'([^"\']*)\'', d.string)[1]
+                        post_action = re.search('"postAction":\\s*"([^"\']*)"', d.string)[1]
+                        client_id = re.search('"clientId":\\s*"([^"\']*)"', d.string)[1]
+                        break
+                if pw_form['hmac'] is None or post_action is None:
+                    raise Exception('Failed to find authentication data in response')
                 pw_form['password'] = self._session_auth_password
-                pw_url = auth_issuer + response_soup.find('form', id='credentialsForm').get('action')
+                pw_url = "{host}/signin-service/v1/{clientId}/{postAction}".format(
+                    host=auth_issuer,
+                    clientId=client_id,
+                    postAction=post_action
+                )
             except Exception as e:
                 _LOGGER.error('Failed to extract password login form.')
                 raise e
@@ -304,7 +324,7 @@ class Connection:
                     _LOGGER.debug('Got code: %s' % ref)
                     pass
                 else:
-                    _LOGGER.debug(f'Exception occured while logging in.')
+                    _LOGGER.debug(f'Exception occurred while logging in.')
                     raise e
             _LOGGER.debug('Login successful, received authorization code.')
 
