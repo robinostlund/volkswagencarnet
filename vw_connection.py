@@ -45,6 +45,7 @@ version_info >= (3, 0) or exit('Python 3 required')
 _LOGGER = logging.getLogger(__name__)
 
 TIMEOUT = timedelta(seconds=30)
+JWT_ALGORITHMS = ['RS256']
 
 
 class Connection:
@@ -192,7 +193,7 @@ class Connection:
                     allow_redirects=False
                 )
                 if req.headers.get('Location', False):
-                    ref = req.headers.get('Location', '')
+                    ref = urljoin(authorization_endpoint, req.headers.get('Location', ''))
                     if 'error' in ref:
                         error = parse_qs(urlparse(ref).query).get('error', '')[0]
                         if 'error_description' in ref:
@@ -244,10 +245,30 @@ class Connection:
             try:
                 response_data = await req.text()
                 response_soup = BeautifulSoup(response_data, 'html.parser')
-                pw_form = dict([(t['name'], t['value']) for t in
-                               response_soup.find('form', id='credentialsForm').find_all('input', type='hidden')])
+                pw_form: dict[str, str] = {}
+                post_action = None
+                client_id = None
+                for d in response_soup.find_all('script'):
+                    if 'src' in d.attrs:
+                        continue
+                    if 'window._IDK' in d.string:
+                        if re.match('"errorCode":"', d.string) is not None:
+                            raise Exception('Error code in response')
+                        pw_form['relayState'] = re.search('"relayState":"([a-f0-9]*)"', d.string)[1]
+                        pw_form['hmac'] = re.search('"hmac":"([a-f0-9]*)"', d.string)[1]
+                        pw_form['email'] = re.search('"email":"([^"]*)"', d.string)[1]
+                        pw_form['_csrf'] = re.search('csrf_token:\\s*\'([^"\']*)\'', d.string)[1]
+                        post_action = re.search('"postAction":\\s*"([^"\']*)"', d.string)[1]
+                        client_id = re.search('"clientId":\\s*"([^"\']*)"', d.string)[1]
+                        break
+                if pw_form['hmac'] is None or post_action is None:
+                    raise Exception('Failed to find authentication data in response')
                 pw_form['password'] = self._session_auth_password
-                pw_url = auth_issuer + response_soup.find('form', id='credentialsForm').get('action')
+                pw_url = "{host}/signin-service/v1/{clientId}/{postAction}".format(
+                    host=auth_issuer,
+                    clientId=client_id,
+                    postAction=post_action
+                )
             except Exception as e:
                 _LOGGER.error('Failed to extract password login form.')
                 raise e
@@ -269,7 +290,7 @@ class Connection:
             # Follow all redirects until we get redirected back to "our app"
             try:
                 max_depth = 10
-                ref = req.headers['Location']
+                ref = urljoin(pw_url, req.headers['Location'])
                 while not ref.startswith(APP_URI):
                     if self._session_fulldebug:
                         _LOGGER.debug(f'Following redirect to "{ref}"')
@@ -281,7 +302,7 @@ class Connection:
                     if not response.headers.get('Location', False):
                         _LOGGER.info(f'Login failed, does this account have any vehicle with connect services enabled?')
                         raise Exception('User appears unauthorized')
-                    ref = response.headers['Location']
+                    ref = urljoin(ref, response.headers['Location'])
                     # Set a max limit on requests to prevent forever loop
                     max_depth -= 1
                     if max_depth == 0:
@@ -303,7 +324,7 @@ class Connection:
                     _LOGGER.debug('Got code: %s' % ref)
                     pass
                 else:
-                    _LOGGER.debug(f'Exception occured while logging in.')
+                    _LOGGER.debug(f'Exception occurred while logging in.')
                     raise e
             _LOGGER.debug('Login successful, received authorization code.')
 
@@ -589,7 +610,7 @@ class Connection:
         try:
             _LOGGER.debug("Attempting extraction of subject from identity token.")
             atoken = self._session_tokens['identity']['access_token']
-            subject = jwt.decode(atoken, verify=False).get('sub', None)
+            subject = jwt.decode(atoken, options={"verify_signature": False}, algorithms=JWT_ALGORITHMS).get('sub', None)
             await self.set_token('identity')
             self._session_headers['Accept'] = 'application/json'
             response = await self.get(
@@ -1073,8 +1094,8 @@ class Connection:
         """Function to validate expiry of tokens."""
         idtoken = self._session_tokens['identity']['id_token']
         atoken = self._session_tokens['vwg']['access_token']
-        id_exp = jwt.decode(idtoken, verify=False).get('exp', None)
-        at_exp = jwt.decode(atoken, verify=False).get('exp', None)
+        id_exp = jwt.decode(idtoken, options={"verify_signature": False}, algorithms=JWT_ALGORITHMS).get('exp', None)
+        at_exp = jwt.decode(atoken, options={"verify_signature": False}, algorithms=JWT_ALGORITHMS).get('exp', None)
         id_dt = datetime.fromtimestamp(int(id_exp))
         at_dt = datetime.fromtimestamp(int(at_exp))
         now = datetime.now()
@@ -1126,7 +1147,8 @@ class Connection:
                 token_kid = 'VWGMBB01DELIV1.' + token_kid
 
             pubkey = pubkeys[token_kid]
-            payload = jwt.decode(token, key=pubkey, algorithms=['RS256'], audience=audience)
+            
+            payload = jwt.decode(token, key=pubkey, algorithms=JWT_ALGORITHMS, audience=audience)
             return True
         except Exception as error:
             _LOGGER.debug(f'Failed to verify token, error: {error}')
