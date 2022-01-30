@@ -63,8 +63,9 @@ class Connection:
         self._session_auth_base = BASE_AUTH
         self._session_refresh_interval = interval
 
-        self._session_auth_ref_url = BASE_SESSION
-        self._session_spin_ref_url = BASE_SESSION
+        no_vin_key = ""
+        self._session_auth_ref_urls = {no_vin_key: BASE_SESSION}
+        self._session_spin_ref_urls = {no_vin_key: BASE_SESSION}
         self._session_logged_in = False
         self._session_first_update = False
         self._session_auth_username = username
@@ -72,7 +73,6 @@ class Connection:
         self._session_tokens = {}
         self._session_country = country.upper()
 
-        self._vin = ""
         self._vehicles = []
 
         _LOGGER.debug(f'Using service {self._session_base}')
@@ -535,9 +535,9 @@ class Connection:
             # already server contained in URL
             return replacedUrl
         elif 'rolesrights' in replacedUrl:
-            return urljoin(self._session_spin_ref_url, replacedUrl)
+            return urljoin(self._session_spin_ref_urls[vin], replacedUrl)
         else:
-            return urljoin(self._session_auth_ref_url, replacedUrl)
+            return urljoin(self._session_auth_ref_urls[vin], replacedUrl)
 
     # Update data for all Vehicles
     async def update(self):
@@ -574,9 +574,9 @@ class Connection:
         try:
             await self.set_token('vwg')
             response = await self.get('https://mal-1a.prd.ece.vwg-connect.com/api/cs/vds/v1/vehicles/$vin/homeRegion', vin)
-            self._session_auth_ref_url = response['homeRegion']['baseUri']['content'].split('/api')[0].replace('mal-', 'fal-') if \
+            self._session_auth_ref_urls[vin] = response['homeRegion']['baseUri']['content'].split('/api')[0].replace('mal-', 'fal-') if \
             response['homeRegion']['baseUri']['content'] != 'https://mal-1a.prd.ece.vwg-connect.com/api' else 'https://msg.volkswagen.de'
-            self._session_spin_ref_url = response['homeRegion']['baseUri']['content'].split('/api')[0]
+            self._session_spin_ref_urls[vin] = response['homeRegion']['baseUri']['content'].split('/api')[0]
             return response['homeRegion']['baseUri']['content']
         except Exception as error:
             _LOGGER.debug(f'Could not get homeregion, error {error}')
@@ -1094,8 +1094,8 @@ class Connection:
         """Function to validate expiry of tokens."""
         idtoken = self._session_tokens['identity']['id_token']
         atoken = self._session_tokens['vwg']['access_token']
-        id_exp = jwt.decode(idtoken, options={"verify_signature": False}, algorithms=JWT_ALGORITHMS).get('exp', None)
-        at_exp = jwt.decode(atoken, options={"verify_signature": False}, algorithms=JWT_ALGORITHMS).get('exp', None)
+        id_exp = jwt.decode(idtoken, options={"verify_signature": False, 'verify_aud': False}, algorithms=JWT_ALGORITHMS).get('exp', None)
+        at_exp = jwt.decode(atoken, options={"verify_signature": False, 'verify_aud': False}, algorithms=JWT_ALGORITHMS).get('exp', None)
         id_dt = datetime.fromtimestamp(int(id_exp))
         at_dt = datetime.fromtimestamp(int(at_exp))
         now = datetime.now()
