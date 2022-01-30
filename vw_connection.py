@@ -1094,8 +1094,8 @@ class Connection:
         """Function to validate expiry of tokens."""
         idtoken = self._session_tokens['identity']['id_token']
         atoken = self._session_tokens['vwg']['access_token']
-        id_exp = jwt.decode(idtoken, options={"verify_signature": False}, algorithms=JWT_ALGORITHMS).get('exp', None)
-        at_exp = jwt.decode(atoken, options={"verify_signature": False}, algorithms=JWT_ALGORITHMS).get('exp', None)
+        id_exp = jwt.decode(idtoken, options={"verify_signature": False, 'verify_aud': False}, algorithms=JWT_ALGORITHMS).get('exp', None)
+        at_exp = jwt.decode(atoken, options={"verify_signature": False, 'verify_aud': False}, algorithms=JWT_ALGORITHMS).get('exp', None)
         id_dt = datetime.fromtimestamp(int(id_exp))
         at_dt = datetime.fromtimestamp(int(at_exp))
         now = datetime.now()
