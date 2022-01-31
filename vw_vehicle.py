@@ -38,7 +38,7 @@ class Vehicle:
         self._homeregion = 'https://msg.volkswagen.de'
         self._discovered = False
         self._states = {}
-        self._requests = {
+        self._requests: dict[str, any] = {
             # 'departuretimer': {'status': '', 'timestamp': datetime.now()}, # Not yet implemented
             'batterycharge': {'status': '', 'timestamp': datetime.now()},
             'climatisation': {'status': '', 'timestamp': datetime.now()},
@@ -1243,10 +1243,12 @@ class Vehicle:
     # Windows
     @property
     def windows_closed(self):
-        return self.window_closed_left_front \
-               and self.window_closed_left_back\
-               and self.window_closed_right_front\
-               and self.window_closed_right_back
+        return (
+            self.window_closed_left_front
+            and self.window_closed_left_back
+            and self.window_closed_right_front
+            and self.window_closed_right_back
+        )
 
     @property
     def is_windows_closed_supported(self):

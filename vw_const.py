@@ -8,7 +8,7 @@ COUNTRY = 'DE'
 # Data used in communication
 CLIENT = {
     'Legacy': {
-        'CLIENT_ID': '9496332b-ea03-4091-a224-8c746b885068%40apps_vw-dilab_com',
+        'CLIENT_ID': '9496332b-ea03-4091-a224-8c746b885068@apps_vw-dilab_com',
         # client id for VWG API, legacy Skoda Connect/MySkoda
         'SCOPE': 'openid mbb profile cars address email birthdate nickname phone',
         # 'SCOPE': 'openid mbb profile cars address email birthdate badge phone driversLicense dealers profession vin',

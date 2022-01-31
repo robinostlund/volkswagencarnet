@@ -2,8 +2,8 @@
 # -*- coding: utf-8 -*-
 """Communicate with We Connect services."""
 import base64
-import os
 import re
+import secrets
 import time
 import logging
 import asyncio
@@ -133,6 +133,7 @@ class Connection:
             ts = "%d" % (time.time())
             sha256 = hashlib.sha256()
             sha256.update(ts.encode())
+            sha256.update(secrets.token_bytes(16))
             return b64encode(sha256.digest()).decode('utf-8')[:-1]
 
         def base64URLEncode(s):
@@ -151,11 +152,12 @@ class Connection:
             self._session_headers = HEADERS_SESSION.copy()
             self._session_auth_headers = HEADERS_AUTH.copy()
             if self._session_fulldebug:
-                _LOGGER.debug(f'Requesting openid config')
+                _LOGGER.debug('Requesting openid config')
             req = await self._session.get(
                 url='https://identity.vwgroup.io/.well-known/openid-configuration'
             )
             if req.status != 200:
+                _LOGGER.debug('OpenId config error')
                 return False
             response_data = await req.json()
             authorization_endpoint = response_data['authorization_endpoint']
@@ -169,7 +171,7 @@ class Connection:
                 self._session_auth_headers.pop('Origin', None)
                 _LOGGER.debug(f'Request headers: "{self._session_auth_headers}"')
             try:
-                code_verifier = base64URLEncode(os.urandom(32))
+                code_verifier = base64URLEncode(secrets.token_bytes(32))
                 if len(code_verifier) < 43:
                     raise ValueError("Verifier too short. n_bytes must be > 30.")
                 elif len(code_verifier) > 128:
@@ -200,7 +202,7 @@ class Connection:
                             error_description = parse_qs(urlparse(ref).query).get('error_description', '')[0]
                             _LOGGER.info(f'Unable to login, {error_description}')
                         else:
-                            _LOGGER.info(f'Unable to login.')
+                            _LOGGER.info('Unable to login.')
                         raise Exception(error)
                     else:
                         if self._session_fulldebug:
@@ -211,7 +213,7 @@ class Connection:
                             allow_redirects=False
                         )
                 else:
-                    _LOGGER.warning(f'Unable to fetch authorization endpoint.')
+                    _LOGGER.warning('Unable to fetch authorization endpoint.')
                     raise Exception('Missing "location" header')
             except Exception as error:
                 _LOGGER.warning('Failed to get authorization endpoint')
@@ -300,7 +302,7 @@ class Connection:
                         allow_redirects=False
                     )
                     if not response.headers.get('Location', False):
-                        _LOGGER.info(f'Login failed, does this account have any vehicle with connect services enabled?')
+                        _LOGGER.info('Login failed, does this account have any vehicle with connect services enabled?')
                         raise Exception('User appears unauthorized')
                     ref = urljoin(ref, response.headers['Location'])
                     # Set a max limit on requests to prevent forever loop
@@ -316,7 +318,7 @@ class Connection:
                         timeout = parse_qs(urlparse(ref).query).get('enableNextButtonAfterSeconds', '')[0]
                         _LOGGER.warning(f'Login failed, login is disabled for another {timeout} seconds')
                     elif error == 'login.errors.password_invalid':
-                        _LOGGER.warning(f'Login failed, invalid password')
+                        _LOGGER.warning('Login failed, invalid password')
                     else:
                         _LOGGER.warning(f'Login failed: {error}')
                     raise error
@@ -324,13 +326,14 @@ class Connection:
                     _LOGGER.debug('Got code: %s' % ref)
                     pass
                 else:
-                    _LOGGER.debug(f'Exception occurred while logging in.')
+                    _LOGGER.debug('Exception occurred while logging in.')
                     raise e
             _LOGGER.debug('Login successful, received authorization code.')
 
             # Extract code and tokens
-            jwt_auth_code = parse_qs(urlparse(ref).fragment).get('code')[0]
-            jwt_id_token = parse_qs(urlparse(ref).fragment).get('id_token')[0]
+            parsed_qs = parse_qs(urlparse(ref).fragment)
+            jwt_auth_code = parsed_qs['code'][0]
+            jwt_id_token = parsed_qs['id_token'][0]
             # Exchange Auth code and id_token for new tokens with refresh_token (so we can easier fetch new ones later)
             token_body = {
                 'auth_code': jwt_auth_code,
@@ -348,7 +351,7 @@ class Connection:
             )
             if req.status != 200:
                 raise Exception('Token exchange failed')
-            # Save tokens as "identity", theese are tokens representing the user
+            # Save tokens as "identity", these are tokens representing the user
             self._session_tokens[client] = await req.json()
             if 'error' in self._session_tokens[client]:
                 error = self._session_tokens[client].get('error', '')
@@ -423,7 +426,7 @@ class Connection:
 
     async def terminate(self):
         """Log out from connect services"""
-        _LOGGER.info(f'Initiating logout')
+        _LOGGER.info('Initiating logout')
         await self.logout()
 
     async def logout(self):
@@ -512,7 +515,7 @@ class Connection:
                 self._session_logged_in = False
             elif error.status == 400:
                 _LOGGER.error(
-                    f'Got HTTP 400 "Bad Request" from server, this request might be malformed or not implemented correctly for this vehicle')
+                    'Got HTTP 400 "Bad Request" from server, this request might be malformed or not implemented correctly for this vehicle')
             elif error.status == 500:
                 _LOGGER.info('Got HTTP 500 from server, service might be temporarily unavailable')
             elif error.status == 502:
@@ -665,8 +668,7 @@ class Connection:
                 f'fs-car/bs/vsr/v1/{BRAND}/{self._session_country}/vehicles/$vin/status',
                 vin=vin
             )
-            if response.get('StoredVehicleDataResponse', {}).get('vehicleData', {}).get('data', {})[0].get('field', {})[
-                0]:
+            if response.get('StoredVehicleDataResponse', {}).get('vehicleData', {}).get('data', {})[0].get('field', {})[0]:
                 data = {
                     'StoredVehicleDataResponse': response.get('StoredVehicleDataResponse', {}),
                     'StoredVehicleDataResponseParsed': dict([(e['id'], e if 'value' in e else '') for f in
@@ -700,7 +702,7 @@ class Connection:
             elif response.get('status_code', {}):
                 _LOGGER.warning(f'Could not fetch trip statistics, HTTP status code: {response.get("status_code")}')
             else:
-                _LOGGER.info(f'Unhandled error while trying to fetch trip statistics')
+                _LOGGER.info('Unhandled error while trying to fetch trip statistics')
         except Exception as error:
             _LOGGER.warning(f'Could not fetch trip statistics, error: {error}')
         return False
@@ -723,7 +725,7 @@ class Connection:
                 return data
             elif response.get('status_code', {}):
                 if response.get('status_code', 0) == 204:
-                    _LOGGER.debug(f'Seems car is moving, HTTP 204 received from position')
+                    _LOGGER.debug('Seems car is moving, HTTP 204 received from position')
                     data = {
                         'isMoving': True,
                         'rate_limit_remaining': 15
@@ -933,7 +935,7 @@ class Connection:
                 _LOGGER.error('Unauthorized')
                 self._session_logged_in = False
             elif error.status == 400:
-                _LOGGER.error(f'Bad request')
+                _LOGGER.error('Bad request')
             elif error.status == 429:
                 _LOGGER.warning(
                     'Too many requests. Further requests can only be made after the end of next trip in order to protect your vehicles battery.')
@@ -1044,7 +1046,7 @@ class Connection:
                 _LOGGER.debug(
                     f'Request for parking heater is queued with request id: {request_id}, remaining requests: {remaining}')
                 return dict({'id': str(request_id), 'state': None, 'rate_limit_remaining': remaining})
-        except Exception as error:
+        except Exception:
             self._session_headers.pop('x-mbbSecToken', None)
             self._session_headers.pop('Content-Type', None)
             if contType:
