@@ -10,7 +10,6 @@ sys.path.insert(0, myPath + '/../')
 
 try:
     from credentials import username, password, spin, vin
-    import credentials
 except ImportError:
     username = password = spin = vin = None
     pass

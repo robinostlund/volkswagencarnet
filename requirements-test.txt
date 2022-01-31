@@ -5,3 +5,4 @@ pyjwt
 pytest
 setuptools
 pytest-asyncio
+flake8

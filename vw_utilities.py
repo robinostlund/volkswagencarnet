@@ -1,13 +1,11 @@
-from datetime import date, datetime
-from base64 import b64encode
-from string import ascii_letters as letters, digits
-from sys import argv
-from os import environ as env
-from os.path import join, dirname, expanduser
-from itertools import product
 import json
 import logging
 import re
+from datetime import datetime
+from itertools import product
+from os import environ as env
+from os.path import join, dirname, expanduser
+from sys import argv
 
 _LOGGER = logging.getLogger(__name__)
 
