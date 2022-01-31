@@ -3,8 +3,6 @@
 """Communicate with We Connect services."""
 import base64
 import os
-
-"""Modified to utilize API calls derived from Android Apps instead of Web API"""
 import re
 import time
 import logging
@@ -179,18 +177,20 @@ class Connection:
                 challenge = base64URLEncode(hashlib.sha256(code_verifier).digest())
 
                 req = await self._session.get(
-                    url=authorization_endpoint + \
-                        '?redirect_uri=' + APP_URI + \
-                        '&prompt=login' + \
-                        '&nonce=' + getNonce() + \
-                        '&state=' + getNonce() + \
-                        '&code_challenge_method=s256' + \
-                        '&code_challenge=' + challenge.decode() + \
-                        '&response_type=' + CLIENT[client].get('TOKEN_TYPES') + \
-                        '&client_id=' + CLIENT[client].get('CLIENT_ID') + \
-                        '&scope=' + CLIENT[client].get('SCOPE'),
+                    url=authorization_endpoint,
                     headers=self._session_auth_headers,
-                    allow_redirects=False
+                    allow_redirects=False,
+                    params={
+                        'redirect_uri': APP_URI,
+                        'prompt': 'login',
+                        'nonce': getNonce(),
+                        'state': getNonce(),
+                        'code_challenge_method': 's256',
+                        'code_challenge': challenge.decode(),
+                        'response_type': CLIENT[client].get('TOKEN_TYPES'),
+                        'client_id': CLIENT[client].get('CLIENT_ID'),
+                        'scope': CLIENT[client].get('SCOPE')
+                    },
                 )
                 if req.headers.get('Location', False):
                     ref = urljoin(authorization_endpoint, req.headers.get('Location', ''))
@@ -530,7 +530,7 @@ class Connection:
 
     # Construct URL from request, home region and variables
     def _make_url(self, ref, vin=''):
-        replacedUrl = re.sub('\$vin', vin, ref)
+        replacedUrl = re.sub('\\$vin', vin, ref)
         if '://' in replacedUrl:
             # already server contained in URL
             return replacedUrl
@@ -823,7 +823,7 @@ class Connection:
 
     async def get_request_status(self, vin, sectionId, requestId):
         """Return status of a request ID for a given section ID."""
-        if self.logged_in == False:
+        if self.logged_in is False:
             if not await self.doLogin():
                 _LOGGER.warning(f'Login for {BRAND} account failed!')
                 raise Exception(f'Login for {BRAND} account failed')
@@ -844,8 +844,8 @@ class Connection:
                 url = f'fs-car/bs/$sectionId/v1/{BRAND}/{self._session_country}/vehicles/$vin/requests/$requestId/jobstatus'
             else:
                 url = f'fs-car/bs/$sectionId/v1/{BRAND}/{self._session_country}/vehicles/$vin/requests/$requestId/status'
-            url = re.sub('\$sectionId', sectionId, url)
-            url = re.sub('\$requestId', requestId, url)
+            url = re.sub('\\$sectionId', sectionId, url)
+            url = re.sub('\\$requestId', requestId, url)
 
             response = await self.get(url, vin)
             # Pre-heater, ???
@@ -915,7 +915,7 @@ class Connection:
     #### Data set functions ####
     async def dataCall(self, query, vin='', **data):
         """Function to execute actions through VW-Group API."""
-        if self.logged_in == False:
+        if self.logged_in is False:
             if not await self.doLogin():
                 _LOGGER.warning(f'Login for {BRAND} account failed!')
                 raise Exception(f'Login for {BRAND} account failed')
@@ -967,7 +967,6 @@ class Connection:
                 return dict({'id': str(request_id), 'state': request_state, 'rate_limit_remaining': remaining})
         except:
             raise
-        return False
 
     async def setCharger(self, vin, data):
         """Start/Stop charger."""
@@ -988,7 +987,6 @@ class Connection:
                 return dict({'id': str(request_id), 'state': request_state, 'rate_limit_remaining': remaining})
         except:
             raise
-        return False
 
     async def setClimater(self, vin, data, spin):
         """Execute climatisation actions."""
@@ -1017,6 +1015,7 @@ class Connection:
         return False
 
     async def setPreHeater(self, vin, data, spin):
+        contType = None
         """Petrol/diesel parking heater actions."""
         try:
             await self.set_token('vwg')
@@ -1025,14 +1024,15 @@ class Connection:
             else:
                 contType = ''
             self._session_headers['Content-Type'] = 'application/vnd.vwg.mbb.RemoteStandheizung_v2_0_2+json'
-            if not 'quickstop' in data:
+            if 'quickstop' not in data:
                 self._session_headers['x-mbbSecToken'] = await self.get_sec_token(vin=vin, spin=spin, action='heating')
             response = await self.dataCall(f'fs-car/bs/rs/v1/{BRAND}/{self._session_country}/vehicles/$vin/action', vin=vin,
                                            json=data)
             # Clean up headers
             self._session_headers.pop('x-mbbSecToken', None)
             self._session_headers.pop('Content-Type', None)
-            if contType: self._session_headers['Content-Type'] = contType
+            if contType:
+                self._session_headers['Content-Type'] = contType
 
             if not response:
                 raise Exception('Invalid or no response')
@@ -1047,11 +1047,12 @@ class Connection:
         except Exception as error:
             self._session_headers.pop('x-mbbSecToken', None)
             self._session_headers.pop('Content-Type', None)
-            if contType: self._session_headers['Content-Type'] = contType
+            if contType:
+                self._session_headers['Content-Type'] = contType
             raise
-        return False
 
     async def setLock(self, vin, data, spin):
+        contType = None
         """Remote lock and unlock actions."""
         try:
             await self.set_token('vwg')
@@ -1069,7 +1070,8 @@ class Connection:
             # Clean up headers
             self._session_headers.pop('X-mbbSecToken', None)
             self._session_headers.pop('Content-Type', None)
-            if contType: self._session_headers['Content-Type'] = contType
+            if contType:
+                self._session_headers['Content-Type'] = contType
             if not response:
                 raise Exception('Invalid or no response')
             elif response == 429:
@@ -1084,9 +1086,9 @@ class Connection:
         except:
             self._session_headers.pop('X-mbbSecToken', None)
             self._session_headers.pop('Content-Type', None)
-            if contType: self._session_headers['Content-Type'] = contType
+            if contType:
+                self._session_headers['Content-Type'] = contType
             raise
-        return False
 
     #### Token handling ####
     @property
@@ -1147,7 +1149,7 @@ class Connection:
                 token_kid = 'VWGMBB01DELIV1.' + token_kid
 
             pubkey = pubkeys[token_kid]
-            
+
             payload = jwt.decode(token, key=pubkey, algorithms=JWT_ALGORITHMS, audience=audience)
             return True
         except Exception as error:
@@ -1242,8 +1244,8 @@ class Connection:
 
     def hash_spin(self, challenge, spin):
         """Convert SPIN and challenge to hash."""
-        spinArray = bytearray.fromhex(spin);
-        byteChallenge = bytearray.fromhex(challenge);
+        spinArray = bytearray.fromhex(spin)
+        byteChallenge = bytearray.fromhex(challenge)
         spinArray.extend(byteChallenge)
         return hashlib.sha512(spinArray).hexdigest()
 

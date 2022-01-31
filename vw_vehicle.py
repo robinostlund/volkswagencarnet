@@ -869,8 +869,10 @@ class Vehicle:
                 'remainingChargingTime', {}).get('content', 0)
             if minutes:
                 try:
-                    if minutes == -1: return "00:00"
-                    if minutes == 65535: return "00:00"
+                    if minutes == -1:
+                        return "00:00"
+                    if minutes == 65535:
+                        return "00:00"
                     return "%02d:%02d" % divmod(minutes, 60)
                 except Exception:
                     pass
@@ -1241,8 +1243,10 @@ class Vehicle:
     # Windows
     @property
     def windows_closed(self):
-        return (
-                self.window_closed_left_front and self.window_closed_left_back and self.window_closed_right_front and self.window_closed_right_back)
+        return self.window_closed_left_front \
+               and self.window_closed_left_back\
+               and self.window_closed_right_front\
+               and self.window_closed_right_back
 
     @property
     def is_windows_closed_supported(self):
