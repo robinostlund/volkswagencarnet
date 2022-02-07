@@ -49,5 +49,5 @@ jobs:
 
       - name: Test build package
         run: |
-          python -m build --sdist --wheel .
+          python -m build --sdist --wheel
           python -m twine check dist/*
