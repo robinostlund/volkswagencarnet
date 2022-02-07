@@ -53,10 +53,17 @@ jobs:
           python -m build --sdist --wheel --outdir dist/ .
           python -m twine check dist/*
 
-      - name: Test upload package
-        uses: pypa/gh-action-pypi-publish@master
+      - name: Upload package artifact
+        uses: actions/upload-artifact@v2
         with:
-          password: ${{ secrets.PYPI_TOKEN_TEST }}
-          repository_url: https://test.pypi.org/legacy/
-          print_hash: true
-          skip_existing: true
+          name: package-artifact
+          path: dist/*.tar.gz
+          if-no-files-found: error
+
+      # - name: Test upload package
+      #   uses: pypa/gh-action-pypi-publish@master
+      #   with:
+      #     password: ${{ secrets.PYPI_TOKEN_TEST }}
+      #     repository_url: https://test.pypi.org/legacy/
+      #     print_hash: true
+      #     skip_existing: true
