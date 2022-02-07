@@ -7,3 +7,5 @@ dist
 *vw.conf
 .vscode
 /tests/credentials.py
+.eggs
+/venv/

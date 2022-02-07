@@ -3,12 +3,11 @@
 """Vehicle class for We Connect."""
 import asyncio
 import logging
-import time
 from collections import OrderedDict
 from datetime import datetime, timedelta, timezone
 from json import dumps as to_json
 
-from vw_utilities import find_path, is_valid_path
+from .vw_utilities import find_path, is_valid_path
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -581,7 +580,7 @@ class Vehicle:
 
     def dashboard(self, **config):
         # Classic python notation
-        from vw_dashboard import Dashboard
+        from .vw_dashboard import Dashboard
         return Dashboard(self, **config)
 
     @property

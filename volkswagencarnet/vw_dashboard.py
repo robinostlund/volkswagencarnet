@@ -2,7 +2,7 @@
 # Thanks to molobrakos
 
 import logging
-from vw_utilities import camel2slug
+from .vw_utilities import camel2slug
 
 _LOGGER = logging.getLogger(__name__)
 
