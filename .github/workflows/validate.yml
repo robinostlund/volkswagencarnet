@@ -14,7 +14,7 @@ on:
       - master
 
 jobs:
-  build:
+  build-n-test:
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -32,7 +32,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install flake8 pytest build check-wheel-contents
+          pip install flake8 pytest build check-wheel-contents twine
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
           if [ -f requirements-test.txt ]; then pip install -r requirements-test.txt; fi
 
