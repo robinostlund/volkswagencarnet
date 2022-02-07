@@ -56,7 +56,7 @@ jobs:
       - name: Upload package artifact
         uses: actions/upload-artifact@v2
         with:
-          name: package-artifact
+          name: package
           path: dist/*.tar.gz
           if-no-files-found: error
 
