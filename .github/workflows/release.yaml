@@ -36,14 +36,20 @@ jobs:
       #     python -m twine check dist/*
       #     twine upload dist/* -r pypi
 
-      # - name: Build package for PyPi
-      #   run: |
-      #     python -m build --sdist --wheel --outdir dist/ .
-      #     python -m twine check dist/*
+      - name: Build package
+        run: |
+          python -m build --sdist --wheel --outdir dist/ .
+          python -m twine check dist/*
 
-      # - name: name: Publish package to PyPI
-      #   if: startsWith(github.ref, 'refs/tags')
-      #   uses: pypa/gh-action-pypi-publish@master
-      #   with:
-      #     password: ${{ secrets.PYPI_TOKEN_PROD }}
-      #     print_hash: true
+      - name: Upload package artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: package-artifact
+          path: dist/
+
+      - name: Publish package to PyPI
+        if: startsWith(github.ref, 'refs/tags')
+        uses: pypa/gh-action-pypi-publish@master
+        with:
+          password: ${{ secrets.PYPI_TOKEN_PROD }}
+          print_hash: true
