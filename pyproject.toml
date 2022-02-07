@@ -6,3 +6,5 @@ requires = [
     "pytest>=5,<8",
 ]
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools_scm]
