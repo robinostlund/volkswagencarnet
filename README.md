@@ -21,6 +21,8 @@ No licence, public domain, no guarantees, feel free to use for anything. Please 
 - [Wez3](https://github.com/wez3)
 - [Reneboer](https://github.com/reneboer)
 - [Tubalainen](https://github.com/tubalainen)
+- [JohNan](https://github.com/JohNan)
+- [milkboy](https://github.com/milkboy)
 
 For supporting and helping in this project.
 
