@@ -40,7 +40,7 @@ $ pip install volkswagencarnet
 
 ```python
 #!/usr/bin/env python3
-import volkswagencarnet
+from volkswagencarnet.vw_connection import Connection
 import pprint
 import asyncio
 import logging
@@ -104,7 +104,7 @@ def is_enabled(attr):
 async def main():
     """Main method."""
     async with ClientSession(headers={'Connection': 'keep-alive'}) as session:
-        connection = volkswagencarnet.Connection(session, VW_USERNAME, VW_PASSWORD)
+        connection = Connection(session, VW_USERNAME, VW_PASSWORD)
         if await connection.doLogin():
             if await connection.update():
                 # Print overall state

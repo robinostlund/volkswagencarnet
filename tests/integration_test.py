@@ -1,12 +1,7 @@
 import pytest
-import sys
-import os
 from aiohttp import ClientSession
 
-# we need to change os path to be able to import volkswagencarnet
-myPath = os.path.dirname(os.path.abspath(__file__))
-print(myPath)
-sys.path.insert(0, myPath + '/../')
+from volkswagencarnet import vw_connection
 
 try:
     from credentials import username, password, spin, vin
@@ -21,7 +16,6 @@ except ImportError:
 )
 @pytest.mark.asyncio
 async def test_successful_login():
-    import vw_connection
     async with ClientSession() as session:
         connection = vw_connection.Connection(session, username, password)
         await connection.doLogin()
