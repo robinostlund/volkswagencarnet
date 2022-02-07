@@ -13,8 +13,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
-        # with:
-        #   fetch-depth: 0
       - name: Set up Python
         uses: actions/setup-python@v2
         with:
@@ -26,29 +24,13 @@ jobs:
           pip install build wheel twine setuptools_scm
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
-      # - name: Build and publish to pypi test
-      #   env:
-      #     TWINE_USERNAME: ${{ secrets.PYPI_USERNAME_TEST }}
-      #     TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD_TEST }}
-      #   run: |
-      #     python -m build --sdist --wheel
-      #     python -m twine check dist/*
-      #     twine upload --repository-url https://test.pypi.org/legacy/ dist/*
-
       - name: Build package
         run: |
           python -m build --sdist --wheel --outdir dist/ .
           python -m twine check dist/*
-
-      - name: Upload package artifact
-        uses: actions/upload-artifact@v2
-        with:
-          name: package-artifact
-          path: dist/*.tar.gz
-          if-no-files-found: error
+          python -m setuptools_scm --strip-dev
 
       - name: Publish package to Test PyPI
-        if: startsWith(github.ref, 'refs/tags')
         uses: pypa/gh-action-pypi-publish@master
         with:
           password: ${{ secrets.PYPI_TOKEN_TEST }}
