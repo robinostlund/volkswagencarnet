@@ -27,6 +27,6 @@ setup(
     use_scm_version=True,
     setup_requires=[
         'setuptools_scm',
-        'pytest>=5,<6',
+        'pytest>=5,<8',
     ]
 )
