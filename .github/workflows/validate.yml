@@ -50,5 +50,11 @@ jobs:
 
       - name: Test build package
         run: |
-          python -m build --sdist --wheel
+          python -m build --sdist --wheel --outdir dist/ .
           python -m twine check dist/*
+
+      - name: Test upload package
+        uses: pypa/gh-action-pypi-publish@master
+        with:
+          password: ${{ secrets.PYPI_TOKEN_TEST }}
+          repository_url: https://test.pypi.org/legacy/

@@ -26,11 +26,24 @@ jobs:
           pip install build wheel twine
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
-      - name: Build and publish to pypi test
-        env:
-          TWINE_USERNAME: ${{ secrets.PYPI_USERNAME_TEST }}
-          TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD_TEST }}
+      # - name: Build and publish to pypi test
+      #   env:
+      #     TWINE_USERNAME: ${{ secrets.PYPI_USERNAME_TEST }}
+      #     TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD_TEST }}
+      #   run: |
+      #     python -m build --sdist --wheel
+      #     python -m twine check dist/*
+      #     twine upload --repository-url https://test.pypi.org/legacy/ dist/*
+
+      - name: Build package for Test PyPi
         run: |
-          python -m build --sdist --wheel
+          python -m build --sdist --wheel --outdir dist/ .
           python -m twine check dist/*
-          twine upload --repository-url https://test.pypi.org/legacy/ dist/*
+
+      - name: Publish package to Test PyPI
+        if: startsWith(github.ref, 'refs/tags')
+        uses: pypa/gh-action-pypi-publish@master
+        with:
+          password: ${{ secrets.PYPI_TOKEN_TEST }}
+          repository_url: https://test.pypi.org/legacy/
+          print_hash: true
