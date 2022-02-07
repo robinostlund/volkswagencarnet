@@ -50,6 +50,4 @@ jobs:
       - name: Test build package
         run: |
           python -m build --sdist --wheel .
-          ls -l dist
-          check-wheel-contents dist/*.whl
           python -m twine check dist/*
