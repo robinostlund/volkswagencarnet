@@ -2,7 +2,7 @@
 requires = [
     "setuptools>=45",
     "wheel>=0.37.0",
-    "setuptools_scm>=6.2",
+    "setuptools_scm>=6.x",
     "pytest>=5,<8",
 ]
 build-backend = "setuptools.build_meta"
@@ -10,3 +10,16 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools_scm]
 fallback_version = "0.0.0"
 write_to = "volkswagencarnet/version.py"
+
+[tool.black]
+line-length = 88
+target-version = ['py36', 'py37', 'py38']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # The following are specific to Black, you probably don't want those.
+  | blib2to3
+  | tests/data
+  | profiling
+)/
+'''
