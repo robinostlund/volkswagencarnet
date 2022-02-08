@@ -9,3 +9,4 @@ dist
 /tests/credentials.py
 .eggs
 /venv/
+/volkswagencarnet/version.py

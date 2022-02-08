@@ -8,3 +8,5 @@ requires = [
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools_scm]
+fallback_version = "0.0.0"
+write_to = "volkswagencarnet/version.py"
