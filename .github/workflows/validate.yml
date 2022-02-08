@@ -15,7 +15,7 @@ on:
 
 jobs:
   lint:
-    name: Validate
+    name: Lint
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -44,7 +44,9 @@ jobs:
           flake8 . --exit-zero --max-complexity=10 --max-line-length=127
 
       - name: Lint with black
-        uses: psf/black@stable
+        #uses: psf/black@stable
+        run: |
+          black --check --diff --color .
 
   test-n-build:
     name: Test and Build
