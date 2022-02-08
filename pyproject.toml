@@ -12,7 +12,7 @@ fallback_version = "0.0.0"
 write_to = "volkswagencarnet/version.py"
 
 [tool.black]
-line-length = 88
+line-length = 250
 target-version = ['py36', 'py37', 'py38', 'py39', 'py310']
 include = '\.pyi?$'
 extend-exclude = '''
