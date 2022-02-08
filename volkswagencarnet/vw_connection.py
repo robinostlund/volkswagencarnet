@@ -439,14 +439,12 @@ class Connection:
                 _LOGGER.info('Revoking API Access Token...')
                 self._session_headers['token_type_hint'] = 'access_token'
                 params = {"token": self._session_tokens['vwg']['access_token']}
-                revoke_at = await self.post(
-                    'https://mbboauth-1d.prd.ece.vwg-connect.com/mbbcoauth/mobile/oauth2/v1/revoke', data=params)
+                await self.post('https://mbboauth-1d.prd.ece.vwg-connect.com/mbbcoauth/mobile/oauth2/v1/revoke', data=params)
             if self._session_headers.get('vwg', {}).get('refresh_token'):
                 _LOGGER.info('Revoking API Refresh Token...')
                 self._session_headers['token_type_hint'] = 'refresh_token'
                 params = {"token": self._session_tokens['vwg']['refresh_token']}
-                revoke_rt = await self.post(
-                    'https://mbboauth-1d.prd.ece.vwg-connect.com/mbbcoauth/mobile/oauth2/v1/revoke', data=params)
+                await self.post('https://mbboauth-1d.prd.ece.vwg-connect.com/mbbcoauth/mobile/oauth2/v1/revoke', data=params)
                 self._session_headers.pop('token_type_hint', None)
             if self._session_headers.get('identity', {}).get('identity_token'):
                 _LOGGER.info('Revoking Identity Access Token...')
@@ -461,7 +459,7 @@ class Connection:
                     "token": self._session_tokens['identity']['refresh_token'],
                     "brand": BRAND
                 }
-                revoke_rt = await self.post('https://tokenrefreshservice.apps.emea.vwapps.io/revokeToken', data=params)
+                await self.post('https://tokenrefreshservice.apps.emea.vwapps.io/revokeToken', data=params)
 
     # HTTP methods to API
     async def _request(self, method, url, **kwargs):
@@ -570,7 +568,7 @@ class Connection:
             _LOGGER.warning(f'Could not update information: {error}')
         return False
 
-    #### Data collect functions ####
+    # Data collect functions #
     async def getHomeRegion(self, vin):
         """Get API requests base url for VIN."""
         if not await self.validate_tokens:
@@ -915,7 +913,7 @@ class Connection:
             _LOGGER.error(f'Could not generate security token (maybe wrong SPIN?), error: {error}')
             raise
 
-    #### Data set functions ####
+    # Data set functions #
     async def dataCall(self, query, vin='', **data):
         """Function to execute actions through VW-Group API."""
         if self.logged_in is False:
@@ -1093,7 +1091,7 @@ class Connection:
                 self._session_headers['Content-Type'] = contType
             raise
 
-    #### Token handling ####
+    # Token handling #
     @property
     async def validate_tokens(self):
         """Function to validate expiry of tokens."""
@@ -1152,8 +1150,7 @@ class Connection:
                 token_kid = 'VWGMBB01DELIV1.' + token_kid
 
             pubkey = pubkeys[token_kid]
-
-            payload = jwt.decode(token, key=pubkey, algorithms=JWT_ALGORITHMS, audience=audience)
+            jwt.decode(token, key=pubkey, algorithms=JWT_ALGORITHMS, audience=audience)
             return True
         except Exception as error:
             _LOGGER.debug(f'Failed to verify token, error: {error}')
@@ -1225,7 +1222,7 @@ class Connection:
         self._session_headers['Authorization'] = 'Bearer ' + self._session_tokens[type]['access_token']
         return
 
-    #### Class helpers ####
+    # Class helpers #
     @property
     def vehicles(self):
         """Return list of Vehicle objects."""
