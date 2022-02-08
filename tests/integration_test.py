@@ -11,8 +11,7 @@ except ImportError:
 
 
 @pytest.mark.skipif(
-    username is None or password is None,
-    reason="Username or password is not set. Check credentials.py.sample"
+    username is None or password is None, reason="Username or password is not set. Check credentials.py.sample"
 )
 @pytest.mark.asyncio
 async def test_successful_login():
@@ -21,4 +20,4 @@ async def test_successful_login():
         await connection.doLogin()
         if connection.logged_in:
             return True
-    pytest.fail('Login failed')
+    pytest.fail("Login failed")

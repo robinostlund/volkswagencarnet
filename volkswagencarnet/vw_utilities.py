@@ -24,11 +24,7 @@ def read_config():
             config = join(directory, filename)
             _LOGGER.debug("checking for config file %s", config)
             with open(config) as config:
-                return dict(
-                    x.split(": ")
-                    for x in config.read().strip().splitlines()
-                    if not x.startswith("#")
-                )
+                return dict(x.split(": ") for x in config.read().strip().splitlines() if not x.startswith("#"))
         except (IOError, OSError):
             continue
     return {}
