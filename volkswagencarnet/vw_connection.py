@@ -83,21 +83,25 @@ class Connection:
         self._session._cookie_jar._cookies.clear()
 
     # API Login
-    async def doLogin(self):
+    async def doLogin(self, tries: int = 1):
         """Login method, clean login"""
         _LOGGER.debug("Initiating new login")
         # Remove cookies and re-init headers as we are doing a new login
         self._clear_cookies()
         self._session_headers = HEADERS_SESSION.copy()
         self._session_auth_headers = HEADERS_AUTH.copy()
-        if not await self._login("Legacy"):
-            _LOGGER.info("Something failed")
-            self._session_logged_in = False
+
+        for i in range(tries):
+            if not await self._login("Legacy"):
+                _LOGGER.info("Something failed")
+                self._session_logged_in = False
+
+        if not self._session_logged_in:
             return False
-        else:
-            _LOGGER.info("Successfully logged in")
-            self._session_tokens["identity"] = self._session_tokens["Legacy"].copy()
-            self._session_logged_in = True
+
+        _LOGGER.info("Successfully logged in")
+        self._session_tokens["identity"] = self._session_tokens["Legacy"].copy()
+        self._session_logged_in = True
 
         # Get VW-Group API tokens
         if not await self._getAPITokens():
