@@ -8,6 +8,8 @@ import time
 import logging
 import asyncio
 import hashlib
+from random import random
+
 import jwt
 
 from sys import version_info, argv
@@ -86,15 +88,13 @@ class Connection:
     async def doLogin(self, tries: int = 1):
         """Login method, clean login"""
         _LOGGER.debug("Initiating new login")
-        # Remove cookies and re-init headers as we are doing a new login
-        self._clear_cookies()
-        self._session_headers = HEADERS_SESSION.copy()
-        self._session_auth_headers = HEADERS_AUTH.copy()
 
         for i in range(tries):
-            if not await self._login("Legacy"):
-                _LOGGER.info("Something failed")
-                self._session_logged_in = False
+            self._session_logged_in = await self._login("Legacy")
+            if self._session_logged_in:
+                break
+            _LOGGER.info("Something failed")
+            await asyncio.sleep(random * 5)
 
         if not self._session_logged_in:
             return False
