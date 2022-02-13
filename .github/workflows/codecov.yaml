@@ -1,5 +1,5 @@
 name: "CodeCov"
-on: [push, pull_request]
+on: [push]
 jobs:
   analyze:
     name: Analyze
@@ -10,19 +10,27 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
-        with:
-          fetch-depth: '2'
+        uses: actions/checkout@master
 
       - name: Setup Python
         uses: actions/setup-python@master
         with:
           python-version: 3.7
 
-      - name: Generate Report
+      - name: Generate coverage report
         run: |
-          pip install coverage
-          coverage run -m unittest
+          pip install pytest
+          pip install pytest-cov
+          pytest --cov=./ --cov-report=xml
 
+      # documentation: https://github.com/codecov/codecov-action
       - name: Upload Coverage to Codecov
         uses: codecov/codecov-action@v2
+        with:
+          directory: ./coverage/reports/
+          env_vars: OS,PYTHON
+          fail_ci_if_error: true
+          files: ./coverage1.xml,./coverage2.xml
+          flags: unittests
+          name: codecov-volkswagencarnet
+          path_to_write_report: ./coverage/codecov_report.txt
