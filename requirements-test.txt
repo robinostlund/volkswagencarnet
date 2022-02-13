@@ -7,4 +7,3 @@ setuptools
 pytest-asyncio
 flake8
 pytest-cov
-pytest-asyncio
