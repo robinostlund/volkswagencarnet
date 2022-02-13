@@ -1,3 +1,1 @@
-pytest_plugins = [
-    "tests.fixtures.connection"
-]
+pytest_plugins = ["tests.fixtures.connection"]

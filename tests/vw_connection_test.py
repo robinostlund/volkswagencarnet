@@ -19,7 +19,6 @@ def test_clear_cookies(connection):
 
 
 class CmdLineTest(IsolatedAsyncioTestCase, unittest.TestCase):
-
     class FailingLoginConnection:
         def __init__(self, sess, **kwargs):
             self._session = sess
@@ -39,42 +38,44 @@ class CmdLineTest(IsolatedAsyncioTestCase, unittest.TestCase):
 
         @property
         def vehicles(self):
-            vehicle1 = Vehicle(None, 'vin1')
-            vehicle2 = Vehicle(None, 'vin2')
+            vehicle1 = Vehicle(None, "vin1")
+            vehicle2 = Vehicle(None, "vin2")
             return [vehicle1, vehicle2]
 
     @pytest.mark.asyncio
-    @patch.object(volkswagencarnet.vw_connection.logging, 'basicConfig')
-    @patch('volkswagencarnet.vw_connection.Connection', spec_set=Connection, new=FailingLoginConnection)
+    @patch.object(volkswagencarnet.vw_connection.logging, "basicConfig")
+    @patch("volkswagencarnet.vw_connection.Connection", spec_set=Connection, new=FailingLoginConnection)
     async def test_main_argv(self, logger_config):
         # Assert default logger level is ERROR
         await volkswagencarnet.vw_connection.main()
         logger_config.assert_called_with(level=logging.ERROR)
 
         # -v should be INFO
-        argv.append('-v')
+        argv.append("-v")
         await volkswagencarnet.vw_connection.main()
         logger_config.assert_called_with(level=logging.INFO)
-        argv.remove('-v')
+        argv.remove("-v")
 
         # -vv should be DEBUG
-        argv.append('-vv')
+        argv.append("-vv")
         await volkswagencarnet.vw_connection.main()
         logger_config.assert_called_with(level=logging.DEBUG)
 
     @pytest.mark.asyncio
-    @patch('sys.stdout', new_callable = StringIO)
-    @patch('volkswagencarnet.vw_connection.Connection', spec_set=Connection, new=FailingLoginConnection)
+    @patch("sys.stdout", new_callable=StringIO)
+    @patch("volkswagencarnet.vw_connection.Connection", spec_set=Connection, new=FailingLoginConnection)
     async def test_main_output_failed(self, stdout: StringIO):
         await volkswagencarnet.vw_connection.main()
         assert stdout.getvalue() == ""
 
     @pytest.mark.asyncio
-    @patch('sys.stdout', new_callable = StringIO)
-    @patch('volkswagencarnet.vw_connection.Connection', spec_set=Connection, new=TwoVehiclesConnection)
+    @patch("sys.stdout", new_callable=StringIO)
+    @patch("volkswagencarnet.vw_connection.Connection", spec_set=Connection, new=TwoVehiclesConnection)
     async def test_main_output_two_vehicles(self, stdout: StringIO):
         await volkswagencarnet.vw_connection.main()
-        assert stdout.getvalue() == """Vehicle id: vin1
+        assert (
+            stdout.getvalue()
+            == """Vehicle id: vin1
 Supported sensors:
  - Force data refresh (domain:switch) - Off
  - Request results (domain:sensor) - Unknown
@@ -87,3 +88,4 @@ Supported sensors:
  - Requests remaining (domain:sensor) - -1
  - Request in progress (domain:binary_sensor) - Off
 """
+        )
