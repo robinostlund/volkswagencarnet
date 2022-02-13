@@ -5,11 +5,11 @@ build
 dist
 *.egg-info
 *vw.conf
+.coverage
+.eggs
 .vscode
 /tests/credentials.py
-.eggs
 /venv/
 /volkswagencarnet/version.py
 /volkswagencarnet.iml
-/.coverage
-/htmlcov/
+htmlcov

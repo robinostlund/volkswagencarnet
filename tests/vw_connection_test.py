@@ -1,5 +1,4 @@
 import logging.config
-import os
 import unittest
 from io import StringIO
 from sys import argv
@@ -7,39 +6,10 @@ from unittest import IsolatedAsyncioTestCase
 from unittest.mock import patch
 
 import pytest
-import pytest_asyncio
-from aiohttp import CookieJar, ClientSession
 
 import volkswagencarnet.vw_connection
-from .fixtures import resource_path
 from volkswagencarnet.vw_connection import Connection
 from volkswagencarnet.vw_vehicle import Vehicle
-
-
-@pytest.fixture
-def connection(session):
-    """Real connection for integration tests"""
-    return Connection(
-        session=session,
-        username='',
-        password='',
-        country='DE',
-        interval=999,
-        fulldebug=True
-    )
-
-
-@pytest_asyncio.fixture
-async def session():
-    """Client session that can be used in tests"""
-    jar = CookieJar()
-    jar.load(os.path.join(resource_path, 'dummy_cookies.pickle'))
-    sess = ClientSession(
-        headers={'Connection': 'keep-alive'},
-        cookie_jar=jar
-    )
-    yield sess
-    await sess.close()
 
 
 def test_clear_cookies(connection):
