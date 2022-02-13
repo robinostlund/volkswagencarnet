@@ -6,11 +6,12 @@ from itertools import product
 from os import environ as env
 from os.path import join, dirname, expanduser
 from sys import argv
+from typing import Any
 
 _LOGGER = logging.getLogger(__name__)
 
 
-def read_config():
+def read_config() -> dict:
     """Read config from file."""
     for directory, filename in product(
         [
@@ -30,11 +31,11 @@ def read_config():
     return {}
 
 
-def json_loads(s):
+def json_loads(s) -> Any:
     return json.loads(s, object_hook=obj_parser)
 
 
-def obj_parser(obj):
+def obj_parser(obj: dict) -> dict:
     """Parse datetime."""
     for key, val in obj.items():
         try:
@@ -44,7 +45,7 @@ def obj_parser(obj):
     return obj
 
 
-def find_path(src, path):
+def find_path(src, path) -> Any:
     """Simple navigation of a hierarchical dict structure using XPATH-like syntax.
 
     >>> find_path(dict(a=1), 'a')
@@ -101,7 +102,7 @@ def is_valid_path(src, path):
         return False
 
 
-def camel2slug(s):
+def camel2slug(s: str) -> str:
     """Convert camelCase to camel_case.
 
     >>> camel2slug('fooBar')
