@@ -1,4 +1,5 @@
 import logging.config
+import sys
 import unittest
 from io import StringIO
 from sys import argv
@@ -12,12 +13,14 @@ from volkswagencarnet.vw_connection import Connection
 from volkswagencarnet.vw_vehicle import Vehicle
 
 
+@pytest.mark.skipif(sys.version_info < (3, 8))
 def test_clear_cookies(connection):
     assert len(connection._session._cookie_jar._cookies) > 0
     connection._clear_cookies()
     assert len(connection._session._cookie_jar._cookies) == 0
 
 
+@pytest.mark.skipif(sys.version_info < (3, 8))
 class CmdLineTest(IsolatedAsyncioTestCase, unittest.TestCase):
     class FailingLoginConnection:
         def __init__(self, sess, **kwargs):
@@ -46,6 +49,10 @@ class CmdLineTest(IsolatedAsyncioTestCase, unittest.TestCase):
     @patch.object(volkswagencarnet.vw_connection.logging, "basicConfig")
     @patch("volkswagencarnet.vw_connection.Connection", spec_set=Connection, new=FailingLoginConnection)
     async def test_main_argv(self, logger_config):
+        if "-v" in argv:
+            argv.remove("-v")
+        if "-vv" in argv:
+            argv.remove("-vv")
         # Assert default logger level is ERROR
         await volkswagencarnet.vw_connection.main()
         logger_config.assert_called_with(level=logging.ERROR)

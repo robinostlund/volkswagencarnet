@@ -2,7 +2,7 @@ lxml
 beautifulsoup4
 aiohttp
 pyjwt
-pytest
+pytest>=7.0.0
 setuptools
 pytest-asyncio
 flake8
