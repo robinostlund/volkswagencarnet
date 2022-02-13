@@ -94,7 +94,7 @@ class Connection:
             if self._session_logged_in:
                 break
             _LOGGER.info("Something failed")
-            await asyncio.sleep(random * 5)
+            await asyncio.sleep(random() * 5)
 
         if not self._session_logged_in:
             return False
@@ -1026,7 +1026,6 @@ class Connection:
         except:
             self._session_headers.pop("X-securityToken", None)
             raise
-        return False
 
     async def setPreHeater(self, vin, data, spin):
         contType = None

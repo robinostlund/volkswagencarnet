@@ -10,3 +10,6 @@ dist
 .eggs
 /venv/
 /volkswagencarnet/version.py
+/volkswagencarnet.iml
+/.coverage
+/htmlcov/
