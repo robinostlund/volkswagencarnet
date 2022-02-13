@@ -1,11 +1,15 @@
 import logging.config
 import sys
+
 # This won't work on python versions less than 3.8
 if sys.version_info >= (3, 8):
     from unittest import IsolatedAsyncioTestCase
 else:
+
     class IsolatedAsyncioTestCase:
         pass
+
+
 import unittest
 from io import StringIO
 from sys import argv
