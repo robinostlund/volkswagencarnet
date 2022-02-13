@@ -34,6 +34,7 @@ def read_config() -> dict:
 def json_loads(s) -> Any:
     return json.loads(s, object_hook=obj_parser)
 
+
 def obj_parser(obj: dict) -> dict:
     """Parse datetime."""
     for key, val in obj.items():

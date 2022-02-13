@@ -66,10 +66,10 @@ class UtilitiesTest(unittest.TestCase):
         actual = json_loads('{"foo":  {\n"bar":\t"baz"}}')
         self.assertEqual(expected, actual)
 
-        self.assertEqual(42, json_loads('42'))
+        self.assertEqual(42, json_loads("42"))
 
         with self.assertRaises(JSONDecodeError):
-            json_loads('{[}')
+            json_loads("{[}")
         with self.assertRaises(TypeError):
             json_loads(42)
 
@@ -81,12 +81,8 @@ foo: bar
 """
         mock_open = mock.mock_open(read_data=read_data)
         with mock.patch("builtins.open", mock_open):
-#            with self.assertRaises(ValueError) as context:
             res = read_config()
-            self.assertEqual(
-                {"foo": "bar"},
-                res
-            )
+            self.assertEqual({"foo": "bar"}, res)
 
     def test_read_config_error(self):
         """success on second file, but parse error"""
