@@ -7,6 +7,7 @@
 ![Version](https://img.shields.io/github/v/release/robinostlund/volkswagencarnet)
 ![CodeStyle](https://img.shields.io/badge/code%20style-black-black)
 ![Known Vulnerabilities](https://snyk.io/test/github/robinostlund/volkswagencarnet/badge.svg)
+[![CodeQL](https://github.com/robinostlund/volkswagencarnet/actions/workflows/codeql-analysis.yml/badge.svg)](https://github.com/robinostlund/volkswagencarnet/actions/workflows/codeql-analysis.yml)
 
 ![Downloads a day](https://img.shields.io/pypi/dd/volkswagencarnet)
 ![Downloads a week](https://img.shields.io/pypi/dw/volkswagencarnet)
