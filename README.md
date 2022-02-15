@@ -8,6 +8,8 @@
 ![CodeStyle](https://img.shields.io/badge/code%20style-black-black)
 ![Known Vulnerabilities](https://snyk.io/test/github/robinostlund/volkswagencarnet/badge.svg)
 [![CodeQL](https://github.com/robinostlund/volkswagencarnet/actions/workflows/codeql-analysis.yml/badge.svg)](https://github.com/robinostlund/volkswagencarnet/actions/workflows/codeql-analysis.yml)
+[![codecov](https://codecov.io/gh/robinostlund/volkswagencarnet/branch/master/graph/badge.svg?token=NH1Q1GH4I3)](https://codecov.io/gh/robinostlund/volkswagencarnet)
+
 
 ![Downloads a day](https://img.shields.io/pypi/dd/volkswagencarnet)
 ![Downloads a week](https://img.shields.io/pypi/dw/volkswagencarnet)
