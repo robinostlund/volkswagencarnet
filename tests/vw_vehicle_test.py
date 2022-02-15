@@ -3,6 +3,7 @@ import sys
 import unittest
 from datetime import datetime
 from hashlib import sha256
+
 # This won't work on python versions less than 3.8
 if sys.version_info >= (3, 8):
     from unittest import IsolatedAsyncioTestCase
@@ -11,12 +12,14 @@ else:
     class IsolatedAsyncioTestCase(unittest.TestCase):
         pass
 
+
 from unittest.mock import MagicMock
 
 from aiohttp import ClientSession
 from freezegun import freeze_time
 
 from volkswagencarnet.vw_vehicle import Vehicle
+
 
 class VehicleTest(IsolatedAsyncioTestCase):
     @freeze_time("2022-02-14 03:04:05")
