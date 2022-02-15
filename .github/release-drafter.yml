@@ -15,8 +15,10 @@ categories:
       - "bug"
 
   - title: "🧰 Maintenance"
-    label:
+    labels:
       - "dependencies"
+      - "refactoring"
+      - "tests"
 
 version-resolver:
   major:
