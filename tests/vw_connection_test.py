@@ -1,16 +1,16 @@
 import logging.config
 import sys
+import unittest
 
 # This won't work on python versions less than 3.8
 if sys.version_info >= (3, 8):
     from unittest import IsolatedAsyncioTestCase
 else:
 
-    class IsolatedAsyncioTestCase:
+    class IsolatedAsyncioTestCase(unittest.TestCase):
         pass
 
 
-import unittest
 from io import StringIO
 from sys import argv
 from unittest.mock import patch
