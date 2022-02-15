@@ -5,4 +5,4 @@ pytest-asyncio
 flake8
 pytest-cov
 black
-freezegun=>1.0.0
+freezegun>=1.0.0
