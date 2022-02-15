@@ -1,8 +1,6 @@
-import random
 import sys
 import unittest
 from datetime import datetime
-from hashlib import sha256
 
 # This won't work on python versions less than 3.8
 if sys.version_info >= (3, 8):
@@ -26,7 +24,7 @@ class VehicleTest(IsolatedAsyncioTestCase):
     async def test_init(self):
         async with ClientSession() as conn:
             target_date = datetime.fromisoformat("2022-02-14 03:04:05")
-            url = "https://" + sha256(random.randbytes(8)).digest().hex()
+            url = "https://foo.bar"
             vehicle = Vehicle(conn, url)
             self.assertEqual(conn, vehicle._connection)
             self.assertEqual(url, vehicle._url)
