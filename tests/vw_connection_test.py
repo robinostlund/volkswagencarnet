@@ -29,7 +29,7 @@ def test_clear_cookies(connection):
     assert len(connection._session._cookie_jar._cookies) == 0
 
 
-class CmdLineTest(IsolatedAsyncioTestCase, unittest.TestCase):
+class CmdLineTest(IsolatedAsyncioTestCase):
     class FailingLoginConnection:
         def __init__(self, sess, **kwargs):
             self._session = sess

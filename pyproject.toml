@@ -4,6 +4,7 @@ requires = [
     "wheel>=0.37.0",
     "setuptools_scm>=6.x",
     "pytest>=5,<8",
+    "freezegun>=1.0"
 ]
 build-backend = "setuptools.build_meta"
 
