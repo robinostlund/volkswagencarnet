@@ -2,8 +2,8 @@ import logging.config
 import sys
 import unittest
 
-# This won't work on python versions less than 3.8
 if sys.version_info >= (3, 8):
+    # This won't work on python versions less than 3.8
     from unittest import IsolatedAsyncioTestCase
 else:
 
@@ -12,7 +12,6 @@ else:
 
 
 from io import StringIO
-from sys import argv
 from unittest.mock import patch
 
 import pytest
@@ -58,25 +57,23 @@ class CmdLineTest(IsolatedAsyncioTestCase):
     @patch("volkswagencarnet.vw_connection.Connection", spec_set=Connection, new=FailingLoginConnection)
     @pytest.mark.skipif(condition=sys.version_info < (3, 8), reason="Test incompatible with Python < 3.8")
     async def test_main_argv(self, logger_config):
-        # TODO: use patch to only change argv during the test?
-        if "-v" in argv:
-            argv.remove("-v")
-        if "-vv" in argv:
-            argv.remove("-vv")
-        # Assert default logger level is ERROR
-        await volkswagencarnet.vw_connection.main()
-        logger_config.assert_called_with(level=logging.ERROR)
+        from logging import ERROR
+        from logging import INFO
+        from logging import DEBUG
 
-        # -v should be INFO
-        argv.append("-v")
-        await volkswagencarnet.vw_connection.main()
-        logger_config.assert_called_with(level=logging.INFO)
-        argv.remove("-v")
-
-        # -vv should be DEBUG
-        argv.append("-vv")
-        await volkswagencarnet.vw_connection.main()
-        logger_config.assert_called_with(level=logging.DEBUG)
+        cases = [
+            ["none", [], ERROR],
+            ["-v", ["-v"], INFO],
+            ["-v2", ["-v2"], ERROR],
+            ["-vv", ["-vv"], DEBUG],
+        ]
+        for c in cases:
+            args = ["dummy"]
+            args.extend(c[1])
+            with patch.object(volkswagencarnet.vw_connection.sys, "argv", args), self.subTest(msg=c[0]):
+                await volkswagencarnet.vw_connection.main()
+                logger_config.assert_called_with(level=c[2])
+                logger_config.reset()
 
     @pytest.mark.asyncio
     @patch("sys.stdout", new_callable=StringIO)
