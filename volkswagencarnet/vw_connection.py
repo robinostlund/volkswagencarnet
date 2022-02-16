@@ -13,7 +13,7 @@ from random import random
 
 import jwt
 
-from sys import version_info, argv
+from sys import version_info
 from datetime import timedelta, datetime
 from urllib.parse import urljoin, parse_qs, urlparse
 from json import dumps as to_json
@@ -51,11 +51,11 @@ JWT_ALGORITHMS = ["RS256"]
 
 
 class Connection:
-    """Connection to VW-Group Connect services"""
+    """Connection to VW-Group Connect services."""
 
     # Init connection class
     def __init__(self, session, username, password, fulldebug=False, country=COUNTRY, interval=timedelta(minutes=5)):
-        """Initialize"""
+        """Initialize."""
         self._x_client_id = None
         self._session = session
         self._session_fulldebug = fulldebug
@@ -87,7 +87,7 @@ class Connection:
 
     # API Login
     async def doLogin(self, tries: int = 1):
-        """Login method, clean login"""
+        """Login method, clean login."""
         _LOGGER.debug("Initiating new login")
 
         for i in range(tries):
@@ -417,7 +417,7 @@ class Connection:
         return True
 
     async def terminate(self):
-        """Log out from connect services"""
+        """Log out from connect services."""
         _LOGGER.info("Initiating logout")
         await self.logout()
 
@@ -455,7 +455,7 @@ class Connection:
 
     # HTTP methods to API
     async def _request(self, method, url, **kwargs):
-        """Perform a query to the VW-Group API"""
+        """Perform a query to the VW-Group API."""
         _LOGGER.debug(f'HTTP {method} "{url}"')
         async with self._session.request(
             method,
@@ -913,7 +913,7 @@ class Connection:
 
     # Data set functions #
     async def dataCall(self, query, vin="", **data):
-        """Function to execute actions through VW-Group API."""
+        """Execute actions through VW-Group API."""
         if self.logged_in is False:
             if not await self.doLogin():
                 _LOGGER.warning(f"Login for {BRAND} account failed!")
@@ -951,7 +951,7 @@ class Connection:
         return False
 
     async def setRefresh(self, vin):
-        """ "Force vehicle data update."""
+        """Force vehicle data update."""
         try:
             await self.set_token("vwg")
             response = await self.dataCall(
@@ -1029,14 +1029,14 @@ class Connection:
             raise
 
     async def setPreHeater(self, vin, data, spin):
-        contType = None
         """Petrol/diesel parking heater actions."""
+        content_type = None
         try:
             await self.set_token("vwg")
             if "Content-Type" in self._session_headers:
-                contType = self._session_headers["Content-Type"]
+                content_type = self._session_headers["Content-Type"]
             else:
-                contType = ""
+                content_type = ""
             self._session_headers["Content-Type"] = "application/vnd.vwg.mbb.RemoteStandheizung_v2_0_2+json"
             if "quickstop" not in data:
                 self._session_headers["x-mbbSecToken"] = await self.get_sec_token(vin=vin, spin=spin, action="heating")
@@ -1046,8 +1046,8 @@ class Connection:
             # Clean up headers
             self._session_headers.pop("x-mbbSecToken", None)
             self._session_headers.pop("Content-Type", None)
-            if contType:
-                self._session_headers["Content-Type"] = contType
+            if content_type:
+                self._session_headers["Content-Type"] = content_type
 
             if not response:
                 raise Exception("Invalid or no response")
@@ -1064,20 +1064,20 @@ class Connection:
         except Exception:
             self._session_headers.pop("x-mbbSecToken", None)
             self._session_headers.pop("Content-Type", None)
-            if contType:
-                self._session_headers["Content-Type"] = contType
+            if content_type:
+                self._session_headers["Content-Type"] = content_type
             raise
 
     async def setLock(self, vin, data, spin):
-        contType = None
         """Remote lock and unlock actions."""
+        content_type = None
         try:
             await self.set_token("vwg")
             # Prepare data, headers and fetch security token
             if "Content-Type" in self._session_headers:
-                contType = self._session_headers["Content-Type"]
+                content_type = self._session_headers["Content-Type"]
             else:
-                contType = ""
+                content_type = ""
             if "unlock" in data:
                 self._session_headers["X-mbbSecToken"] = await self.get_sec_token(vin=vin, spin=spin, action="unlock")
             else:
@@ -1089,8 +1089,8 @@ class Connection:
             # Clean up headers
             self._session_headers.pop("X-mbbSecToken", None)
             self._session_headers.pop("Content-Type", None)
-            if contType:
-                self._session_headers["Content-Type"] = contType
+            if content_type:
+                self._session_headers["Content-Type"] = content_type
             if not response:
                 raise Exception("Invalid or no response")
             elif response == 429:
@@ -1107,14 +1107,14 @@ class Connection:
         except:
             self._session_headers.pop("X-mbbSecToken", None)
             self._session_headers.pop("Content-Type", None)
-            if contType:
-                self._session_headers["Content-Type"] = contType
+            if content_type:
+                self._session_headers["Content-Type"] = content_type
             raise
 
     # Token handling #
     @property
     async def validate_tokens(self):
-        """Function to validate expiry of tokens."""
+        """Validate expiry of tokens."""
         idtoken = self._session_tokens["identity"]["id_token"]
         atoken = self._session_tokens["vwg"]["access_token"]
         id_exp = jwt.decode(
@@ -1145,7 +1145,7 @@ class Connection:
         return True
 
     async def verify_tokens(self, token, type, client="Legacy"):
-        """Function to verify JWT against JWK(s)."""
+        """Verify JWT against JWK(s)."""
         if type == "identity":
             req = await self._session.get(url="https://identity.vwgroup.io/oidc/v1/keys")
             keys = await req.json()
@@ -1181,7 +1181,7 @@ class Connection:
             return False
 
     async def refresh_tokens(self):
-        """Function to refresh tokens."""
+        """Refresh tokens."""
         try:
             tHeaders = {
                 "Accept-Encoding": "gzip, deflate, br",
@@ -1248,6 +1248,10 @@ class Connection:
 
     @property
     def logged_in(self):
+        """
+        Return cached logged in state.
+        Not actually checking anything.
+        """
         return self._session_logged_in
 
     def vehicle(self, vin):
@@ -1263,6 +1267,7 @@ class Connection:
 
     @property
     async def validate_login(self):
+        """Check that we have a valid access token."""
         try:
             if not await self.validate_tokens:
                 return False
@@ -1274,10 +1279,10 @@ class Connection:
 
 
 async def main():
-    """Main method."""
-    if "-v" in argv:
+    """Run the program."""
+    if "-v" in sys.argv:
         logging.basicConfig(level=logging.INFO)
-    elif "-vv" in argv:
+    elif "-vv" in sys.argv:
         logging.basicConfig(level=logging.DEBUG)
     else:
         logging.basicConfig(level=logging.ERROR)

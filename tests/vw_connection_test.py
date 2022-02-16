@@ -1,4 +1,4 @@
-import logging.config
+"""Tests for main connection class."""
 import sys
 import unittest
 
@@ -8,6 +8,8 @@ if sys.version_info >= (3, 8):
 else:
 
     class IsolatedAsyncioTestCase(unittest.TestCase):
+        """Dummy class to use instead (tests might need to skipped separately also)."""
+
         pass
 
 
@@ -23,31 +25,44 @@ from volkswagencarnet.vw_vehicle import Vehicle
 
 @pytest.mark.skipif(condition=sys.version_info < (3, 8), reason="Test incompatible with Python < 3.8")
 def test_clear_cookies(connection):
+    """Check that we can clear old cookies."""
     assert len(connection._session._cookie_jar._cookies) > 0
     connection._clear_cookies()
     assert len(connection._session._cookie_jar._cookies) == 0
 
 
 class CmdLineTest(IsolatedAsyncioTestCase):
+    """Tests mostly for testing how to test..."""
+
     class FailingLoginConnection:
+        """This connection always fails login."""
+
         def __init__(self, sess, **kwargs):
+            """Init."""
             self._session = sess
 
         async def doLogin(self):
+            """Failed login attempt."""
             return False
 
     class TwoVehiclesConnection:
+        """Connection that return two vehicles."""
+
         def __init__(self, sess, **kwargs):
+            """Init."""
             self._session = sess
 
         async def doLogin(self):
+            """No-op update."""
             return True
 
         async def update(self):
+            """No-op update."""
             return True
 
         @property
         def vehicles(self):
+            """Return the vehicles."""
             vehicle1 = Vehicle(None, "vin1")
             vehicle2 = Vehicle(None, "vin2")
             return [vehicle1, vehicle2]
@@ -57,6 +72,7 @@ class CmdLineTest(IsolatedAsyncioTestCase):
     @patch("volkswagencarnet.vw_connection.Connection", spec_set=Connection, new=FailingLoginConnection)
     @pytest.mark.skipif(condition=sys.version_info < (3, 8), reason="Test incompatible with Python < 3.8")
     async def test_main_argv(self, logger_config):
+        """Test verbosity flags."""
         from logging import ERROR
         from logging import INFO
         from logging import DEBUG
@@ -80,6 +96,7 @@ class CmdLineTest(IsolatedAsyncioTestCase):
     @patch("volkswagencarnet.vw_connection.Connection", spec_set=Connection, new=FailingLoginConnection)
     @pytest.mark.skipif(condition=sys.version_info < (3, 8), reason="Test incompatible with Python < 3.8")
     async def test_main_output_failed(self, stdout: StringIO):
+        """Verify empty stdout on failed login."""
         await volkswagencarnet.vw_connection.main()
         assert stdout.getvalue() == ""
 
@@ -88,6 +105,7 @@ class CmdLineTest(IsolatedAsyncioTestCase):
     @patch("volkswagencarnet.vw_connection.Connection", spec_set=Connection, new=TwoVehiclesConnection)
     @pytest.mark.skipif(condition=sys.version_info < (3, 8), reason="Test incompatible with Python < 3.8")
     async def test_main_output_two_vehicles(self, stdout: StringIO):
+        """Get console output for two vehicles."""
         await volkswagencarnet.vw_connection.main()
         assert (
             stdout.getvalue()
