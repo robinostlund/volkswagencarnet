@@ -3,6 +3,8 @@ pytest>=7.0.0
 setuptools
 pytest-asyncio
 flake8
+flake8-docstrings
+pre-commit
 pytest-cov
 black
 freezegun>=1.0.0
