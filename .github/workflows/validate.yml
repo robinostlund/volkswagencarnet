@@ -76,6 +76,6 @@ jobs:
 
       - name: Test build package
         run: |
-          python -m build --outdir dist/ 
+          python -m build --outdir dist/
           python -m twine check dist/*
           python -m setuptools_scm --strip-dev

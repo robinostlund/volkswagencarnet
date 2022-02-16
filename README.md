@@ -147,3 +147,10 @@ if __name__ == "__main__":
     # loop.run(main())
     loop.run_until_complete(main())
 ```
+
+## Development
+I'd strongly advise installing the git pre-commit hook using `pre-commit install`. See [pre-commit.com](https://pre-commit.com/) for details.
+Some basic checks are performed before you commit the code, so code style issues
+will be visible and fixable before creating the PR.
+
+Decent test coverage for any new or changed code is also much appreciated :)
