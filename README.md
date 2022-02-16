@@ -151,6 +151,8 @@ if __name__ == "__main__":
 ## Development
 I'd strongly advise installing the git pre-commit hook using `pre-commit install`. See [pre-commit.com](https://pre-commit.com/) for details.
 Some basic checks are performed before you commit the code, so code style issues
-will be visible and fixable before creating the PR.
+will be visible and fixable before creating the PR. Git pre-commit hooks can
+always be skipped using the `--no-verify` flag to `git commit`, if there
+is something preventing you from actually fixing the reported (and non-auto-fixed) issues.
 
 Decent test coverage for any new or changed code is also much appreciated :)
