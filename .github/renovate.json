@@ -4,7 +4,6 @@
   ],
   "labels": ["dependencies"],
   "draftPR": true,
-  "enableHttp2": true,
   "internalChecksFilter": "strict",
   "pip_requirements": {
     "fileMatch": ["requirements-test.(txt|pip)"]
