@@ -134,6 +134,11 @@ class Connection:
 
         # Helper functions
         def getNonce():
+            """
+            Get a random nonce.
+
+            :return:
+            """
             ts = "%d" % (time.time())
             sha256 = hashlib.sha256()
             sha256.update(ts.encode())
@@ -141,12 +146,30 @@ class Connection:
             return b64encode(sha256.digest()).decode("utf-8")[:-1]
 
         def base64URLEncode(s):
+            """
+            Encode string as Base 64 in a URL safe way, stripping trailing '='.
+
+            :param s:
+            :return:
+            """
             return urlsafe_b64encode(s).rstrip(b"=")
 
         def extract_csrf(req):
+            """
+            To be removed.
+
+            :param req:
+            :return:
+            """
             return re.compile('<meta name="_csrf" content="([^"]*)"/>').search(req).group(1)
 
         def extract_guest_language_id(req):
+            """
+            To be removed.
+
+            :param req:
+            :return:
+            """
             return req.split("_")[1].lower()
 
         # Login starts here
