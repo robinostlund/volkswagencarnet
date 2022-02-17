@@ -4,6 +4,8 @@
 import logging
 from .vw_utilities import camel2slug
 
+CLIMA_DEFAULT_DURATION = 30
+
 _LOGGER = logging.getLogger(__name__)
 
 
@@ -104,9 +106,9 @@ class Sensor(Instrument):
                 self.unit = "kWh/100 mil"
 
         # Init placeholder for parking heater duration
-        config.get("parkingheater", 30)
+        config.get("parkingheater", CLIMA_DEFAULT_DURATION)
         if "pheater_duration" == self.attr:
-            setValue = config.get("climatisation_duration", 30)
+            setValue = config.get("climatisation_duration", CLIMA_DEFAULT_DURATION)
             self.vehicle.pheater_duration = setValue
 
     @property
@@ -215,23 +217,29 @@ class Switch(Instrument):
 class Climate(Instrument):
     def __init__(self, attr, name, icon):
         super().__init__(component="climate", attr=attr, name=name, icon=icon)
+        self.spin = ""
+        self.duration = CLIMA_DEFAULT_DURATION
 
     @property
     def hvac_mode(self):
-        pass
+        raise NotImplementedError
 
     @property
     def target_temperature(self):
-        pass
+        raise NotImplementedError
 
-    def set_temperature(self, **kwargs):
-        pass
+    def set_temperature(self, temperature: float, **kwargs):
+        raise NotImplementedError
 
     def set_hvac_mode(self, hvac_mode):
-        pass
+        raise NotImplementedError
 
 
 class ElectricClimatisationClimate(Climate):
+    @property
+    def is_mutable(self):
+        return True
+
     def __init__(self):
         super().__init__(attr="electric_climatisation", name="Electric Climatisation", icon="mdi:radiator")
 
@@ -243,7 +251,7 @@ class ElectricClimatisationClimate(Climate):
     def target_temperature(self):
         return self.vehicle.climatisation_target_temperature
 
-    async def set_temperature(self, temperature):
+    async def set_temperature(self, temperature: float, **kwargs):
         await self.vehicle.climatisation_target(temperature)
 
     async def set_hvac_mode(self, hvac_mode):
@@ -254,12 +262,16 @@ class ElectricClimatisationClimate(Climate):
 
 
 class CombustionClimatisationClimate(Climate):
+    @property
+    def is_mutable(self):
+        return True
+
     def __init__(self):
         super().__init__(attr="pheater_heating", name="Parking Heater Climatisation", icon="mdi:radiator")
 
     def configurate(self, **config):
         self.spin = config.get("spin", "")
-        self.duration = config.get("combustionengineheatingduration", 30)
+        self.duration = config.get("combustionengineheatingduration", CLIMA_DEFAULT_DURATION)
 
     @property
     def hvac_mode(self):
@@ -269,7 +281,7 @@ class CombustionClimatisationClimate(Climate):
     def target_temperature(self):
         return self.vehicle.climatisation_target_temperature
 
-    async def set_temperature(self, temperature):
+    async def set_temperature(self, temperature: float, **kwargs):
         await self.vehicle.setClimatisationTargetTemperature(temperature)
 
     async def set_hvac_mode(self, hvac_mode):
@@ -310,6 +322,7 @@ class Position(Instrument):
 class DoorLock(Instrument):
     def __init__(self):
         super().__init__(component="lock", attr="door_locked", name="Door locked")
+        self.spin = ""
 
     def configurate(self, **config):
         self.spin = config.get("spin", "")
@@ -441,6 +454,7 @@ class ElectricClimatisation(Switch):
 class AuxiliaryClimatisation(Switch):
     def __init__(self):
         super().__init__(attr="auxiliary_climatisation", name="Auxiliary Climatisation", icon="mdi:radiator")
+        self.spin = ""
 
     def configurate(self, **config):
         self.spin = config.get("spin", "")
@@ -575,10 +589,12 @@ class PHeaterHeating(Switch):
 class PHeaterVentilation(Switch):
     def __init__(self):
         super().__init__(attr="pheater_ventilation", name="Parking Heater Ventilation", icon="mdi:radiator")
+        self.spin = ""
+        self.duration = CLIMA_DEFAULT_DURATION
 
     def configurate(self, **config):
         self.spin = config.get("spin", "")
-        self.duration = config.get("combustionengineclimatisationduration", 30)
+        self.duration = config.get("combustionengineclimatisationduration", CLIMA_DEFAULT_DURATION)
 
     @property
     def state(self):

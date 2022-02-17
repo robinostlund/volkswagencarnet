@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """Communicate with We Connect services."""
-import base64
 import re
 import secrets
 import sys
@@ -17,11 +16,10 @@ from sys import version_info
 from datetime import timedelta, datetime
 from urllib.parse import urljoin, parse_qs, urlparse
 from json import dumps as to_json
-import aiohttp
 from bs4 import BeautifulSoup
-from base64 import b64encode
+from base64 import b64encode, urlsafe_b64encode
 
-from aiohttp import ClientSession, ClientTimeout
+from aiohttp import ClientSession, ClientTimeout, client_exceptions
 from aiohttp.hdrs import METH_GET, METH_POST
 
 from .vw_utilities import json_loads, read_config
@@ -143,7 +141,7 @@ class Connection:
             return b64encode(sha256.digest()).decode("utf-8")[:-1]
 
         def base64URLEncode(s):
-            return base64.urlsafe_b64encode(s).rstrip(b"=")
+            return urlsafe_b64encode(s).rstrip(b"=")
 
         def extract_csrf(req):
             return re.compile('<meta name="_csrf" content="([^"]*)"/>').search(req).group(1)
@@ -319,7 +317,6 @@ class Connection:
                     raise error
                 if "code" in ref:
                     _LOGGER.debug("Got code: %s" % ref)
-                    pass
                 else:
                     _LOGGER.debug("Exception occurred while logging in.")
                     raise e
@@ -500,7 +497,7 @@ class Connection:
         try:
             response = await self._request(METH_GET, self._make_url(url, vin))
             return response
-        except aiohttp.client_exceptions.ClientResponseError as error:
+        except client_exceptions.ClientResponseError as error:
             if error.status == 401:
                 _LOGGER.warning(f'Received "unauthorized" error while fetching data: {error}')
                 self._session_logged_in = False
@@ -927,7 +924,7 @@ class Connection:
             response = await self.post(query, vin=vin, **data)
             _LOGGER.debug(f"Data call returned: {response}")
             return response
-        except aiohttp.client_exceptions.ClientResponseError as error:
+        except client_exceptions.ClientResponseError as error:
             if error.status == 401:
                 _LOGGER.error("Unauthorized")
                 self._session_logged_in = False
@@ -1250,6 +1247,7 @@ class Connection:
     def logged_in(self):
         """
         Return cached logged in state.
+
         Not actually checking anything.
         """
         return self._session_logged_in

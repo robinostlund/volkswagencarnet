@@ -1,13 +1,16 @@
+"""Vehicle class tests"""
 import sys
-import unittest
 from datetime import datetime
 
-# This won't work on python versions less than 3.8
 if sys.version_info >= (3, 8):
+    # This won't work on python versions less than 3.8
     from unittest import IsolatedAsyncioTestCase
 else:
+    import unittest
 
     class IsolatedAsyncioTestCase(unittest.TestCase):
+        """Python 3.7 compatibility dummy class"""
+
         pass
 
 
@@ -20,8 +23,11 @@ from volkswagencarnet.vw_vehicle import Vehicle
 
 
 class VehicleTest(IsolatedAsyncioTestCase):
+    """Test Vehicle methods"""
+
     @freeze_time("2022-02-14 03:04:05")
     async def test_init(self):
+        """Test that init does what it should"""
         async with ClientSession() as conn:
             target_date = datetime.fromisoformat("2022-02-14 03:04:05")
             url = "https://foo.bar"
@@ -63,9 +69,11 @@ class VehicleTest(IsolatedAsyncioTestCase):
             )
 
     def test_discover(self):
+        """Test the discovery process"""
         pass
 
     async def test_update_deactivated(self):
+        """Test that calling update on a deactivated Vehicle does nothing"""
         vehicle = MagicMock(spec=Vehicle, name="MockDeactivatedVehicle")
         vehicle.update = lambda: Vehicle.update(vehicle)
         vehicle._discovered = True
@@ -78,6 +86,7 @@ class VehicleTest(IsolatedAsyncioTestCase):
         self.assertEqual(0, vehicle.method_calls.__len__(), f"xpected none, got {vehicle.method_calls}")
 
     async def test_update(self):
+        """Test that update calls the wanted methods and nothing else"""
         vehicle = MagicMock(spec=Vehicle, name="MockUpdateVehicle")
         vehicle.update = lambda: Vehicle.update(vehicle)
 
