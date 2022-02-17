@@ -1,0 +1,15 @@
+{
+  "extends": [
+    "config:base",
+    ":preserveSemverRanges"
+  ],
+  "labels": ["dependencies"],
+  "draftPR": true,
+  "internalChecksFilter": "strict",
+  "pip_requirements": {
+    "fileMatch": ["requirements-test.(txt|pip)"]
+  },
+  "pre-commit": {
+    "enabled": true
+  }
+}
