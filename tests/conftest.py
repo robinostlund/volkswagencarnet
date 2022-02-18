@@ -1,3 +1,4 @@
+"""Configure tests."""
 import sys
 
 pytest_plugins = ["pytest_cov"]

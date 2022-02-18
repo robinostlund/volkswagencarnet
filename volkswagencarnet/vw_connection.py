@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """Communicate with We Connect services."""
-import base64
 import re
 import secrets
 import sys
@@ -17,13 +15,13 @@ from sys import version_info
 from datetime import timedelta, datetime
 from urllib.parse import urljoin, parse_qs, urlparse
 from json import dumps as to_json
-import aiohttp
 from bs4 import BeautifulSoup
-from base64 import b64encode
+from base64 import b64encode, urlsafe_b64encode
 
-from aiohttp import ClientSession, ClientTimeout
+from aiohttp import ClientSession, ClientTimeout, client_exceptions
 from aiohttp.hdrs import METH_GET, METH_POST
 
+from volkswagencarnet.vw_exceptions import AuthenticationException
 from .vw_utilities import json_loads, read_config
 from .vw_vehicle import Vehicle
 
@@ -136,6 +134,11 @@ class Connection:
 
         # Helper functions
         def getNonce():
+            """
+            Get a random nonce.
+
+            :return:
+            """
             ts = "%d" % (time.time())
             sha256 = hashlib.sha256()
             sha256.update(ts.encode())
@@ -143,13 +146,13 @@ class Connection:
             return b64encode(sha256.digest()).decode("utf-8")[:-1]
 
         def base64URLEncode(s):
-            return base64.urlsafe_b64encode(s).rstrip(b"=")
+            """
+            Encode string as Base 64 in a URL safe way, stripping trailing '='.
 
-        def extract_csrf(req):
-            return re.compile('<meta name="_csrf" content="([^"]*)"/>').search(req).group(1)
-
-        def extract_guest_language_id(req):
-            return req.split("_")[1].lower()
+            :param s:
+            :return:
+            """
+            return urlsafe_b64encode(s).rstrip(b"=")
 
         # Login starts here
         try:
@@ -227,12 +230,10 @@ class Connection:
             try:
                 response_data = await req.text()
                 response_soup = BeautifulSoup(response_data, "html.parser")
-                mailform = dict(
-                    [
-                        (t["name"], t["value"])
-                        for t in response_soup.find("form", id="emailPasswordForm").find_all("input", type="hidden")
-                    ]
-                )
+                mailform = {
+                    t["name"]: t["value"]
+                    for t in response_soup.find("form", id="emailPasswordForm").find_all("input", type="hidden")
+                }
                 mailform["email"] = self._session_auth_username
                 pe_url = auth_issuer + response_soup.find("form", id="emailPasswordForm").get("action")
             except Exception as e:
@@ -316,10 +317,9 @@ class Connection:
                         _LOGGER.warning("Login failed, invalid password")
                     else:
                         _LOGGER.warning(f"Login failed: {error}")
-                    raise error
+                    raise AuthenticationException(error)
                 if "code" in ref:
                     _LOGGER.debug("Got code: %s" % ref)
-                    pass
                 else:
                     _LOGGER.debug("Exception occurred while logging in.")
                     raise e
@@ -484,7 +484,7 @@ class Connection:
                     _LOGGER.debug(f"Not success status code [{response.status}] response: {response}")
                 if "X-RateLimit-Remaining" in response.headers:
                     res["rate_limit_remaining"] = response.headers.get("X-RateLimit-Remaining", "")
-            except:
+            except Exception:
                 res = {}
                 _LOGGER.debug(f"Something went wrong [{response.status}] response: {response}")
                 return res
@@ -500,7 +500,7 @@ class Connection:
         try:
             response = await self._request(METH_GET, self._make_url(url, vin))
             return response
-        except aiohttp.client_exceptions.ClientResponseError as error:
+        except client_exceptions.ClientResponseError as error:
             if error.status == 401:
                 _LOGGER.warning(f'Received "unauthorized" error while fetching data: {error}')
                 self._session_logged_in = False
@@ -558,7 +558,7 @@ class Connection:
             await asyncio.gather(*updatelist)
 
             return True
-        except (IOError, OSError, LookupError, Exception) as error:
+        except (OSError, LookupError, Exception) as error:
             _LOGGER.warning(f"Could not update information: {error}")
         return False
 
@@ -673,13 +673,11 @@ class Connection:
             ):
                 data = {
                     "StoredVehicleDataResponse": response.get("StoredVehicleDataResponse", {}),
-                    "StoredVehicleDataResponseParsed": dict(
-                        [
-                            (e["id"], e if "value" in e else "")
-                            for f in [s["field"] for s in response["StoredVehicleDataResponse"]["vehicleData"]["data"]]
-                            for e in f
-                        ]
-                    ),
+                    "StoredVehicleDataResponseParsed": {
+                        e["id"]: e if "value" in e else ""
+                        for f in [s["field"] for s in response["StoredVehicleDataResponse"]["vehicleData"]["data"]]
+                        for e in f
+                    },
                 }
                 return data
             elif response.get("status_code", {}):
@@ -927,7 +925,7 @@ class Connection:
             response = await self.post(query, vin=vin, **data)
             _LOGGER.debug(f"Data call returned: {response}")
             return response
-        except aiohttp.client_exceptions.ClientResponseError as error:
+        except client_exceptions.ClientResponseError as error:
             if error.status == 401:
                 _LOGGER.error("Unauthorized")
                 self._session_logged_in = False
@@ -1250,6 +1248,7 @@ class Connection:
     def logged_in(self):
         """
         Return cached logged in state.
+
         Not actually checking anything.
         """
         return self._session_logged_in
@@ -1273,7 +1272,7 @@ class Connection:
                 return False
 
             return True
-        except (IOError, OSError) as error:
+        except OSError as error:
             _LOGGER.warning("Could not validate login: %s", error)
             return False
 
