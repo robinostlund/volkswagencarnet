@@ -6,7 +6,7 @@ import logging
 from collections import OrderedDict
 from datetime import datetime, timedelta, timezone
 from json import dumps as to_json
-from typing import Union, Optional
+from typing import Optional
 
 from .vw_utilities import find_path, is_valid_path
 
@@ -633,7 +633,7 @@ class Vehicle:
     # Information from vehicle states #
     # Car information
     @property
-    def nickname(self) -> Union[str, None]:
+    def nickname(self) -> Optional[str]:
         """
         Return nickname of the vehicle.
 
@@ -669,7 +669,7 @@ class Vehicle:
         return self.attrs.get("carData", {}).get("deactivated", False) is True
 
     @property
-    def model(self) -> Union[str, None]:
+    def model(self) -> Optional[str]:
         """Return model."""
         return self.attrs.get("carportData", {}).get("modelName", None)
 
@@ -679,7 +679,7 @@ class Vehicle:
         return self.attrs.get("carportData", {}).get("modelName", False) is not False
 
     @property
-    def model_year(self) -> Union[bool, None]:
+    def model_year(self) -> Optional[bool]:
         """Return model year."""
         return self.attrs.get("carportData", {}).get("modelYear", None)
 
@@ -747,7 +747,7 @@ class Vehicle:
 
     # Service information
     @property
-    def distance(self) -> Union[int, None]:
+    def distance(self) -> Optional[int]:
         """Return vehicle odometer."""
         value = self.attrs.get("StoredVehicleDataResponseParsed")["0x0101010002"].get("value", 0)
         if value:
