@@ -41,7 +41,7 @@ class Vehicle:
         self._homeregion = "https://msg.volkswagen.de"
         self._discovered = False
         self._states = {}
-        self._requests: dict[str, any] = {
+        self._requests: Dict[str, Any] = {
             # 'departuretimer': {'status': '', 'timestamp': datetime.now()}, # Not yet implemented
             "batterycharge": {"status": "", "timestamp": datetime.now()},
             "climatisation": {"status": "", "timestamp": datetime.now()},
@@ -56,7 +56,7 @@ class Vehicle:
         self._climatisation_target_temperature: Optional[float] = None
 
         # API Endpoints that might be enabled for car (that we support)
-        self._services: dict[str, dict[str, Any]] = {
+        self._services: Dict[str, Dict[str, Any]] = {
             "rheating_v1": {"active": False},
             "rclima_v1": {"active": False},
             "rlu_v1": {"active": False},
@@ -193,10 +193,10 @@ class Vehicle:
                             new_time = data.get("findCarResponse").get("parkingTimeUTC")
                             old_time = self.attrs.get("findCarResponse").get("parkingTimeUTC")
                             if new_time > old_time:
-                                _LOGGER.debug("Detected new parking time")
+                                _LOGGER.debug(f"Detected new parking time: {new_time}")
                                 self.requests_remaining = 15
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            _LOGGER.warning(e)
                     self._states.update(data)
                 else:
                     _LOGGER.debug("Could not fetch any positional data")
@@ -1292,8 +1292,6 @@ class Vehicle:
         """Return true if vehicle has auxiliary climatisation."""
         if self._services.get("rclima_v1", False):
             functions = self._services.get("rclima_v1", {}).get("operations", [])
-            # for operation in functions:
-            #    if operation['id'] == 'P_START_CLIMA_AU':
             if "P_START_CLIMA_AU" in functions:
                 return True
         return False
@@ -1985,23 +1983,21 @@ class Vehicle:
     @property
     def refresh_data(self):
         """Get state of data refresh."""
-        if self._requests.get("refresh", {}).get("id", False):
-            return True
+        return self._requests.get("refresh", {}).get("id", False)
 
     @property
-    def is_refresh_data_supported(self):
+    def is_refresh_data_supported(self) -> bool:
         """Return true, as data refresh is always supported."""
         return True
 
     @property
-    def request_in_progress(self):
-        """Request in progress is always supported."""
+    def request_in_progress(self) -> bool:
+        """Check of any requests are currently in progress."""
         try:
             for section in self._requests:
-                if self._requests[section].get("id", False):
-                    return True
-        except Exception:
-            pass
+                return self._requests[section].get("id", False)
+        except Exception as e:
+            _LOGGER.warning(e)
         return False
 
     @property
