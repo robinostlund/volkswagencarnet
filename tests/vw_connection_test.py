@@ -7,9 +7,9 @@ if sys.version_info >= (3, 8):
     # This won't work on python versions less than 3.8
     from unittest import IsolatedAsyncioTestCase
 else:
-    import unittest
+    from unittest import TestCase
 
-    class IsolatedAsyncioTestCase(unittest.TestCase):
+    class IsolatedAsyncioTestCase(TestCase):
         """Dummy class to use instead (tests might need to skipped separately also)."""
 
         pass

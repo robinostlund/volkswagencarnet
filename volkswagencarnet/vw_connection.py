@@ -504,7 +504,7 @@ class Connection:
                     _LOGGER.debug(f"Not success status code [{response.status}] response: {response}")
                 if "X-RateLimit-Remaining" in response.headers:
                     res["rate_limit_remaining"] = response.headers.get("X-RateLimit-Remaining", "")
-            except:
+            except Exception:
                 res = {}
                 _LOGGER.debug(f"Something went wrong [{response.status}] response: {response}")
                 return res
