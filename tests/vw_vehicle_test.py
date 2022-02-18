@@ -2,6 +2,9 @@
 import sys
 from datetime import datetime
 
+from fixtures.connection import status_report_json_file
+from volkswagencarnet.vw_utilities import json_loads
+
 if sys.version_info >= (3, 8):
     # This won't work on python versions less than 3.8
     from unittest import IsolatedAsyncioTestCase
@@ -108,8 +111,56 @@ class VehicleTest(IsolatedAsyncioTestCase):
             8, vehicle.method_calls.__len__(), f"Wrong number of methods called. Expected 8, got {vehicle.method_calls}"
         )
 
+    async def test_is_last_connected_supported(self):
+        """Test that parsing last connected works."""
+        vehicle = Vehicle(conn=None, url="dummy34")
+
+        vehicle._discovered = True
+
+        with patch.dict(vehicle.attrs, {}):
+            res = vehicle.is_last_connected_supported
+            self.assertFalse(res, "Last connected supported returned True without attributes.")
+
+        with patch.dict(vehicle.attrs, {"StoredVehicleDataResponse": {}}):
+            res = vehicle.is_last_connected_supported
+            self.assertFalse(res, "Last connected supported returned True without 'vehicleData'.")
+
+        with patch.dict(vehicle.attrs, {"StoredVehicleDataResponse": {"vehicleData": {}}}):
+            res = vehicle.is_last_connected_supported
+            self.assertFalse(res, "Last connected supported returned True without 'vehicleData.data'.")
+
+        with patch.dict(vehicle.attrs, {"StoredVehicleDataResponse": {"vehicleData": {"data": []}}}):
+            res = vehicle.is_last_connected_supported
+            self.assertFalse(res, "Last connected supported returned True without 'vehicleData.data[].field[]'.")
+
+        # test with a "real" response
+        with open(status_report_json_file) as f:
+            data = json_loads(f.read())
+        with patch.dict(vehicle.attrs, data):
+            res = vehicle.is_last_connected_supported
+            self.assertTrue(res, "Last connected supported returned False when it should have been True")
+
+    async def test_last_connected(self):
+        """
+        Test that parsing last connected works.
+
+        Data in json is: "tsCarSentUtc": "2022-02-14T00:00:45Z",
+        and the function returns local time
+        """
+        vehicle = Vehicle(conn=None, url="dummy34")
+
+        vehicle._discovered = True
+
+        with open(status_report_json_file) as f:
+            data = json_loads(f.read())
+        with patch.dict(vehicle.attrs, data):
+            res = vehicle.last_connected
+            self.assertEqual(
+                datetime.fromisoformat("2022-02-14T00:00:45+00:00").astimezone(None).strftime("%Y-%m-%d %H:%M:%S"), res
+            )
+
     async def test_json(self):
-        """Test that update calls the wanted methods and nothing else."""
+        """Test JSON serialization of dict containing datetime."""
         vehicle = Vehicle(conn=None, url="dummy34")
 
         vehicle._discovered = True

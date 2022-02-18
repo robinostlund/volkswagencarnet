@@ -7,7 +7,7 @@ from itertools import product
 from os import environ as env
 from os.path import join, dirname, expanduser
 from sys import argv
-from typing import Any
+from typing import Any, TextIO
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -23,9 +23,10 @@ def read_config() -> dict:
         ["vw.conf", ".vw.conf"],
     ):
         try:
-            config = join(directory, filename)
-            _LOGGER.debug("checking for config file %s", config)
-            with open(config) as config:
+            config_file = join(directory, filename)
+            _LOGGER.debug("checking for config file %s", config_file)
+            config: TextIO
+            with open(config_file) as config:
                 return dict(x.split(": ") for x in config.read().strip().splitlines() if not x.startswith("#"))
         except OSError:
             continue

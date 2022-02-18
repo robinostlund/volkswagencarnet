@@ -713,13 +713,14 @@ class Vehicle:
     @property
     def is_parking_light_supported(self) -> bool:
         """Return true if parking light is supported."""
-        if self.attrs.get("StoredVehicleDataResponseParsed", False):
-            return "0x0301010001" in self.attrs.get("StoredVehicleDataResponseParsed")
+        return self.attrs.get("StoredVehicleDataResponseParsed", False) and "0x0301010001" in self.attrs.get(
+            "StoredVehicleDataResponseParsed"
+        )
 
     # Connection status
     @property
     def last_connected(self) -> str:
-        """Return when vehicle was last connected to connect servers."""
+        """Return when vehicle was last connected to connect servers in local time."""
         last_connected_utc = (
             self.attrs.get("StoredVehicleDataResponse")
             .get("vehicleData")
@@ -736,11 +737,11 @@ class Vehicle:
         if next(
             iter(
                 next(
-                    iter(self.attrs.get("StoredVehicleDataResponse", {}).get("vehicleData", {}).get("data", {})), None
+                    iter(self.attrs.get("StoredVehicleDataResponse", {}).get("vehicleData", {}).get("data", [])), {}
                 ).get("field", {})
             ),
-            None,
-        ).get("tsCarSentUtc", []):
+            {},
+        ).get("tsCarSentUtc", False):
             return True
         return False
 
@@ -756,8 +757,9 @@ class Vehicle:
     @property
     def is_distance_supported(self) -> bool:
         """Return true if odometer is supported."""
-        if self.attrs.get("StoredVehicleDataResponseParsed", False):
-            return "0x0101010002" in self.attrs.get("StoredVehicleDataResponseParsed")
+        return self.attrs.get("StoredVehicleDataResponseParsed", False) and "0x0101010002" in self.attrs.get(
+            "StoredVehicleDataResponseParsed"
+        )
 
     @property
     def service_inspection(self):
@@ -771,8 +773,9 @@ class Vehicle:
 
         :return:
         """
-        if self.attrs.get("StoredVehicleDataResponseParsed", False):
-            return "0x0203010004" in self.attrs.get("StoredVehicleDataResponseParsed")
+        return self.attrs.get("StoredVehicleDataResponseParsed", False) and "0x0203010004" in self.attrs.get(
+            "StoredVehicleDataResponseParsed"
+        )
 
     @property
     def service_inspection_distance(self):
