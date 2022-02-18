@@ -1920,15 +1920,14 @@ class Vehicle:
         return self.trip_last_entry.get("averageAuxiliaryConsumption")
 
     @property
-    def is_trip_last_average_auxillary_consumption_supported(self):
+    def is_trip_last_average_auxillary_consumption_supported(self) -> bool:
         """
         Return true if supported.
 
         :return:
         """
         response = self.trip_last_entry
-        if response and type(response.get("averageAuxiliaryConsumption", None)) in (float, int):
-            return True
+        return response and type(response.get("averageAuxiliaryConsumption", None)) in (float, int)
 
     @property
     def trip_last_average_aux_consumer_consumption(self):
@@ -1941,15 +1940,14 @@ class Vehicle:
         return float(value / 10)
 
     @property
-    def is_trip_last_average_aux_consumer_consumption_supported(self):
+    def is_trip_last_average_aux_consumer_consumption_supported(self) -> bool:
         """
         Return true if supported.
 
         :return:
         """
         response = self.trip_last_entry
-        if response and type(response.get("averageAuxConsumerConsumption", None)) in (float, int):
-            return True
+        return response and type(response.get("averageAuxConsumerConsumption", None)) in (float, int)
 
     @property
     def trip_last_duration(self):
@@ -1961,15 +1959,14 @@ class Vehicle:
         return self.trip_last_entry.get("traveltime")
 
     @property
-    def is_trip_last_duration_supported(self):
+    def is_trip_last_duration_supported(self) -> bool:
         """
         Return true if supported.
 
         :return:
         """
         response = self.trip_last_entry
-        if response and type(response.get("traveltime", None)) in (float, int):
-            return True
+        return response and type(response.get("traveltime", None)) in (float, int)
 
     @property
     def trip_last_length(self):
@@ -1981,15 +1978,14 @@ class Vehicle:
         return self.trip_last_entry.get("mileage")
 
     @property
-    def is_trip_last_length_supported(self):
+    def is_trip_last_length_supported(self) -> bool:
         """
         Return true if supported.
 
         :return:
         """
         response = self.trip_last_entry
-        if response and type(response.get("mileage", None)) in (float, int):
-            return True
+        return response and type(response.get("mileage", None)) in (float, int)
 
     @property
     def trip_last_recuperation(self):
@@ -2002,7 +1998,7 @@ class Vehicle:
         return self.trip_last_entry.get("recuperation")
 
     @property
-    def is_trip_last_recuperation_supported(self):
+    def is_trip_last_recuperation_supported(self) -> bool:
         """
         Return true if supported.
 
@@ -2010,8 +2006,7 @@ class Vehicle:
         """
         # Not implemented
         response = self.trip_last_entry
-        if response and type(response.get("recuperation", None)) in (float, int):
-            return True
+        return response and type(response.get("recuperation", None)) in (float, int)
 
     @property
     def trip_last_average_recuperation(self):
@@ -2024,15 +2019,14 @@ class Vehicle:
         return float(value / 10)
 
     @property
-    def is_trip_last_average_recuperation_supported(self):
+    def is_trip_last_average_recuperation_supported(self) -> bool:
         """
         Return true if supported.
 
         :return:
         """
         response = self.trip_last_entry
-        if response and type(response.get("averageRecuperation", None)) in (float, int):
-            return True
+        return response and type(response.get("averageRecuperation", None)) in (float, int)
 
     @property
     def trip_last_total_electric_consumption(self):
@@ -2045,7 +2039,7 @@ class Vehicle:
         return self.trip_last_entry.get("totalElectricConsumption")
 
     @property
-    def is_trip_last_total_electric_consumption_supported(self):
+    def is_trip_last_total_electric_consumption_supported(self) -> bool:
         """
         Return true if supported.
 
@@ -2053,8 +2047,7 @@ class Vehicle:
         """
         # Not implemented
         response = self.trip_last_entry
-        if response and type(response.get("totalElectricConsumption", None)) in (float, int):
-            return True
+        return response and type(response.get("totalElectricConsumption", None)) in (float, int)
 
     # Status of set data requests
     @property
@@ -2165,7 +2158,6 @@ class Vehicle:
             :param obj:
             :return:
             """
-            if isinstance(obj, datetime):
-                return obj.isoformat()
+            return obj.isoformat() if isinstance(obj, datetime) else obj
 
         return to_json(OrderedDict(sorted(self.attrs.items())), indent=4, default=serialize)

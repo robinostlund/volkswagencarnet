@@ -44,7 +44,6 @@ def obj_parser(obj: dict) -> dict:
             obj[key] = datetime.strptime(val, "%Y-%m-%dT%H:%M:%S%z")
         except (TypeError, ValueError):
             """The value was not a date."""
-            pass
     return obj
 
 
