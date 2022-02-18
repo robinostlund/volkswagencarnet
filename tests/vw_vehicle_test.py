@@ -14,7 +14,7 @@ else:
         pass
 
 
-from unittest.mock import MagicMock, patch, AsyncMock
+from unittest.mock import MagicMock, patch
 
 from aiohttp import ClientSession
 from freezegun import freeze_time
@@ -110,8 +110,7 @@ class VehicleTest(IsolatedAsyncioTestCase):
 
     async def test_json(self):
         """Test that update calls the wanted methods and nothing else."""
-        conn = AsyncMock()
-        vehicle = Vehicle(conn=conn, url="dummy34")
+        vehicle = Vehicle(conn=None, url="dummy34")
 
         vehicle._discovered = True
         dtstring = "2022-02-22T02:22:20+02:00"
