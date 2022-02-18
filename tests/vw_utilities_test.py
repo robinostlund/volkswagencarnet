@@ -1,4 +1,4 @@
-"""Utilities class tests"""
+"""Utilities class tests."""
 from datetime import datetime, timezone, timedelta
 from json import JSONDecodeError
 from unittest import TestCase, mock
@@ -8,8 +8,10 @@ from volkswagencarnet.vw_utilities import camel2slug, is_valid_path, obj_parser,
 
 
 class UtilitiesTest(TestCase):
+    """Test methods in utilities."""
+
     def test_camel_to_slug(self):
-        """Test camel_to_slug conversion"""
+        """Test camel_to_slug conversion."""
         data = {
             "foo": "foo",
             "fooBar": "foo_bar",
@@ -25,6 +27,7 @@ class UtilitiesTest(TestCase):
                 self.assertEqual(data[v], res)
 
     def test_is_valid_path(self):
+        """Test that is_valid_path works as expected."""
         data = {
             "None": [None, None, True],
             "a in a": [{"a": 1}, "a", True],
@@ -54,6 +57,7 @@ class UtilitiesTest(TestCase):
                     self.fail(f"Wrong exception? Got {type(e)} but expected {data[v][2]}")
 
     def test_is_valid_path_with_lists(self):
+        """Test that is_valid_path can process lists."""
         self.assertTrue(is_valid_path({"a": [{"b": True}, {"c": True}]}, "a.0.b"))
         self.assertFalse(is_valid_path({"a": [{"b": True}, {"c": True}]}, "a.2"))
 
