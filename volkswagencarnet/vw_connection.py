@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """Communicate with We Connect services."""
 import re
 import secrets
@@ -231,12 +230,10 @@ class Connection:
             try:
                 response_data = await req.text()
                 response_soup = BeautifulSoup(response_data, "html.parser")
-                mailform = dict(
-                    [
-                        (t["name"], t["value"])
-                        for t in response_soup.find("form", id="emailPasswordForm").find_all("input", type="hidden")
-                    ]
-                )
+                mailform = {
+                    t["name"]: t["value"]
+                    for t in response_soup.find("form", id="emailPasswordForm").find_all("input", type="hidden")
+                }
                 mailform["email"] = self._session_auth_username
                 pe_url = auth_issuer + response_soup.find("form", id="emailPasswordForm").get("action")
             except Exception as e:
@@ -561,7 +558,7 @@ class Connection:
             await asyncio.gather(*updatelist)
 
             return True
-        except (IOError, OSError, LookupError, Exception) as error:
+        except (OSError, LookupError, Exception) as error:
             _LOGGER.warning(f"Could not update information: {error}")
         return False
 
@@ -676,13 +673,11 @@ class Connection:
             ):
                 data = {
                     "StoredVehicleDataResponse": response.get("StoredVehicleDataResponse", {}),
-                    "StoredVehicleDataResponseParsed": dict(
-                        [
-                            (e["id"], e if "value" in e else "")
-                            for f in [s["field"] for s in response["StoredVehicleDataResponse"]["vehicleData"]["data"]]
-                            for e in f
-                        ]
-                    ),
+                    "StoredVehicleDataResponseParsed": {
+                        e["id"]: e if "value" in e else ""
+                        for f in [s["field"] for s in response["StoredVehicleDataResponse"]["vehicleData"]["data"]]
+                        for e in f
+                    },
                 }
                 return data
             elif response.get("status_code", {}):
@@ -1277,7 +1272,7 @@ class Connection:
                 return False
 
             return True
-        except (IOError, OSError) as error:
+        except OSError as error:
             _LOGGER.warning("Could not validate login: %s", error)
             return False
 

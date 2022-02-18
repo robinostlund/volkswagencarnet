@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """Vehicle class for We Connect."""
 import asyncio
 import logging

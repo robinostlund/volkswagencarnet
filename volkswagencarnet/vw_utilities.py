@@ -27,7 +27,7 @@ def read_config() -> dict:
             _LOGGER.debug("checking for config file %s", config)
             with open(config) as config:
                 return dict(x.split(": ") for x in config.read().strip().splitlines() if not x.startswith("#"))
-        except (IOError, OSError):
+        except OSError:
             continue
     return {}
 

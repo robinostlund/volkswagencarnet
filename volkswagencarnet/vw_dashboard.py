@@ -44,7 +44,7 @@ class Instrument:
 
     @property
     def full_name(self):
-        return "%s %s" % (self.vehicle_name, self.name)
+        return f"{self.vehicle_name} {self.name}"
 
     @property
     def is_mutable(self):
