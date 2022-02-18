@@ -1,3 +1,4 @@
+"""Common utility functions."""
 import json
 import logging
 import re
@@ -26,12 +27,13 @@ def read_config() -> dict:
             _LOGGER.debug("checking for config file %s", config)
             with open(config) as config:
                 return dict(x.split(": ") for x in config.read().strip().splitlines() if not x.startswith("#"))
-        except (IOError, OSError):
+        except OSError:
             continue
     return {}
 
 
 def json_loads(s) -> Any:
+    """Load JSON from string and parse timestamps."""
     return json.loads(s, object_hook=obj_parser)
 
 
@@ -41,12 +43,15 @@ def obj_parser(obj: dict) -> dict:
         try:
             obj[key] = datetime.strptime(val, "%Y-%m-%dT%H:%M:%S%z")
         except (TypeError, ValueError):
-            pass
+            """The value was not a date."""
     return obj
 
 
 def find_path(src, path) -> Any:
-    """Simple navigation of a hierarchical dict structure using XPATH-like syntax.
+    """
+    Return data at path in source.
+
+    Simple navigation of a hierarchical dict structure using XPATH-like syntax.
 
     >>> find_path(dict(a=1), 'a')
     1
@@ -83,6 +88,8 @@ def find_path(src, path) -> Any:
 
 def is_valid_path(src, path):
     """
+    Check if path exists in source.
+
     >>> is_valid_path(dict(a=1), 'a')
     True
 

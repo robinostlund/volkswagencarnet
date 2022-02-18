@@ -1,4 +1,4 @@
-lxml
-beautifulsoup4
 aiohttp
+beautifulsoup4
+lxml
 pyjwt

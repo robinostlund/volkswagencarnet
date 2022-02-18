@@ -1,13 +1,15 @@
 """Tests for main connection class."""
 import sys
-import unittest
+
+from volkswagencarnet import vw_connection
 
 if sys.version_info >= (3, 8):
     # This won't work on python versions less than 3.8
     from unittest import IsolatedAsyncioTestCase
 else:
+    from unittest import TestCase
 
-    class IsolatedAsyncioTestCase(unittest.TestCase):
+    class IsolatedAsyncioTestCase(TestCase):
         """Dummy class to use instead (tests might need to skipped separately also)."""
 
         pass
@@ -17,10 +19,6 @@ from io import StringIO
 from unittest.mock import patch
 
 import pytest
-
-import volkswagencarnet.vw_connection
-from volkswagencarnet.vw_connection import Connection
-from volkswagencarnet.vw_vehicle import Vehicle
 
 
 @pytest.mark.skipif(condition=sys.version_info < (3, 8), reason="Test incompatible with Python < 3.8")
@@ -63,13 +61,13 @@ class CmdLineTest(IsolatedAsyncioTestCase):
         @property
         def vehicles(self):
             """Return the vehicles."""
-            vehicle1 = Vehicle(None, "vin1")
-            vehicle2 = Vehicle(None, "vin2")
+            vehicle1 = vw_connection.Vehicle(None, "vin1")
+            vehicle2 = vw_connection.Vehicle(None, "vin2")
             return [vehicle1, vehicle2]
 
     @pytest.mark.asyncio
-    @patch.object(volkswagencarnet.vw_connection.logging, "basicConfig")
-    @patch("volkswagencarnet.vw_connection.Connection", spec_set=Connection, new=FailingLoginConnection)
+    @patch.object(vw_connection.logging, "basicConfig")
+    @patch("volkswagencarnet.vw_connection.Connection", spec_set=vw_connection.Connection, new=FailingLoginConnection)
     @pytest.mark.skipif(condition=sys.version_info < (3, 8), reason="Test incompatible with Python < 3.8")
     async def test_main_argv(self, logger_config):
         """Test verbosity flags."""
@@ -86,27 +84,27 @@ class CmdLineTest(IsolatedAsyncioTestCase):
         for c in cases:
             args = ["dummy"]
             args.extend(c[1])
-            with patch.object(volkswagencarnet.vw_connection.sys, "argv", args), self.subTest(msg=c[0]):
-                await volkswagencarnet.vw_connection.main()
+            with patch.object(vw_connection.sys, "argv", args), self.subTest(msg=c[0]):
+                await vw_connection.main()
                 logger_config.assert_called_with(level=c[2])
                 logger_config.reset()
 
     @pytest.mark.asyncio
     @patch("sys.stdout", new_callable=StringIO)
-    @patch("volkswagencarnet.vw_connection.Connection", spec_set=Connection, new=FailingLoginConnection)
+    @patch("volkswagencarnet.vw_connection.Connection", spec_set=vw_connection.Connection, new=FailingLoginConnection)
     @pytest.mark.skipif(condition=sys.version_info < (3, 8), reason="Test incompatible with Python < 3.8")
     async def test_main_output_failed(self, stdout: StringIO):
         """Verify empty stdout on failed login."""
-        await volkswagencarnet.vw_connection.main()
+        await vw_connection.main()
         assert stdout.getvalue() == ""
 
     @pytest.mark.asyncio
     @patch("sys.stdout", new_callable=StringIO)
-    @patch("volkswagencarnet.vw_connection.Connection", spec_set=Connection, new=TwoVehiclesConnection)
+    @patch("volkswagencarnet.vw_connection.Connection", spec_set=vw_connection.Connection, new=TwoVehiclesConnection)
     @pytest.mark.skipif(condition=sys.version_info < (3, 8), reason="Test incompatible with Python < 3.8")
     async def test_main_output_two_vehicles(self, stdout: StringIO):
         """Get console output for two vehicles."""
-        await volkswagencarnet.vw_connection.main()
+        await vw_connection.main()
         assert (
             stdout.getvalue()
             == """Vehicle id: vin1

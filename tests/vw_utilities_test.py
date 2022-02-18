@@ -1,13 +1,12 @@
-import unittest
 from datetime import datetime, timezone, timedelta
 from json import JSONDecodeError
-from unittest import mock
+from unittest import TestCase, mock
 from unittest.mock import DEFAULT
 
 from volkswagencarnet.vw_utilities import camel2slug, is_valid_path, obj_parser, json_loads, read_config
 
 
-class UtilitiesTest(unittest.TestCase):
+class UtilitiesTest(TestCase):
     def test_camel_to_slug(self):
         data = {"foo": "foo", "fooBar": "foo_bar", "XYZ": "x_y_z", "B4R": "b4_r"}  # Should this actually be "b_4_r"? =)
         for v in data:

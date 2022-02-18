@@ -1,17 +1,20 @@
+"""Vehicle class tests."""
 import sys
-import unittest
 from datetime import datetime
 
-# This won't work on python versions less than 3.8
 if sys.version_info >= (3, 8):
+    # This won't work on python versions less than 3.8
     from unittest import IsolatedAsyncioTestCase
 else:
+    from unittest import TestCase
 
-    class IsolatedAsyncioTestCase(unittest.TestCase):
+    class IsolatedAsyncioTestCase(TestCase):
+        """Python 3.7 compatibility dummy class."""
+
         pass
 
 
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 from aiohttp import ClientSession
 from freezegun import freeze_time
@@ -20,8 +23,11 @@ from volkswagencarnet.vw_vehicle import Vehicle
 
 
 class VehicleTest(IsolatedAsyncioTestCase):
+    """Test Vehicle methods."""
+
     @freeze_time("2022-02-14 03:04:05")
     async def test_init(self):
+        """Test that init does what it should."""
         async with ClientSession() as conn:
             target_date = datetime.fromisoformat("2022-02-14 03:04:05")
             url = "https://foo.bar"
@@ -63,9 +69,11 @@ class VehicleTest(IsolatedAsyncioTestCase):
             )
 
     def test_discover(self):
+        """Test the discovery process."""
         pass
 
     async def test_update_deactivated(self):
+        """Test that calling update on a deactivated Vehicle does nothing."""
         vehicle = MagicMock(spec=Vehicle, name="MockDeactivatedVehicle")
         vehicle.update = lambda: Vehicle.update(vehicle)
         vehicle._discovered = True
@@ -78,6 +86,7 @@ class VehicleTest(IsolatedAsyncioTestCase):
         self.assertEqual(0, vehicle.method_calls.__len__(), f"xpected none, got {vehicle.method_calls}")
 
     async def test_update(self):
+        """Test that update calls the wanted methods and nothing else."""
         vehicle = MagicMock(spec=Vehicle, name="MockUpdateVehicle")
         vehicle.update = lambda: Vehicle.update(vehicle)
 
@@ -98,3 +107,15 @@ class VehicleTest(IsolatedAsyncioTestCase):
         self.assertEqual(
             8, vehicle.method_calls.__len__(), f"Wrong number of methods called. Expected 8, got {vehicle.method_calls}"
         )
+
+    async def test_json(self):
+        """Test that update calls the wanted methods and nothing else."""
+        vehicle = Vehicle(conn=None, url="dummy34")
+
+        vehicle._discovered = True
+        dtstring = "2022-02-22T02:22:20+02:00"
+        d = datetime.fromisoformat(dtstring)
+
+        with patch.dict(vehicle.attrs, {"a string": "yay", "some date": d}):
+            res = f"{vehicle.json}"
+            self.assertEqual('{\n    "a string": "yay",\n    "some date": "2022-02-22T02:22:20+02:00"\n}', res)

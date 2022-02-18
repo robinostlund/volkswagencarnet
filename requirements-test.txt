@@ -1,11 +1,11 @@
 -r requirements.txt
-pytest>=7.0.0
-setuptools
-pytest-asyncio
+black
 flake8
 flake8-docstrings
+freezegun>=1.0.0
 pre-commit
+pytest>=7.0.0
+pytest-asyncio
 pytest-cov
 pytest-subtests
-black
-freezegun>=1.0.0
+setuptools
