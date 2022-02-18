@@ -5,7 +5,7 @@ import logging
 from collections import OrderedDict
 from datetime import datetime, timedelta, timezone
 from json import dumps as to_json
-from typing import Optional, Union, Any
+from typing import Optional, Union, Any, Dict
 
 from .vw_utilities import find_path, is_valid_path
 
@@ -1003,9 +1003,9 @@ class Vehicle:
 
     # Vehicle location states
     @property
-    def position(self) -> dict[str, Optional[Union[str, float]]]:
+    def position(self) -> Dict[str, Union[str, float, None]]:
         """Return  position."""
-        output: dict[str, Optional[Union[str, float]]]
+        output: Dict[str, Union[str, float, None]]
         try:
             if self.vehicle_moving:
                 output = {"lat": None, "lng": None, "timestamp": None}
