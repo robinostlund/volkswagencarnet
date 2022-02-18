@@ -5,9 +5,13 @@ import logging
 from collections import OrderedDict
 from datetime import datetime, timedelta, timezone
 from json import dumps as to_json
-from typing import Optional
+from typing import Optional, Union, Any
 
 from .vw_utilities import find_path, is_valid_path
+
+LOCKED_STATE = 2
+
+CLOSED_STATE = 3
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -48,10 +52,11 @@ class Vehicle:
             "latest": "",
             "state": "",
         }
-        self._climate_duration = 30
+        self._climate_duration: int = 30
+        self._climatisation_target_temperature: Optional[float] = None
 
         # API Endpoints that might be enabled for car (that we support)
-        self._services = {
+        self._services: dict[str, dict[str, Any]] = {
             "rheating_v1": {"active": False},
             "rclima_v1": {"active": False},
             "rlu_v1": {"active": False},
@@ -783,8 +788,7 @@ class Vehicle:
         if self.attrs.get("StoredVehicleDataResponseParsed", False):
             if "0x0203010003" in self.attrs.get("StoredVehicleDataResponseParsed"):
                 return True
-            else:
-                return False
+        return False
 
     @property
     def oil_inspection(self):
@@ -840,7 +844,7 @@ class Vehicle:
     # Charger related states for EV and PHEV
     @property
     def charging(self):
-        """Return battery level."""
+        """Return charging state."""
         cstate = (
             self.attrs.get("charger", {})
             .get("status", {})
@@ -891,23 +895,19 @@ class Vehicle:
             return value
 
     @property
-    def is_charge_max_ampere_supported(self):
+    def is_charge_max_ampere_supported(self) -> bool:
         """Return true if Charger Max Ampere is supported."""
         if self.attrs.get("charger", False):
             if "settings" in self.attrs.get("charger", {}):
                 if "maxChargeCurrent" in self.attrs.get("charger", {})["settings"]:
                     return True
-            else:
-                return False
+        return False
 
     @property
-    def charging_cable_locked(self):
+    def charging_cable_locked(self) -> bool:
         """Return plug locked state."""
         response = self.attrs.get("charger")["status"]["plugStatusData"]["lockState"].get("content", 0)
-        if response == "locked":
-            return True
-        else:
-            return False
+        return response == "locked"
 
     @property
     def is_charging_cable_locked_supported(self):
@@ -920,13 +920,10 @@ class Vehicle:
         return False
 
     @property
-    def charging_cable_connected(self):
+    def charging_cable_connected(self) -> bool:
         """Return plug locked state."""
         response = self.attrs.get("charger")["status"]["plugStatusData"]["plugState"].get("content", 0)
-        if response == "connected":
-            return False
-        else:
-            return True
+        return response == "connected"
 
     @property
     def is_charging_cable_connected_supported(self):
@@ -939,7 +936,7 @@ class Vehicle:
         return False
 
     @property
-    def charging_time_left(self):
+    def charging_time_left(self) -> Union[int, str]:  # FIXME, should probably be either one
         """Return minutes to charging complete."""
         if self.external_power:
             minutes = (
@@ -961,7 +958,7 @@ class Vehicle:
         return 0
 
     @property
-    def is_charging_time_left_supported(self):
+    def is_charging_time_left_supported(self) -> bool:
         """Return true if charging is supported."""
         return self.is_charging_supported
 
@@ -975,21 +972,17 @@ class Vehicle:
             .get("externalPowerSupplyState", {})
             .get("content", "")
         )
-        if check in ["stationConnected", "available"]:
-            return True
-        else:
-            return False
+        return check in ["stationConnected", "available"]
 
     @property
-    def is_external_power_supported(self):
+    def is_external_power_supported(self) -> bool:
         """External power supported."""
-        if (
+        return (
             self.attrs.get("charger", {})
             .get("status", {})
             .get("chargingStatusData", {})
             .get("externalPowerSupplyState", False)
-        ):
-            return True
+        )
 
     @property
     def energy_flow(self):
@@ -1001,21 +994,18 @@ class Vehicle:
             .get("energyFlow", {})
             .get("content", "off")
         )
-        if check == "on":
-            return True
-        else:
-            return False
+        return check == "on"
 
     @property
-    def is_energy_flow_supported(self):
+    def is_energy_flow_supported(self) -> bool:
         """Energy flow supported."""
-        if self.attrs.get("charger", {}).get("status", {}).get("chargingStatusData", {}).get("energyFlow", False):
-            return True
+        return self.attrs.get("charger", {}).get("status", {}).get("chargingStatusData", {}).get("energyFlow", False)
 
     # Vehicle location states
     @property
-    def position(self):
+    def position(self) -> dict[str, Optional[Union[str, float]]]:
         """Return  position."""
+        output: dict[str, Optional[Union[str, float]]]
         try:
             if self.vehicle_moving:
                 output = {"lat": None, "lng": None, "timestamp": None}
@@ -1033,47 +1023,41 @@ class Vehicle:
         return output
 
     @property
-    def is_position_supported(self):
+    def is_position_supported(self) -> bool:
         """Return true if carfinder_v1 service is active."""
-        if self._services.get("carfinder_v1", {}).get("active", False):
-            # if self.attrs.get('findCarResponse', {}).get('Position', {}).get('carCoordinate', {}).get('latitude', False):
-            return True
-        elif self.attrs.get("isMoving", False):
-            return True
+        return self._services.get("carfinder_v1", {}).get("active", False) or self.attrs.get("isMoving", False)
 
     @property
-    def vehicle_moving(self):
+    def vehicle_moving(self) -> bool:
         """Return true if vehicle is moving."""
         return self.attrs.get("isMoving", False)
 
     @property
-    def is_vehicle_moving_supported(self):
+    def is_vehicle_moving_supported(self) -> bool:
         """Return true if vehicle supports position."""
-        if self.is_position_supported:
-            return True
+        return self.is_position_supported
 
     @property
-    def parking_time(self):
+    def parking_time(self) -> str:
         """Return timestamp of last parking time."""
         park_time_utc: datetime = self.attrs.get("findCarResponse", {}).get("parkingTimeUTC", "Unknown")
         park_time = park_time_utc.replace(tzinfo=timezone.utc).astimezone(tz=None)
         return park_time.strftime("%Y-%m-%d %H:%M:%S")
 
     @property
-    def is_parking_time_supported(self):
+    def is_parking_time_supported(self) -> bool:
         """Return true if vehicle parking timestamp is supported."""
-        if "parkingTimeUTC" in self.attrs.get("findCarResponse", {}):
-            return True
+        return "parkingTimeUTC" in self.attrs.get("findCarResponse", {})
 
     # Vehicle fuel level and range
     @property
-    def electric_range(self):
+    def electric_range(self) -> int:
         """
         Return electric range.
 
         :return:
         """
-        value = -1
+        value = NO_VALUE
         if (
             PRIMARY_RANGE in self.attrs.get("StoredVehicleDataResponseParsed")
             and self.attrs.get("StoredVehicleDataResponseParsed")[PRIMARY_DRIVE].get("value", UNSUPPORTED)
@@ -1090,7 +1074,7 @@ class Vehicle:
         return int(value)
 
     @property
-    def is_electric_range_supported(self):
+    def is_electric_range_supported(self) -> bool:
         """
         Return true if electric range is supported.
 
@@ -1114,13 +1098,13 @@ class Vehicle:
         return supported
 
     @property
-    def combustion_range(self):
+    def combustion_range(self) -> int:
         """
         Return combustion engine range.
 
         :return:
         """
-        value = -1
+        value = NO_VALUE
         if (
             PRIMARY_RANGE in self.attrs.get("StoredVehicleDataResponseParsed")
             and self.attrs.get("StoredVehicleDataResponseParsed")[PRIMARY_DRIVE].get("value", UNSUPPORTED)
@@ -1137,7 +1121,7 @@ class Vehicle:
         return int(value)
 
     @property
-    def is_combustion_range_supported(self):
+    def is_combustion_range_supported(self) -> bool:
         """
         Return true if combustion range is supported, i.e. false for EVs.
 
@@ -1161,7 +1145,7 @@ class Vehicle:
         return supported
 
     @property
-    def combined_range(self):
+    def combined_range(self) -> int:
         """
         Return combined range.
 
@@ -1173,7 +1157,7 @@ class Vehicle:
         return int(value)
 
     @property
-    def is_combined_range_supported(self):
+    def is_combined_range_supported(self) -> bool:
         """
         Return true if combined range is supported.
 
@@ -1198,7 +1182,7 @@ class Vehicle:
         return int(value)
 
     @property
-    def is_fuel_level_supported(self):
+    def is_fuel_level_supported(self) -> bool:
         """
         Return true if fuel level reporting is supported.
 
@@ -1211,23 +1195,24 @@ class Vehicle:
 
     # Climatisation settings
     @property
-    def climatisation_target_temperature(self):
+    def climatisation_target_temperature(self) -> Optional[float]:
         """Return the target temperature from climater."""
         value = self.attrs.get("climater").get("settings").get("targetTemperature").get("content")
         if value:
             reply = float((value / 10) - 273)
             self._climatisation_target_temperature = reply
             return reply
+        else:
+            return None
 
     @property
-    def is_climatisation_target_temperature_supported(self):
+    def is_climatisation_target_temperature_supported(self) -> bool:
         """Return true if climatisation target temperature is supported."""
         if self.attrs.get("climater", False):
             if "settings" in self.attrs.get("climater", {}):
                 if "targetTemperature" in self.attrs.get("climater", {})["settings"]:
                     return True
-            else:
-                return False
+        return False
 
     @property
     def climatisation_without_external_power(self):
@@ -1241,11 +1226,10 @@ class Vehicle:
             if "settings" in self.attrs.get("climater", {}):
                 if "climatisationWithoutHVpower" in self.attrs.get("climater", {})["settings"]:
                     return True
-            else:
-                return False
+        return False
 
     @property
-    def outside_temperature(self):
+    def outside_temperature(self) -> Union[float, bool]:  # FIXME should probably be Optional[float] instead
         """Return outside temperature."""
         response = int(self.attrs.get("StoredVehicleDataResponseParsed")["0x0301020001"].get("value", 0))
         if response:
@@ -1254,20 +1238,17 @@ class Vehicle:
             return False
 
     @property
-    def is_outside_temperature_supported(self):
+    def is_outside_temperature_supported(self) -> bool:
         """Return true if outside temp is supported."""
         if self.attrs.get("StoredVehicleDataResponseParsed", False):
             if "0x0301020001" in self.attrs.get("StoredVehicleDataResponseParsed"):
                 if "value" in self.attrs.get("StoredVehicleDataResponseParsed")["0x0301020001"]:
                     return True
-                else:
-                    return False
-            else:
-                return False
+        return False
 
     # Climatisation, electric
     @property
-    def electric_climatisation(self):
+    def electric_climatisation(self) -> bool:
         """Return status of climatisation."""
         climatisation_type = (
             self.attrs.get("climater", {}).get("settings", {}).get("heaterSource", {}).get("content", "")
@@ -1279,18 +1260,15 @@ class Vehicle:
             .get("climatisationState", {})
             .get("content", "")
         )
-        if status in ["heating", "on"] and climatisation_type == "electric":
-            return True
-        else:
-            return False
+        return status in ["heating", "on"] and climatisation_type == "electric"
 
     @property
-    def is_electric_climatisation_supported(self):
-        """Return true if vehichle has climater."""
+    def is_electric_climatisation_supported(self) -> bool:
+        """Return true if vehicle has climater."""
         return self.is_climatisation_supported
 
     @property
-    def auxiliary_climatisation(self):
+    def auxiliary_climatisation(self) -> bool:
         """Return status of auxiliary climatisation."""
         climatisation_type = (
             self.attrs.get("climater", {}).get("settings", {}).get("heaterSource", {}).get("content", "")
@@ -1310,7 +1288,7 @@ class Vehicle:
             return False
 
     @property
-    def is_auxiliary_climatisation_supported(self):
+    def is_auxiliary_climatisation_supported(self) -> bool:
         """Return true if vehicle has auxiliary climatisation."""
         if self._services.get("rclima_v1", False):
             functions = self._services.get("rclima_v1", {}).get("operations", [])
@@ -1321,7 +1299,7 @@ class Vehicle:
         return False
 
     @property
-    def is_climatisation_supported(self):
+    def is_climatisation_supported(self) -> bool:
         """Return true if climatisation has State."""
         response = (
             self.attrs.get("climater", {})
@@ -1330,11 +1308,10 @@ class Vehicle:
             .get("climatisationState", {})
             .get("content", "")
         )
-        if response != "":
-            return True
+        return response != ""
 
     @property
-    def window_heater(self):
+    def window_heater(self) -> bool:
         """Return status of window heater."""
         ret = False
         status_front = (
@@ -1359,7 +1336,7 @@ class Vehicle:
         return ret
 
     @property
-    def is_window_heater_supported(self):
+    def is_window_heater_supported(self) -> bool:
         """Return true if vehichle has heater."""
         if self.is_electric_climatisation_supported:
             if self.attrs.get("climater", {}).get("status", {}).get("windowHeatingStatusData", {}).get(
@@ -1370,10 +1347,11 @@ class Vehicle:
                 "windowHeatingStateRear", {}
             ).get("content", "") in ["on", "off"]:
                 return True
+        return False
 
     # Parking heater, "legacy" auxiliary climatisation
     @property
-    def pheater_duration(self):
+    def pheater_duration(self) -> int:
         """
         Return heating duration for legacy aux heater.
 
@@ -1382,14 +1360,14 @@ class Vehicle:
         return self._climate_duration
 
     @pheater_duration.setter
-    def pheater_duration(self, value):
+    def pheater_duration(self, value) -> None:
         if value in [10, 20, 30, 40, 50, 60]:
             self._climate_duration = value
         else:
             _LOGGER.warning(f"Invalid value for duration: {value}")
 
     @property
-    def is_pheater_duration_supported(self):
+    def is_pheater_duration_supported(self) -> bool:
         """
         Return true if legacy aux heater is supported.
 
@@ -1406,12 +1384,12 @@ class Vehicle:
         )
 
     @property
-    def is_pheater_ventilation_supported(self):
+    def is_pheater_ventilation_supported(self) -> bool:
         """Return true if vehichle has combustion climatisation."""
         return self.is_pheater_heating_supported
 
     @property
-    def pheater_heating(self):
+    def pheater_heating(self) -> bool:
         """Return status of combustion engine heating."""
         return (
             self.attrs.get("heating", {}).get("climatisationStateReport", {}).get("climatisationState", False)
@@ -1419,25 +1397,23 @@ class Vehicle:
         )
 
     @property
-    def is_pheater_heating_supported(self):
+    def is_pheater_heating_supported(self) -> bool:
         """Return true if vehichle has combustion engine heating."""
-        if self.attrs.get("heating", {}).get("climatisationStateReport", {}).get("climatisationState", False):
-            return True
+        return self.attrs.get("heating", {}).get("climatisationStateReport", {}).get("climatisationState", False)
 
     @property
-    def pheater_status(self):
+    def pheater_status(self) -> str:
         """Return status of combustion engine heating/ventilation."""
         return self.attrs.get("heating", {}).get("climatisationStateReport", {}).get("climatisationState", "Unknown")
 
     @property
-    def is_pheater_status_supported(self):
+    def is_pheater_status_supported(self) -> bool:
         """Return true if vehichle has combustion engine heating/ventilation."""
-        if self.attrs.get("heating", {}).get("climatisationStateReport", {}).get("climatisationState", False):
-            return True
+        return self.attrs.get("heating", {}).get("climatisationStateReport", {}).get("climatisationState", False)
 
     # Windows
     @property
-    def windows_closed(self):
+    def windows_closed(self) -> bool:
         """
         Return true if all windows are closed.
 
@@ -1451,135 +1427,113 @@ class Vehicle:
         )
 
     @property
-    def is_windows_closed_supported(self):
+    def is_windows_closed_supported(self) -> bool:
         """Return true if window state is supported."""
         if self.attrs.get("StoredVehicleDataResponseParsed", False):
             if "0x0301050001" in self.attrs.get("StoredVehicleDataResponseParsed"):
                 return True
-            else:
-                return False
+        return False
 
     @property
-    def window_closed_left_front(self):
+    def window_closed_left_front(self) -> bool:
         """
         Return left front window closed state.
 
         :return:
         """
         response = int(self.attrs.get("StoredVehicleDataResponseParsed")["0x0301050001"].get("value", 0))
-        if response == 3:
-            return True
-        else:
-            return False
+        return response == CLOSED_STATE
 
     @property
-    def is_window_closed_left_front_supported(self):
+    def is_window_closed_left_front_supported(self) -> bool:
         """Return true if window state is supported."""
         if self.attrs.get("StoredVehicleDataResponseParsed", False):
-            if "0x0301050001" in self.attrs.get("StoredVehicleDataResponseParsed"):
-                return True
-            else:
-                return False
+            return "0x0301050001" in self.attrs.get("StoredVehicleDataResponseParsed")
+        return False
 
     @property
-    def window_closed_right_front(self):
+    def window_closed_right_front(self) -> bool:
         """
         Return right front window closed state.
 
         :return:
         """
         response = int(self.attrs.get("StoredVehicleDataResponseParsed")["0x0301050005"].get("value", 0))
-        if response == 3:
-            return True
-        else:
-            return False
+        return response == CLOSED_STATE
 
     @property
-    def is_window_closed_right_front_supported(self):
+    def is_window_closed_right_front_supported(self) -> bool:
         """Return true if window state is supported."""
         if self.attrs.get("StoredVehicleDataResponseParsed", False):
             if "0x0301050005" in self.attrs.get("StoredVehicleDataResponseParsed"):
                 return True
-            else:
-                return False
+        return False
 
     @property
-    def window_closed_left_back(self):
+    def window_closed_left_back(self) -> bool:
         """
         Return left back window closed state.
 
         :return:
         """
         response = int(self.attrs.get("StoredVehicleDataResponseParsed")["0x0301050003"].get("value", 0))
-        if response == 3:
-            return True
-        else:
-            return False
+        return response == CLOSED_STATE
 
     @property
-    def is_window_closed_left_back_supported(self):
+    def is_window_closed_left_back_supported(self) -> bool:
         """Return true if window state is supported."""
         if self.attrs.get("StoredVehicleDataResponseParsed", False):
             if "0x0301050003" in self.attrs.get("StoredVehicleDataResponseParsed"):
                 return True
-            else:
-                return False
+        return False
 
     @property
-    def window_closed_right_back(self):
+    def window_closed_right_back(self) -> bool:
         """
         Return right back window closed state.
 
         :return:
         """
         response = int(self.attrs.get("StoredVehicleDataResponseParsed")["0x0301050007"].get("value", 0))
-        if response == 3:
-            return True
-        else:
-            return False
+        return response == CLOSED_STATE
 
     @property
-    def is_window_closed_right_back_supported(self):
+    def is_window_closed_right_back_supported(self) -> bool:
         """Return true if window state is supported."""
         if self.attrs.get("StoredVehicleDataResponseParsed", False):
             if "0x0301050007" in self.attrs.get("StoredVehicleDataResponseParsed"):
                 return True
-            else:
-                return False
+        return False
 
     @property
-    def sunroof_closed(self):
+    def sunroof_closed(self) -> bool:
         """
         Return sunroof closed state.
 
         :return:
         """
         response = int(self.attrs.get("StoredVehicleDataResponseParsed")["0x030105000B"].get("value", 0))
-        if response == 3:
-            return True
-        else:
-            return False
+        return response == CLOSED_STATE
 
     @property
-    def is_sunroof_closed_supported(self):
+    def is_sunroof_closed_supported(self) -> bool:
         """Return true if sunroof state is supported."""
         if self.attrs.get("StoredVehicleDataResponseParsed", False):
             if "0x030105000B" in self.attrs.get("StoredVehicleDataResponseParsed"):
-                if int(self.attrs.get("StoredVehicleDataResponseParsed")["0x030105000B"].get("value", 0)) == 0:
-                    return False
-                else:
-                    return True
-            else:
-                return False
+                return int(self.attrs.get("StoredVehicleDataResponseParsed")["0x030105000B"].get("value", 0)) != 0
+        return False
 
     # Locks
     @property
-    def door_locked(self):
+    def door_locked(self) -> bool:
         """
         Return true if all doors are locked.
 
         :return:
         """
+        # TODO replace with
+        # return all(elem == LOCKED_STATE for elem in (...))
+        # or something after tests are implemented
         # LEFT FRONT
         response = int(self.attrs.get("StoredVehicleDataResponseParsed")["0x0301040001"].get("value", 0))
         if response != 2:
@@ -1600,7 +1554,7 @@ class Vehicle:
         return True
 
     @property
-    def is_door_locked_supported(self):
+    def is_door_locked_supported(self) -> bool:
         """
         Return true if supported.
 
@@ -1609,24 +1563,20 @@ class Vehicle:
         if self.attrs.get("StoredVehicleDataResponseParsed", False):
             if "0x0301040001" in self.attrs.get("StoredVehicleDataResponseParsed"):
                 return True
-            else:
-                return False
+        return False
 
     @property
-    def trunk_locked(self):
+    def trunk_locked(self) -> bool:
         """
         Return trunk locked state.
 
         :return:
         """
         response = int(self.attrs.get("StoredVehicleDataResponseParsed")["0x030104000D"].get("value", 0))
-        if response == 2:
-            return True
-        else:
-            return False
+        return response == LOCKED_STATE
 
     @property
-    def is_trunk_locked_supported(self):
+    def is_trunk_locked_supported(self) -> bool:
         """
         Return true if supported.
 
@@ -1635,140 +1585,112 @@ class Vehicle:
         if self.attrs.get("StoredVehicleDataResponseParsed", False):
             if "0x030104000D" in self.attrs.get("StoredVehicleDataResponseParsed"):
                 return True
-            else:
-                return False
+        return False
 
     # Doors, hood and trunk
     @property
-    def hood_closed(self):
+    def hood_closed(self) -> bool:
         """Return true if hood is closed."""
         response = int(self.attrs.get("StoredVehicleDataResponseParsed")["0x0301040011"].get("value", 0))
-        if response == 3:
-            return True
-        else:
-            return False
+        return response == CLOSED_STATE
 
     @property
-    def is_hood_closed_supported(self):
+    def is_hood_closed_supported(self) -> bool:
         """Return true if hood state is supported."""
         if self.attrs.get("StoredVehicleDataResponseParsed", False):
             if "0x0301040011" in self.attrs.get("StoredVehicleDataResponseParsed", {}):
-                if int(self.attrs.get("StoredVehicleDataResponseParsed")["0x0301040011"].get("value", 0)) == 0:
-                    return False
-                else:
-                    return True
-            else:
-                return False
+                return int(self.attrs.get("StoredVehicleDataResponseParsed")["0x0301040011"].get("value", 0)) != 0
+        return False
 
     @property
-    def door_closed_left_front(self):
+    def door_closed_left_front(self) -> bool:
         """
         Return left front door closed state.
 
         :return:
         """
         response = int(self.attrs.get("StoredVehicleDataResponseParsed")["0x0301040002"].get("value", 0))
-        if response == 3:
-            return True
-        else:
-            return False
+        return response == CLOSED_STATE
 
     @property
-    def is_door_closed_left_front_supported(self):
+    def is_door_closed_left_front_supported(self) -> bool:
         """Return true if supported."""
         if self.attrs.get("StoredVehicleDataResponseParsed", False):
             if "0x0301040002" in self.attrs.get("StoredVehicleDataResponseParsed"):
                 return True
-            else:
-                return False
+        return False
 
     @property
-    def door_closed_right_front(self):
+    def door_closed_right_front(self) -> bool:
         """
         Return right front door closed state.
 
         :return:
         """
         response = int(self.attrs.get("StoredVehicleDataResponseParsed")["0x0301040008"].get("value", 0))
-        if response == 3:
-            return True
-        else:
-            return False
+        return response == CLOSED_STATE
 
     @property
-    def is_door_closed_right_front_supported(self):
+    def is_door_closed_right_front_supported(self) -> bool:
         """Return true if supported."""
         if self.attrs.get("StoredVehicleDataResponseParsed", False):
             if "0x0301040008" in self.attrs.get("StoredVehicleDataResponseParsed"):
                 return True
-            else:
-                return False
+        return False
 
     @property
-    def door_closed_left_back(self):
+    def door_closed_left_back(self) -> bool:
         """
         Return left back door closed state.
 
         :return:
         """
         response = int(self.attrs.get("StoredVehicleDataResponseParsed")["0x0301040005"].get("value", 0))
-        if response == 3:
-            return True
-        else:
-            return False
+        return response == CLOSED_STATE
 
     @property
-    def is_door_closed_left_back_supported(self):
+    def is_door_closed_left_back_supported(self) -> bool:
         """Return true if supported."""
         if self.attrs.get("StoredVehicleDataResponseParsed", False):
             if "0x0301040005" in self.attrs.get("StoredVehicleDataResponseParsed"):
                 return True
-            else:
-                return False
+        return False
 
     @property
-    def door_closed_right_back(self):
+    def door_closed_right_back(self) -> bool:
         """
         Return right back door closed state.
 
         :return:
         """
         response = int(self.attrs.get("StoredVehicleDataResponseParsed")["0x030104000B"].get("value", 0))
-        if response == 3:
-            return True
-        else:
-            return False
+        return response == CLOSED_STATE
 
     @property
-    def is_door_closed_right_back_supported(self):
+    def is_door_closed_right_back_supported(self) -> bool:
         """Return true if supported."""
         if self.attrs.get("StoredVehicleDataResponseParsed", False):
             if "0x030104000B" in self.attrs.get("StoredVehicleDataResponseParsed"):
                 return True
-            else:
-                return False
+        return False
 
     @property
-    def trunk_closed(self):
+    def trunk_closed(self) -> bool:
         """
         Return state of trunk closed.
 
         :return:
         """
         response = int(self.attrs.get("StoredVehicleDataResponseParsed")["0x030104000E"].get("value", 0))
-        if response == 3:
-            return True
-        else:
-            return False
+        return response == CLOSED_STATE
 
     @property
-    def is_trunk_closed_supported(self):
+    def is_trunk_closed_supported(self) -> bool:
         """Return true if trunk closed state is supported."""
         if self.attrs.get("StoredVehicleDataResponseParsed", False):
             if "0x030104000E" in self.attrs.get("StoredVehicleDataResponseParsed"):
                 return True
-            else:
-                return False
+        return False
 
     # Departure timers
     # Not yet implemented
@@ -1782,15 +1704,13 @@ class Vehicle:
         return False
 
     @property
-    def is_schedule1_suppored(self):
+    def is_schedule1_supported(self) -> bool:
         """
         Return true if supported.
 
         :return:
         """
-        if self.attrs.get("timers", {}).get("timersAndProfiles", {}).get("timerList", {}).get("timer", False):
-            return True
-        return False
+        return self.attrs.get("timers", {}).get("timersAndProfiles", {}).get("timerList", {}).get("timer", False)
 
     @property
     def schedule2(self):
@@ -1802,15 +1722,13 @@ class Vehicle:
         return False
 
     @property
-    def is_schedule2_suppored(self):
+    def is_schedule2_supported(self) -> bool:
         """
         Return true if supported.
 
         :return:
         """
-        if self.attrs.get("timers", {}).get("timersAndProfiles", {}).get("timerList", {}).get("timer", False):
-            return True
-        return False
+        return self.attrs.get("timers", {}).get("timersAndProfiles", {}).get("timerList", {}).get("timer", False)
 
     @property
     def schedule3(self):
@@ -1822,15 +1740,13 @@ class Vehicle:
         return False
 
     @property
-    def is_schedule3_suppored(self):
+    def is_schedule3_supported(self) -> bool:
         """
         Return true if supported.
 
         :return:
         """
-        if self.attrs.get("timers", {}).get("timersAndProfiles", {}).get("timerList", {}).get("timer", False):
-            return True
-        return False
+        return self.attrs.get("timers", {}).get("timersAndProfiles", {}).get("timerList", {}).get("timer", False)
 
     # Trip data
     @property
@@ -1852,15 +1768,14 @@ class Vehicle:
         return self.trip_last_entry.get("averageSpeed")
 
     @property
-    def is_trip_last_average_speed_supported(self):
+    def is_trip_last_average_speed_supported(self) -> bool:
         """
         Return true if supported.
 
         :return:
         """
         response = self.trip_last_entry
-        if response and type(response.get("averageSpeed", None)) in (float, int):
-            return True
+        return response and type(response.get("averageSpeed", None)) in (float, int)
 
     @property
     def trip_last_average_electric_engine_consumption(self):
@@ -1873,15 +1788,14 @@ class Vehicle:
         return float(value / 10)
 
     @property
-    def is_trip_last_average_electric_engine_consumption_supported(self):
+    def is_trip_last_average_electric_engine_consumption_supported(self) -> bool:
         """
         Return true if supported.
 
         :return:
         """
         response = self.trip_last_entry
-        if response and type(response.get("averageElectricEngineConsumption", None)) in (float, int):
-            return True
+        return response and type(response.get("averageElectricEngineConsumption", None)) in (float, int)
 
     @property
     def trip_last_average_fuel_consumption(self):
@@ -1893,15 +1807,14 @@ class Vehicle:
         return int(self.trip_last_entry.get("averageFuelConsumption")) / 10
 
     @property
-    def is_trip_last_average_fuel_consumption_supported(self):
+    def is_trip_last_average_fuel_consumption_supported(self) -> bool:
         """
         Return true if supported.
 
         :return:
         """
         response = self.trip_last_entry
-        if response and type(response.get("averageFuelConsumption", None)) in (float, int):
-            return True
+        return response and type(response.get("averageFuelConsumption", None)) in (float, int)
 
     @property
     def trip_last_average_auxillary_consumption(self):

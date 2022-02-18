@@ -30,7 +30,7 @@ class VehicleTest(IsolatedAsyncioTestCase):
 
     @freeze_time("2022-02-14 03:04:05")
     async def test_init(self):
-        """Test that init does what it should."""
+        """Test __init__."""
         async with ClientSession() as conn:
             target_date = datetime.fromisoformat("2022-02-14 03:04:05")
             url = "https://foo.bar"
@@ -71,6 +71,11 @@ class VehicleTest(IsolatedAsyncioTestCase):
                 vehicle._services,
             )
 
+    def test_str(self):
+        """Test __str__."""
+        vehicle = Vehicle(None, "XYZ1234567890")
+        self.assertEqual("XYZ1234567890", vehicle.__str__())
+
     def test_discover(self):
         """Test the discovery process."""
         pass
@@ -110,6 +115,10 @@ class VehicleTest(IsolatedAsyncioTestCase):
         self.assertEqual(
             8, vehicle.method_calls.__len__(), f"Wrong number of methods called. Expected 8, got {vehicle.method_calls}"
         )
+
+
+class VehiclePropertyTest(IsolatedAsyncioTestCase):
+    """Tests for properties in Vehicle."""
 
     async def test_is_last_connected_supported(self):
         """Test that parsing last connected works."""
@@ -158,6 +167,25 @@ class VehicleTest(IsolatedAsyncioTestCase):
             self.assertEqual(
                 datetime.fromisoformat("2022-02-14T00:00:45+00:00").astimezone(None).strftime("%Y-%m-%d %H:%M:%S"), res
             )
+
+    def test_requests_remaining(self):
+        """Test requests remaining logic."""
+        vehicle = Vehicle(conn=None, url="")
+        with patch.dict(vehicle._requests, {"remaining": 22}):
+            self.assertTrue(vehicle.is_requests_remaining_supported)
+            self.assertEqual(22, vehicle.requests_remaining)
+        # if remaining is missing _and_ attrs has no rate limit remaining attribute
+        with patch.dict(vehicle._requests, {}):
+            del vehicle._requests["remaining"]
+            self.assertFalse(vehicle.is_requests_remaining_supported)
+            with self.assertRaises(KeyError):
+                vehicle.requests_remaining()
+
+            # and with the attribute
+            with patch.dict(vehicle._states, {"rate_limit_remaining": 99}):
+                self.assertEqual(99, vehicle.requests_remaining)
+                # attribute should be removed once read
+                self.assertNotIn("rate_limit_remaining", vehicle.attrs)
 
     async def test_json(self):
         """Test JSON serialization of dict containing datetime."""
