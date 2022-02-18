@@ -22,6 +22,7 @@ from base64 import b64encode, urlsafe_b64encode
 from aiohttp import ClientSession, ClientTimeout, client_exceptions
 from aiohttp.hdrs import METH_GET, METH_POST
 
+from volkswagencarnet.vw_exceptions import AuthenticationException
 from .vw_utilities import json_loads, read_config
 from .vw_vehicle import Vehicle
 
@@ -319,7 +320,7 @@ class Connection:
                         _LOGGER.warning("Login failed, invalid password")
                     else:
                         _LOGGER.warning(f"Login failed: {error}")
-                    raise error
+                    raise AuthenticationException(error)
                 if "code" in ref:
                     _LOGGER.debug("Got code: %s" % ref)
                 else:
