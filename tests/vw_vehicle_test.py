@@ -2,7 +2,7 @@
 import sys
 from datetime import datetime
 
-from fixtures.connection import status_report_json_file
+from tests.fixtures.connection import status_report_json_file
 from volkswagencarnet.vw_utilities import json_loads
 
 if sys.version_info >= (3, 8):

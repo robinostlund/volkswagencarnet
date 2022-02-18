@@ -733,17 +733,8 @@ class Vehicle:
 
     @property
     def is_last_connected_supported(self) -> bool:
-        """Return when vehicle was last connected to connect servers."""
-        if next(
-            iter(
-                next(
-                    iter(self.attrs.get("StoredVehicleDataResponse", {}).get("vehicleData", {}).get("data", [])), {}
-                ).get("field", {})
-            ),
-            {},
-        ).get("tsCarSentUtc", False):
-            return True
-        return False
+        """Return if when vehicle was last connected to connect servers is supported."""
+        return is_valid_path(self.attrs, "StoredVehicleDataResponse.vehicleData.data.0.field.0.tsCarSentUtc")
 
     # Service information
     @property
