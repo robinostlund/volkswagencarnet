@@ -1,0 +1,119 @@
+{
+  "timer": {
+    "timersAndProfiles": {
+      "timerProfileList": {
+        "timerProfile": [
+          {
+            "timestamp": "2022-02-22T20:00:22Z",
+            "profileName": "Profile 1",
+            "profileID": "1",
+            "operationCharging": true,
+            "operationClimatisation": false,
+            "targetChargeLevel": "75",
+            "nightRateActive": true,
+            "nightRateTimeStart": "21:00",
+            "nightRateTimeEnd": "05:00",
+            "chargeMaxCurrent": "10"
+          },
+          {
+            "timestamp": "2022-02-22T20:00:22Z",
+            "profileName": "Profile 2",
+            "profileID": "2",
+            "operationCharging": true,
+            "operationClimatisation": true,
+            "targetChargeLevel": "100",
+            "nightRateActive": true,
+            "nightRateTimeStart": "20:00",
+            "nightRateTimeEnd": "05:00",
+            "chargeMaxCurrent": "10"
+          },
+          {
+            "timestamp": "2022-02-22T20:00:22Z",
+            "profileName": "Profile 3",
+            "profileID": "3",
+            "operationCharging": true,
+            "operationClimatisation": false,
+            "targetChargeLevel": "60",
+            "nightRateActive": false,
+            "nightRateTimeStart": "00:00",
+            "nightRateTimeEnd": "00:00",
+            "chargeMaxCurrent": "10"
+          }
+        ]
+      },
+      "timerList": {
+        "timer": [
+          {
+            "timestamp": "2022-02-22T20:00:22Z",
+            "timerID": "3",
+            "profileID": "3",
+            "timerProgrammedStatus": "notProgrammed",
+            "timerFrequency": "cyclic",
+            "departureTimeOfDay": "07:55",
+            "departureWeekdayMask": "nnnnnyn"
+          },
+          {
+            "timestamp": "2022-02-22T20:00:22Z",
+            "timerID": "1",
+            "profileID": "5",
+            "timerProgrammedStatus": "programmed",
+            "timerFrequency": "cyclic",
+            "departureTimeOfDay": "05:00",
+            "departureWeekdayMask": "yyyyyyy"
+          },
+          {
+            "timestamp": "2022-02-22T20:00:22Z",
+            "timerID": "2",
+            "profileID": "5",
+            "timerProgrammedStatus": "programmed",
+            "timerFrequency": "single",
+            "departureTimeOfDay": "08:00",
+            "departureWeekdayMask": "nnnnnyy"
+          }
+        ]
+      },
+      "timerBasicSetting": {
+        "timestamp": "2022-02-22T20:00:22Z",
+        "chargeMinLimit": "20",
+        "targetTemperature": "2955"
+      }
+    },
+    "status": {
+      "timer": [
+        {
+          "timerID": "1",
+          "timerExpiredStatus": {
+            "timestamp": "2022-02-22T20:00:22Z",
+            "content": "notExpired"
+          },
+          "instrumentClusterTime": {
+            "timestamp": "2022-02-22T20:00:22Z",
+            "content": "2022-02-22T20:00:22Z"
+          }
+        },
+        {
+          "timerID": "2",
+          "timerExpiredStatus": {
+            "timestamp": "2022-02-22T20:00:22Z",
+            "content": "notExpired"
+          },
+          "instrumentClusterTime": {
+            "timestamp": "2022-02-22T20:00:22Z",
+            "content": "2022-02-22T20:00:22Z"
+          }
+        },
+        {
+          "timerID": "3",
+          "timerExpiredStatus": {
+            "timestamp": "2022-02-22T20:00:22Z",
+            "content": "notExpired"
+          },
+          "instrumentClusterTime": {
+            "timestamp": "2022-02-22T20:00:22Z",
+            "content": "2022-02-22T20:00:22Z"
+          }
+        }
+      ]
+    }
+  }
+}

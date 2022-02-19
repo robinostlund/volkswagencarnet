@@ -65,7 +65,10 @@ class Vehicle:
             "rbatterycharge_v1": {"active": False},
             "rhonk_v1": {"active": False},
             "carfinder_v1": {"active": False},
-            # 'timerprogramming_v1': {'active': False}, # Not yet implemented
+            "timerprogramming_v1": {"active": False},
+            # "jobs_v1": {"active": False},
+            # "owner_v1": {"active": False},
+            # vehicles_v1_cai, services_v1, vehicletelemetry_v1
         }
 
     # API get and set functions #
@@ -223,7 +226,7 @@ class Vehicle:
         else:
             self._requests.pop("charger", None)
 
-    async def get_timerprogramming(self):
+    async def get_timerprogramming(self) -> None:
         """Fetch timer data if function is enabled."""
         if self._services.get("timerprogramming_v1", {}).get("active", False):
             if not await self.expired("timerprogramming_v1"):
