@@ -2,7 +2,10 @@
 import sys
 from datetime import datetime
 
-from tests.fixtures.connection import status_report_json_file
+import pytest
+
+from .fixtures.connection import TimersConnection
+from .fixtures.constants import status_report_json_file, MOCK_VIN
 from volkswagencarnet.vw_utilities import json_loads
 
 if sys.version_info >= (3, 8):
@@ -65,7 +68,7 @@ class VehicleTest(IsolatedAsyncioTestCase):
                     "rhonk_v1": {"active": False},
                     "rlu_v1": {"active": False},
                     "statusreport_v1": {"active": False},
-                    # 'timerprogramming_v1': {'active': False}, # Not yet implemented
+                    "timerprogramming_v1": {"active": False},
                     "trip_statistic_v1": {"active": False},
                 },
                 vehicle._services,
@@ -186,6 +189,19 @@ class VehiclePropertyTest(IsolatedAsyncioTestCase):
                 self.assertEqual(99, vehicle.requests_remaining)
                 # attribute should be removed once read
                 self.assertNotIn("rate_limit_remaining", vehicle.attrs)
+
+    @pytest.mark.asyncio
+    async def test_get_timerprogramming(self):
+        """Vehicle with timers loaded."""
+        vehicle = Vehicle(conn=TimersConnection(None), url=MOCK_VIN)
+        vehicle._discovered = True
+
+        with patch.dict(vehicle._services, {"timerprogramming_v1": {"active": True}}), patch.dict(
+            vehicle._states, {"timer": None}
+        ):
+            await vehicle.get_timerprogramming()
+            self.assertIn("timer", vehicle._states)
+            self.assertIn("timersAndProfiles", vehicle._states["timer"])
 
     async def test_json(self):
         """Test JSON serialization of dict containing datetime."""
