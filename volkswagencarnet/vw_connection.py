@@ -1076,7 +1076,7 @@ class Connection:
                 # f"fs-car/bs/departuretimer/v1/{BRAND}/{self._session_country}/vehicles/$vin/action",
                 f"fs-car/bs/departuretimer/v1/{BRAND}/{self._session_country}/vehicles/$vin/timer/actions",
                 vin=vin,
-                data={
+                json={
                     "action": {
                         "timersAndProfiles": data.timersAndProfiles.json_updated["timer"],
                         "type": "setTimersAndProfiles",

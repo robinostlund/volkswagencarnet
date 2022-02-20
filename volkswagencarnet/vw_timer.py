@@ -8,7 +8,14 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class DepartureTimerClass:
+    """Base class for timer related classes."""
+
     _changed: bool = False
+
+    @property
+    def is_changed(self):
+        """Something changed."""
+        return self._changed
 
     @property
     def json(self):
@@ -21,6 +28,7 @@ class DepartureTimerClass:
         return json.loads(json.dumps({"timer": self}, default=self.serialize_updated, indent=2))
 
     def serialize_updated(self, o):
+        """Serialize object into JSON format, skipping extra field for update call."""
         if isinstance(o, datetime):
             return o.strftime("%Y-%m-%dT%H:%M:%S%z")
 
@@ -30,9 +38,13 @@ class DepartureTimerClass:
             for i in o.__dict__
             if i[0] != "_"
         }
-        if hasattr(o, "timestamp") and not isinstance(o, datetime):
+        if issubclass(type(o), DepartureTimerClass) and hasattr(o, "timestamp"):
             if not o._changed:
                 del res["timestamp"]
+        # Remove any None valued keys
+        for k in res:
+            if res[k] is None:
+                del res[k]
         return res
 
     def serialize(self, o):
@@ -53,11 +65,11 @@ class DepartureTimerClass:
 class BasicSettings(DepartureTimerClass):
     """Basic settings."""
 
-    def __init__(self, timestamp: str, chargeMinLimit: str, targetTemperature: str):
+    def __init__(self, timestamp: str, chargeMinLimit: Union[str, int], targetTemperature: Union[str, int]):
         """Init."""
         self.timestamp = timestamp
-        self.chargeMinLimit = chargeMinLimit
-        self.targetTemperature = targetTemperature
+        self.chargeMinLimit = int(chargeMinLimit)
+        self.targetTemperature = int(targetTemperature)
 
 
 # noinspection PyPep8Naming
@@ -90,14 +102,17 @@ class Timer(DepartureTimerClass):
 
     @property
     def enabled(self):
+        """Check if departure timer is enabled."""
         self._changed = True
         return self.timerProgrammedStatus == "programmed"
 
     def enable(self):
+        """Turn departure timer on."""
         self._changed = True
         self.timerProgrammedStatus = "programmed"
 
     def disable(self):
+        """Turn departure timer off."""
         self.timerProgrammedStatus = "notProgrammed"
 
 
@@ -196,8 +211,9 @@ class TimerData(DepartureTimerClass):
         return self._valid
 
     def has_schedule(self, schedule_id: Union[str, int]):
-        """"""
+        """Check if timer exists by id."""
         return self._valid and any(p.timerID == str(schedule_id) for p in self.timersAndProfiles.timerList.timer)
 
     def get_schedule(self, schedule_id: Union[str, int]):
+        """Find timer by id."""
         return next(filter(lambda p: p.timerID == str(schedule_id), self.timersAndProfiles.timerList.timer), None)

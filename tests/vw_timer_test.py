@@ -1,5 +1,4 @@
 """Depature timer tests."""
-from json import loads
 from unittest import TestCase
 
 from volkswagencarnet.vw_timer import TimerData
@@ -42,8 +41,8 @@ class TimerTest(TestCase):
                 },
                 "timerBasicSetting": {
                     "timestamp": "2022-02-22T20:00:22Z",
-                    "chargeMinLimit": "20",
-                    "targetTemperature": "2955",
+                    "chargeMinLimit": 20,
+                    "targetTemperature": 2955,
                 },
             },
             "status": {"timer": []},
@@ -82,8 +81,8 @@ class TimerTest(TestCase):
                     ]
                 },
                 "timerBasicSetting": {
-                    "chargeMinLimit": "20",
-                    "targetTemperature": "2955",
+                    "chargeMinLimit": 20,
+                    "targetTemperature": 2955,
                 },
             },
             "status": {"timer": []},
@@ -97,6 +96,7 @@ class TimerTest(TestCase):
         self.assertNotEqual(timer.json, timer.json_updated)
 
     def test_update_serialization(self):
+        """Check that updating a timer sets correct attributes."""
         timer = TimerData(**self.data["timer"])
         timer.get_schedule(3).enable()
         self.assertTrue(timer.get_schedule(3)._changed)
