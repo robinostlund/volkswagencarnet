@@ -1,10 +1,56 @@
 """Class for departure timer basic settings."""
 import json
-from typing import Union, List
+import logging
+from datetime import datetime
+from typing import Union, List, Optional, Dict
+
+_LOGGER = logging.getLogger(__name__)
+
+
+class DepartureTimerClass:
+    _changed: bool = False
+
+    @property
+    def json(self):
+        """Return JSON representation."""
+        return json.loads(json.dumps({"timer": self}, default=self.serialize, indent=2))
+
+    @property
+    def json_updated(self):
+        """Return JSON representation."""
+        return json.loads(json.dumps({"timer": self}, default=self.serialize_updated, indent=2))
+
+    def serialize_updated(self, o):
+        if isinstance(o, datetime):
+            return o.strftime("%Y-%m-%dT%H:%M:%S%z")
+
+        res = {
+            # filter out properties starting with "_"
+            i: o.__dict__[i]
+            for i in o.__dict__
+            if i[0] != "_"
+        }
+        if hasattr(o, "timestamp") and not isinstance(o, datetime):
+            if not o._changed:
+                del res["timestamp"]
+        return res
+
+    def serialize(self, o):
+        """Serialize timers as JSON."""
+        res = {
+            # filter out properties starting with "_"
+            i: o.__dict__[i]
+            for i in o.__dict__
+            if i[0] != "_"
+        }
+        for k, v in res.items():
+            if isinstance(v, datetime):
+                res["k"] = v.strftime("%Y-%m-%dT%H:%M:%S%z")
+        return res
 
 
 # noinspection PyPep8Naming
-class BasicSettings:
+class BasicSettings(DepartureTimerClass):
     """Basic settings."""
 
     def __init__(self, timestamp: str, chargeMinLimit: str, targetTemperature: str):
@@ -15,7 +61,7 @@ class BasicSettings:
 
 
 # noinspection PyPep8Naming
-class Timer:
+class Timer(DepartureTimerClass):
     """FIXME."""
 
     def __init__(
@@ -25,8 +71,9 @@ class Timer:
         profileID: str,
         timerProgrammedStatus: str,
         timerFrequency: str,
-        departureTimeOfDay: str,
-        departureWeekdayMask: str,
+        departureTimeOfDay: str = None,
+        departureWeekdayMask: str = None,
+        departureDateTime: str = None,
     ):
         """Init."""
         self.timestamp = timestamp
@@ -34,11 +81,27 @@ class Timer:
         self.profileID = profileID
         self.timerProgrammedStatus = timerProgrammedStatus
         self.timerFrequency = timerFrequency
-        self.departureTimeOfDay = departureTimeOfDay
-        self.departureWeekdayMask = departureWeekdayMask
+        # single timers have a specific date, cyclic have time and day mask
+        if timerFrequency == "single":
+            self.departureDateTime = departureDateTime
+        else:
+            self.departureTimeOfDay = departureTimeOfDay
+            self.departureWeekdayMask = departureWeekdayMask
+
+    @property
+    def enabled(self):
+        self._changed = True
+        return self.timerProgrammedStatus == "programmed"
+
+    def enable(self):
+        self._changed = True
+        self.timerProgrammedStatus = "programmed"
+
+    def disable(self):
+        self.timerProgrammedStatus = "notProgrammed"
 
 
-class TimerList:
+class TimerList(DepartureTimerClass):
     """FIXME."""
 
     def __init__(self, timer: List[Union[dict, Timer]]):
@@ -49,13 +112,12 @@ class TimerList:
 
 
 # noinspection PyPep8Naming
-class TimerProfile:
+class TimerProfile(DepartureTimerClass):
     """Timer profile."""
 
     def __init__(
         self,
         timestamp: str,
-        profileName: str,
         profileID: str,
         operationCharging: bool,
         operationClimatisation: bool,
@@ -64,6 +126,7 @@ class TimerProfile:
         nightRateTimeStart: str,
         nightRateTimeEnd: str,
         chargeMaxCurrent: str,
+        profileName: str = "i-have-no-name",
     ):
         """Init."""
         self.timestamp = timestamp
@@ -79,7 +142,7 @@ class TimerProfile:
 
 
 # noinspection PyPep8Naming
-class TimerProfileList:
+class TimerProfileList(DepartureTimerClass):
     """FIXME."""
 
     def __init__(self, timerProfile: List[Union[dict, TimerProfile]]):
@@ -90,7 +153,7 @@ class TimerProfileList:
 
 
 # noinspection PyPep8Naming
-class TimerAndProfiles:
+class TimerAndProfiles(DepartureTimerClass):
     """Timer and profile object."""
 
     def __init__(
@@ -110,19 +173,31 @@ class TimerAndProfiles:
 
 
 # noinspection PyPep8Naming
-class TimerData:
+class TimerData(DepartureTimerClass):
     """Top level timer object."""
 
-    def __init__(self, timersAndProfiles: Union[dict, TimerAndProfiles], status: dict):
+    def __init__(self, timersAndProfiles: Union[Dict, TimerAndProfiles], status: Optional[dict]):
         """Init."""
-        self.timersAndProfiles = (
-            timersAndProfiles
-            if isinstance(timersAndProfiles, TimerAndProfiles)
-            else TimerAndProfiles(**timersAndProfiles)
-        )
-        self.status = status
+        try:
+            self.timersAndProfiles = (
+                timersAndProfiles
+                if isinstance(timersAndProfiles, TimerAndProfiles)
+                else TimerAndProfiles(**timersAndProfiles)
+            )
+            self.status = status
+            self._valid = True
+        except Exception as e:
+            _LOGGER.error(e)
+            self._valid = False
 
     @property
-    def json(self):
-        """Return JSON representation."""
-        return json.dumps({"timer": self}, default=lambda o: o.__dict__, indent=2)
+    def valid(self):
+        """Values have been loaded."""
+        return self._valid
+
+    def has_schedule(self, schedule_id: Union[str, int]):
+        """"""
+        return self._valid and any(p.timerID == str(schedule_id) for p in self.timersAndProfiles.timerList.timer)
+
+    def get_schedule(self, schedule_id: Union[str, int]):
+        return next(filter(lambda p: p.timerID == str(schedule_id), self.timersAndProfiles.timerList.timer), None)

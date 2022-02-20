@@ -2,6 +2,10 @@
 # Thanks to molobrakos
 
 import logging
+from typing import Union
+
+from volkswagencarnet.vw_timer import Timer, TimerData
+
 from .vw_utilities import camel2slug
 
 CLIMA_DEFAULT_DURATION = 30
@@ -505,6 +509,46 @@ class Charging(Switch):
         return dict(last_result=self.vehicle.charger_action_status)
 
 
+class DepartureTimer(Switch):
+    def __init__(self, id: Union[str, int]):
+        self._id = id
+        super().__init__(attr=f"departure_timer{id}", name=f"Departure Schedule {id}", icon="mdi:car-clock")
+
+    @property
+    def state(self):
+        s: Timer = self.vehicle.schedule(self._id)
+        return 1 if s.enabled else 0
+
+    async def turn_on(self):
+        schedule: TimerData = self.vehicle.attrs["timer"]
+        schedule.get_schedule(self._id).enable()
+        await self.vehicle.set_schedule(self._id, schedule)
+        await self.vehicle.update()
+
+    async def turn_off(self):
+        schedule: TimerData = self.vehicle.attrs["timer"]
+        schedule.get_schedule(self._id).disable()
+        await self.vehicle.set_schedule(schedule)
+        await self.vehicle.update()
+
+    @property
+    def assumed_state(self):
+        return False
+
+    @property
+    def attributes(self):
+        s: Timer = self.vehicle.schedule(self._id)
+        return dict(
+            last_result="FIXME",
+            profile_id=s.profileID,
+            last_updated=s.timestamp,
+            timer_id=s.timerID,
+            frequency=s.timerFrequency,
+            departure_time=s.departureDateTime if s.timerFrequency == "single" else s.departureTimeOfDay,
+            weekday_mask=None if s.timerFrequency == "single" else s.departureWeekdayMask,
+        )
+
+
 class WindowHeater(Switch):
     def __init__(self):
         super().__init__(attr="window_heater", name="Window Heater", icon="mdi:car-defrost-rear")
@@ -651,6 +695,9 @@ def create_instruments():
         # ElectricClimatisationClimate(),
         # CombustionClimatisationClimate(),
         Charging(),
+        DepartureTimer(1),
+        DepartureTimer(2),
+        DepartureTimer(3),
         RequestResults(),
         Sensor(
             attr="distance",
@@ -896,6 +943,8 @@ def create_instruments():
 
 
 class Dashboard:
+    """Helper for accessing the instruments."""
     def __init__(self, vehicle, **config):
+        """Initialize instruments."""
         _LOGGER.debug("Setting up dashboard with config :%s", config)
         self.instruments = [instrument for instrument in create_instruments() if instrument.setup(vehicle, **config)]
