@@ -234,7 +234,7 @@ class Vehicle:
             if not await self.expired("timerprogramming_v1"):
                 data = await self._connection.getTimers(self.vin)
                 if data:
-                    self._states.update({"timers": data})
+                    self._states.update({"timer": data})
                 else:
                     _LOGGER.debug("Could not fetch timers")
         else:
@@ -1772,14 +1772,17 @@ class Vehicle:
 
     @property
     def is_departure_timer1_supported(self) -> bool:
+        """Check if timer 1 is supported."""
         return self.is_schedule_supported(1)
 
     @property
     def is_departure_timer2_supported(self) -> bool:
+        """Check if timer 2is supported."""
         return self.is_schedule_supported(2)
 
     @property
     def is_departure_timer3_supported(self) -> bool:
+        """Check if timer 3 is supported."""
         return self.is_schedule_supported(3)
 
     def is_schedule_supported(self, id: Union[str, int]) -> bool:
