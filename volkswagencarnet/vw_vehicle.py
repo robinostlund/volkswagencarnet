@@ -7,6 +7,8 @@ from datetime import datetime, timedelta, timezone
 from json import dumps as to_json
 from typing import Optional, Union, Any, Dict
 
+from volkswagencarnet.vw_timer import TimerData, Timer
+
 from .vw_utilities import find_path, is_valid_path
 
 LOCKED_STATE = 2
@@ -42,7 +44,7 @@ class Vehicle:
         self._discovered = False
         self._states = {}
         self._requests: Dict[str, Any] = {
-            # 'departuretimer': {'status': '', 'timestamp': datetime.now()}, # Not yet implemented
+            "departuretimer": {"status": "", "timestamp": datetime.now()},
             "batterycharge": {"status": "", "timestamp": datetime.now()},
             "climatisation": {"status": "", "timestamp": datetime.now()},
             "refresh": {"status": "", "timestamp": datetime.now()},
@@ -232,7 +234,7 @@ class Vehicle:
             if not await self.expired("timerprogramming_v1"):
                 data = await self._connection.getTimers(self.vin)
                 if data:
-                    self._states.update(data)
+                    self._states.update({"timers": data})
                 else:
                     _LOGGER.debug("Could not fetch timers")
         else:
@@ -556,29 +558,29 @@ class Vehicle:
             self._requests["refresh"] = {"status": "Exception"}
         raise Exception("Data refresh failed")
 
-    async def set_schedule1(self, data, spin=False):
-        """Store schedule 1."""
+    async def set_schedule(self, data: TimerData):
+        """Store schedule."""
         if not self._services.get("timerprogramming_v1", False):
             _LOGGER.info("Remote control of timer functions is not supported.")
             raise Exception("Remote control of timer functions is not supported.")
-        if self._requests["timer"].get("id", False):
-            timestamp = self._requests.get("timer", {}).get("timestamp", datetime.now())
+        if self._requests["departuretimer"].get("id", False):
+            timestamp = self._requests.get("departuretimer", {}).get("timestamp", datetime.now())
             expired = datetime.now() - timedelta(minutes=3)
             if expired > timestamp:
-                self._requests.get("timer", {}).pop("id")
+                self._requests.get("departuretimer", {}).pop("id")
             else:
                 _LOGGER.debug("A timer action is already in progress")
                 return False
         try:
-            self._requests["latest"] = "Timer"
-            response = await self._connection.setTimer(self.vin, data, spin)
+            self._requests["latest"] = "Departuretimer"
+            response = await self._connection.setSchedule(self.vin, data)
             if not response:
-                self._requests["timer"] = {"status": "Failed"}
+                self._requests["departuretimer"] = {"status": "Failed"}
                 _LOGGER.error("Failed to execute timer request")
                 raise Exception("Failed to execute timer request")
             else:
                 self._requests["remaining"] = response.get("rate_limit_remaining", -1)
-                self._requests["timer"] = {
+                self._requests["departuretimer"] = {
                     "timestamp": datetime.now(),
                     "status": response.get("state", "Unknown"),
                     "id": response.get("id", 0),
@@ -586,8 +588,8 @@ class Vehicle:
                 if response.get("state", None) == "Throttled":
                     status = "Throttled"
                 else:
-                    status = await self.wait_for_request("timer", response.get("id", 0))
-                self._requests["timer"] = {"status": status}
+                    status = await self.wait_for_request("departuretimer", response.get("id", 0))
+                self._requests["departuretimer"] = {"status": status}
                 return True
         except Exception as error:
             _LOGGER.warning(f"Failed to execute timer request - {error}")
@@ -1732,60 +1734,62 @@ class Vehicle:
         return False
 
     # Departure timers
-    # Not yet implemented
     @property
-    def schedule1(self):
+    def departure_timer1(self):
         """
         Return schedule #1.
 
         :return:
         """
-        return find_path(self.attrs, "timer.timersAndProfiles.timerProfileList.timerProfile.0")
+        return self.schedule(1)
 
     @property
-    def is_schedule1_supported(self) -> bool:
-        """
-        Return true if supported.
-
-        :return:
-        """
-        return is_valid_path(self.attrs, "timer.timersAndProfiles.timerProfileList.timerProfile.0")
-
-    @property
-    def schedule2(self):
+    def departure_timer2(self):
         """
         Return schedule #2.
 
         :return:
         """
-        return find_path(self.attrs, "timer.timersAndProfiles.timerProfileList.timerProfile.1")
+        return self.schedule(2)
 
     @property
-    def is_schedule2_supported(self) -> bool:
-        """
-        Return true if supported.
-
-        :return:
-        """
-        return is_valid_path(self.attrs, "timer.timersAndProfiles.timerProfileList.timerProfile.1")
-
-    @property
-    def schedule3(self):
+    def departure_timer3(self):
         """
         Return schedule #3.
 
         :return:
         """
-        return find_path(self.attrs, "timer.timersAndProfiles.timerProfileList.timerProfile.2")
+        return self.schedule(3)
 
-    @property
-    def is_schedule3_supported(self) -> bool:
+    def schedule(self, schedule_id: Union[str, int]) -> Optional[Timer]:
         """
-        Return true if supported.
+        Return schedule #1.
 
         :return:
         """
-        return is_valid_path(self.attrs, "timer.timersAndProfiles.timerProfileList.timerProfile.2")
+        timer: TimerData = self.attrs.get("timer", None)
+        return timer.get_schedule(schedule_id)
+
+    @property
+    def is_departure_timer1_supported(self) -> bool:
+        return self.is_schedule_supported(1)
+
+    @property
+    def is_departure_timer2_supported(self) -> bool:
+        return self.is_schedule_supported(2)
+
+    @property
+    def is_departure_timer3_supported(self) -> bool:
+        return self.is_schedule_supported(3)
+
+    def is_schedule_supported(self, id: Union[str, int]) -> bool:
+        """
+        Return true if schedule is supported.
+
+        :return:
+        """
+        timer: TimerData = self.attrs.get("timer", None)
+        return timer.has_schedule(id)
 
     # Trip data
     @property

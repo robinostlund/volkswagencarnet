@@ -2,11 +2,11 @@
   "timer": {
     "timersAndProfiles": {
       "timerProfileList": {
-        "profiles": [
+        "timerProfile": [
           {
             "timestamp": "2022-02-22T20:00:22Z",
             "profileName": "Profile 1",
-            "profileId": "1",
+            "profileID": "1",
             "operationCharging": true,
             "operationClimatisation": false,
             "targetChargeLevel": "75",
@@ -18,20 +18,22 @@
         ]
       },
       "timerList": {
-        "timers": [
+        "timer": [
           {
             "timestamp": "2022-02-22T20:00:22Z",
             "timerID": "3",
+            "profileID": "1",
             "timerProgrammedStatus": "notProgrammed",
+            "timerFrequency": "cyclic",
             "departureTimeOfDay": "07:55",
             "departureWeekdayMask": "nnnnnyn"
           }
         ]
       },
       "timerBasicSetting": {
-        "ts": "2022-02-22T20:00:22Z",
-        "charge_min_limit": "20",
-        "target_temperature": "2955"
+        "timestamp": "2022-02-22T20:00:22Z",
+        "chargeMinLimit": "20",
+        "targetTemperature": "2955"
       }
     },
     "status": {

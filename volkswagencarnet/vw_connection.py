@@ -8,6 +8,7 @@ import logging
 import asyncio
 import hashlib
 from random import random
+from typing import Optional
 
 import jwt
 
@@ -20,6 +21,7 @@ from base64 import b64encode, urlsafe_b64encode
 
 from aiohttp import ClientSession, ClientTimeout, client_exceptions
 from aiohttp.hdrs import METH_GET, METH_POST
+from volkswagencarnet.vw_timer import TimerData
 
 from volkswagencarnet.vw_exceptions import AuthenticationException
 from .vw_utilities import json_loads, read_config
@@ -736,25 +738,25 @@ class Connection:
             _LOGGER.warning(f"Could not fetch position, error: {error}")
         return False
 
-    async def getTimers(self, vin):
+    async def getTimers(self, vin) -> Optional[TimerData]:
         """Get departure timers."""
         if not await self.validate_tokens:
-            return False
+            return None
         try:
             await self.set_token("vwg")
             response = await self.get(
                 f"fs-car/bs/departuretimer/v1/{BRAND}/{self._session_country}/vehicles/$vin/timer", vin=vin
             )
-            if response.get("timer", {}):
-                data = {"timers": response.get("timer", {})}
-                return data
+            timer = TimerData(**(response.get("timer", {})))
+            if timer.valid:
+                return timer
             elif response.get("status_code", {}):
                 _LOGGER.warning(f'Could not fetch timers, HTTP status code: {response.get("status_code")}')
             else:
                 _LOGGER.info("Unknown error while trying to fetch data for departure timers")
         except Exception as error:
             _LOGGER.warning(f"Could not fetch timers, error: {error}")
-        return False
+        return None
 
     async def getClimater(self, vin):
         """Get climatisation data."""
@@ -1066,16 +1068,21 @@ class Connection:
                 self._session_headers["Content-Type"] = content_type
             raise
 
-    async def setSchedule(self, vin, data):
+    async def setSchedule(self, vin, data: TimerData):
         """Set schedules."""
         try:
             await self.set_token("vwg")
-            while True:
-                response = await self.get(
-                    f"fs-car/bs/departuretimer/v1/{BRAND}/{self._session_country}/vehicles/$vin",
-                )
-
-            raise Exception("FFFFUUUU")
+            response = await self.dataCall(
+                # f"fs-car/bs/departuretimer/v1/{BRAND}/{self._session_country}/vehicles/$vin/action",
+                f"fs-car/bs/departuretimer/v1/{BRAND}/{self._session_country}/vehicles/$vin/timer/actions",
+                vin=vin,
+                data={
+                    "action": {
+                        "timersAndProfiles": data.timersAndProfiles.json_updated["timer"],
+                        "type": "setTimersAndProfiles",
+                    }
+                },
+            )
 
             self._session_headers.pop("X-securityToken", None)
             if not response:
@@ -1087,7 +1094,7 @@ class Connection:
                 request_state = response.get("action", {}).get("actionState", "unknown")
                 remaining = response.get("rate_limit_remaining", -1)
                 _LOGGER.debug(
-                    f'Request for climater action returned with state "{request_state}", request id: {request_id},'
+                    f'Request for timer action returned with state "{request_state}", request id: {request_id},'
                     f" remaining requests: {remaining}"
                 )
                 return dict({"id": str(request_id), "state": request_state, "rate_limit_remaining": remaining})
