@@ -5,7 +5,7 @@ from datetime import datetime
 import pytest
 
 from .fixtures.connection import TimersConnection
-from .fixtures.constants import status_report_json_file, MOCK_VIN
+from .fixtures.constants import status_report_json_file, MOCK_VIN, timers_json_file
 from volkswagencarnet.vw_utilities import json_loads
 
 if sys.version_info >= (3, 8):
@@ -83,6 +83,19 @@ class VehicleTest(IsolatedAsyncioTestCase):
         """Test the discovery process."""
         pass
 
+    @pytest.mark.asyncio
+    async def test_get_timerprogramming(self):
+        """Vehicle with timers loaded."""
+        vehicle = Vehicle(conn=TimersConnection(None), url=MOCK_VIN)
+        vehicle._discovered = True
+
+        with patch.dict(vehicle._services, {"timerprogramming_v1": {"active": True}}), patch.dict(
+            vehicle._states, {"timer": None}
+        ):
+            await vehicle.get_timerprogramming()
+            self.assertIn("timer", vehicle._states)
+            self.assertIn("timersAndProfiles", vehicle._states["timer"])
+
     async def test_update_deactivated(self):
         """Test that calling update on a deactivated Vehicle does nothing."""
         vehicle = MagicMock(spec=Vehicle, name="MockDeactivatedVehicle")
@@ -152,6 +165,87 @@ class VehiclePropertyTest(IsolatedAsyncioTestCase):
             res = vehicle.is_last_connected_supported
             self.assertTrue(res, "Last connected supported returned False when it should have been True")
 
+    async def test_get_schedule1(self):
+        """Test that schedule 1 support works."""
+        vehicle = Vehicle(conn=TimersConnection(None), url=MOCK_VIN)
+        vehicle._discovered = True
+
+        with open(timers_json_file) as f:
+            data = json_loads(f.read())
+        with patch.dict(vehicle._services, {"timerprogramming_v1": {"active": True}}), patch.dict(
+            vehicle._states, data
+        ):
+            self.assertTrue(vehicle.is_schedule1_supported)
+            self.assertDictEqual(
+                {
+                    "timestamp": datetime.fromisoformat("2022-02-22T20:00:22+00:00"),
+                    "profileName": "Profile 1",
+                    "profileID": "1",
+                    "operationCharging": True,
+                    "operationClimatisation": False,
+                    "targetChargeLevel": "75",
+                    "nightRateActive": True,
+                    "nightRateTimeStart": "21:00",
+                    "nightRateTimeEnd": "05:00",
+                    "chargeMaxCurrent": "10",
+                },
+                vehicle.schedule1,
+            )
+
+    async def test_get_schedule2(self):
+        """Test that schedule 2 support works."""
+        vehicle = Vehicle(conn=TimersConnection(None), url=MOCK_VIN)
+        vehicle._discovered = True
+
+        with open(timers_json_file) as f:
+            data = json_loads(f.read())
+        with patch.dict(vehicle._services, {"timerprogramming_v1": {"active": True}}), patch.dict(
+            vehicle._states, data
+        ):
+            self.assertTrue(vehicle.is_schedule2_supported)
+            self.assertDictEqual(
+                {
+                    "timestamp": datetime.fromisoformat("2022-02-22T20:00:22+00:00"),
+                    "profileName": "Profile 2",
+                    "profileID": "2",
+                    "operationCharging": True,
+                    "operationClimatisation": True,
+                    "targetChargeLevel": "100",
+                    "nightRateActive": True,
+                    "nightRateTimeStart": "20:00",
+                    "nightRateTimeEnd": "05:00",
+                    "chargeMaxCurrent": "10",
+                },
+                vehicle.schedule2,
+            )
+
+    async def test_get_schedule3(self):
+        """Test that schedule 3 support works."""
+        vehicle = Vehicle(conn=TimersConnection(None), url=MOCK_VIN)
+        vehicle._discovered = True
+
+        with open(timers_json_file) as f:
+            data = json_loads(f.read())
+        with patch.dict(vehicle._services, {"timerprogramming_v1": {"active": True}}), patch.dict(
+            vehicle._states, data
+        ):
+            self.assertTrue(vehicle.is_schedule3_supported)
+            self.assertDictEqual(
+                {
+                    "timestamp": datetime.fromisoformat("2022-02-22T20:00:22+00:00"),
+                    "profileName": "Profile 3",
+                    "profileID": "3",
+                    "operationCharging": True,
+                    "operationClimatisation": False,
+                    "targetChargeLevel": "60",
+                    "nightRateActive": False,
+                    "nightRateTimeStart": "00:00",
+                    "nightRateTimeEnd": "00:00",
+                    "chargeMaxCurrent": "10",
+                },
+                vehicle.schedule3,
+            )
+
     async def test_last_connected(self):
         """
         Test that parsing last connected works.
@@ -189,19 +283,6 @@ class VehiclePropertyTest(IsolatedAsyncioTestCase):
                 self.assertEqual(99, vehicle.requests_remaining)
                 # attribute should be removed once read
                 self.assertNotIn("rate_limit_remaining", vehicle.attrs)
-
-    @pytest.mark.asyncio
-    async def test_get_timerprogramming(self):
-        """Vehicle with timers loaded."""
-        vehicle = Vehicle(conn=TimersConnection(None), url=MOCK_VIN)
-        vehicle._discovered = True
-
-        with patch.dict(vehicle._services, {"timerprogramming_v1": {"active": True}}), patch.dict(
-            vehicle._states, {"timer": None}
-        ):
-            await vehicle.get_timerprogramming()
-            self.assertIn("timer", vehicle._states)
-            self.assertIn("timersAndProfiles", vehicle._states["timer"])
 
     async def test_json(self):
         """Test JSON serialization of dict containing datetime."""

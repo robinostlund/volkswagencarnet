@@ -121,3 +121,11 @@ Supported sensors:
  - Request in progress (domain:binary_sensor) - Off
 """
         )
+
+
+class SendCommandsTest(IsolatedAsyncioTestCase):
+    """Test command sending."""
+
+    async def test_set_schedule(self):
+        """Test set schedule."""
+        pass

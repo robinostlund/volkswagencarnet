@@ -556,6 +556,44 @@ class Vehicle:
             self._requests["refresh"] = {"status": "Exception"}
         raise Exception("Data refresh failed")
 
+    async def set_schedule1(self, data, spin=False):
+        """Store schedule 1."""
+        if not self._services.get("timerprogramming_v1", False):
+            _LOGGER.info("Remote control of timer functions is not supported.")
+            raise Exception("Remote control of timer functions is not supported.")
+        if self._requests["timer"].get("id", False):
+            timestamp = self._requests.get("timer", {}).get("timestamp", datetime.now())
+            expired = datetime.now() - timedelta(minutes=3)
+            if expired > timestamp:
+                self._requests.get("timer", {}).pop("id")
+            else:
+                _LOGGER.debug("A timer action is already in progress")
+                return False
+        try:
+            self._requests["latest"] = "Timer"
+            response = await self._connection.setTimer(self.vin, data, spin)
+            if not response:
+                self._requests["timer"] = {"status": "Failed"}
+                _LOGGER.error("Failed to execute timer request")
+                raise Exception("Failed to execute timer request")
+            else:
+                self._requests["remaining"] = response.get("rate_limit_remaining", -1)
+                self._requests["timer"] = {
+                    "timestamp": datetime.now(),
+                    "status": response.get("state", "Unknown"),
+                    "id": response.get("id", 0),
+                }
+                if response.get("state", None) == "Throttled":
+                    status = "Throttled"
+                else:
+                    status = await self.wait_for_request("timer", response.get("id", 0))
+                self._requests["timer"] = {"status": status}
+                return True
+        except Exception as error:
+            _LOGGER.warning(f"Failed to execute timer request - {error}")
+            self._requests["timer"] = {"status": "Exception"}
+        raise Exception("Timer action failed")
+
     # Vehicle class helpers #
     # Vehicle info
     @property
@@ -609,7 +647,7 @@ class Vehicle:
 
     def dashboard(self, **config):
         """
-        Return dashboard with specified configuraion.
+        Return dashboard with specified configuration.
 
         :param config:
         :return:
@@ -1702,7 +1740,7 @@ class Vehicle:
 
         :return:
         """
-        return False
+        return find_path(self.attrs, "timer.timersAndProfiles.timerProfileList.timerProfile.0")
 
     @property
     def is_schedule1_supported(self) -> bool:
@@ -1711,7 +1749,7 @@ class Vehicle:
 
         :return:
         """
-        return self.attrs.get("timers", {}).get("timersAndProfiles", {}).get("timerList", {}).get("timer", False)
+        return is_valid_path(self.attrs, "timer.timersAndProfiles.timerProfileList.timerProfile.0")
 
     @property
     def schedule2(self):
@@ -1720,7 +1758,7 @@ class Vehicle:
 
         :return:
         """
-        return False
+        return find_path(self.attrs, "timer.timersAndProfiles.timerProfileList.timerProfile.1")
 
     @property
     def is_schedule2_supported(self) -> bool:
@@ -1729,7 +1767,7 @@ class Vehicle:
 
         :return:
         """
-        return self.attrs.get("timers", {}).get("timersAndProfiles", {}).get("timerList", {}).get("timer", False)
+        return is_valid_path(self.attrs, "timer.timersAndProfiles.timerProfileList.timerProfile.1")
 
     @property
     def schedule3(self):
@@ -1738,7 +1776,7 @@ class Vehicle:
 
         :return:
         """
-        return False
+        return find_path(self.attrs, "timer.timersAndProfiles.timerProfileList.timerProfile.2")
 
     @property
     def is_schedule3_supported(self) -> bool:
@@ -1747,7 +1785,7 @@ class Vehicle:
 
         :return:
         """
-        return self.attrs.get("timers", {}).get("timersAndProfiles", {}).get("timerList", {}).get("timer", False)
+        return is_valid_path(self.attrs, "timer.timersAndProfiles.timerProfileList.timerProfile.2")
 
     # Trip data
     @property

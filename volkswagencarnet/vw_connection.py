@@ -1066,6 +1066,35 @@ class Connection:
                 self._session_headers["Content-Type"] = content_type
             raise
 
+    async def setSchedule(self, vin, data):
+        """Set schedules."""
+        try:
+            await self.set_token("vwg")
+            while True:
+                response = await self.get(
+                    f"fs-car/bs/departuretimer/v1/{BRAND}/{self._session_country}/vehicles/$vin",
+                )
+
+            raise Exception("FFFFUUUU")
+
+            self._session_headers.pop("X-securityToken", None)
+            if not response:
+                raise Exception("Invalid or no response")
+            elif response == 429:
+                return dict({"id": None, "state": "Throttled", "rate_limit_remaining": 0})
+            else:
+                request_id = response.get("action", {}).get("actionId", 0)
+                request_state = response.get("action", {}).get("actionState", "unknown")
+                remaining = response.get("rate_limit_remaining", -1)
+                _LOGGER.debug(
+                    f'Request for climater action returned with state "{request_state}", request id: {request_id},'
+                    f" remaining requests: {remaining}"
+                )
+                return dict({"id": str(request_id), "state": request_state, "rate_limit_remaining": remaining})
+        except:
+            self._session_headers.pop("X-securityToken", None)
+            raise
+
     async def setLock(self, vin, data, spin):
         """Remote lock and unlock actions."""
         content_type = None

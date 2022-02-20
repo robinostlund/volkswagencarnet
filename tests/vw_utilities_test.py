@@ -4,7 +4,7 @@ from json import JSONDecodeError
 from unittest import TestCase, mock
 from unittest.mock import DEFAULT
 
-from volkswagencarnet.vw_utilities import camel2slug, is_valid_path, obj_parser, json_loads, read_config
+from volkswagencarnet.vw_utilities import camel2slug, is_valid_path, obj_parser, json_loads, read_config, make_url
 
 
 class UtilitiesTest(TestCase):
@@ -125,3 +125,8 @@ baz
         mock_open.side_effect = IOError
         with mock.patch("builtins.open", mock_open):
             self.assertEqual({}, read_config())
+
+    def test_make_url(self):
+        """Test placeholder replacements."""
+        self.assertEqual("foo/2/baz", make_url("foo/{bar}/baz{baz}", bar=2, baz=""))
+        self.assertEqual("foo/asd/2", make_url("foo/{baz}/$bar", bar=2, baz="asd"))

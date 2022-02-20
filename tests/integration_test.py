@@ -34,6 +34,21 @@ async def test_successful_login():
     username is None or password is None, reason="Username or password is not set. Check credentials.py.sample"
 )
 @pytest.mark.asyncio
+async def test_set_timer():
+    """Test that login succeeds."""
+    async with ClientSession() as session:
+        connection = vw_connection.Connection(session, username, password)
+        await connection.doLogin()
+        data = {}
+        await connection.setSchedule(vin=vin, data=data)
+
+        assert 1 == 1
+
+
+@pytest.mark.skipif(
+    username is None or password is None, reason="Username or password is not set. Check credentials.py.sample"
+)
+@pytest.mark.asyncio
 @skip("Not yet implemented")
 async def test_spin_action():
     """

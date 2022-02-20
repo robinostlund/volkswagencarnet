@@ -135,3 +135,13 @@ def camel2slug(s: str) -> str:
     Should not produce "__" in case input contains something like "Foo_Bar"
     """
     return re.sub("((?<!_)[A-Z])", "_\\1", s).lower().strip("_ \n\t\r")
+
+
+def make_url(url: str, **kwargs):
+    """Replace placeholders in URLs."""
+    for a in kwargs:
+        url = url.replace("{" + a + "}", str(kwargs[a]))
+        url = url.replace("$" + a, str(kwargs[a]))
+    if "{" in url or "}" in url:
+        raise ValueError("Not all values were substituted")
+    return url
