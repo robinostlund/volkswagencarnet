@@ -1073,7 +1073,6 @@ class Connection:
         try:
             await self.set_token("vwg")
             response = await self.dataCall(
-                # f"fs-car/bs/departuretimer/v1/{BRAND}/{self._session_country}/vehicles/$vin/action",
                 f"fs-car/bs/departuretimer/v1/{BRAND}/{self._session_country}/vehicles/$vin/timer/actions",
                 vin=vin,
                 json={
