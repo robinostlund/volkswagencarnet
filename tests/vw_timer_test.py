@@ -36,6 +36,7 @@ class TimerTest(TestCase):
                             "timerFrequency": "cyclic",
                             "departureTimeOfDay": "07:55",
                             "departureWeekdayMask": "nnnnnyn",
+                            "currentCalendarProvider": {},
                         },
                     ]
                 },
@@ -70,13 +71,14 @@ class TimerTest(TestCase):
                 "timerList": {
                     "timer": [
                         {
-                            "timestamp": "2022-02-22T20:00:22Z",
+                            # "timestamp": "2022-02-22T20:00:22Z",
                             "timerID": "3",
                             "profileID": "3",
                             "timerProgrammedStatus": "programmed",
                             "timerFrequency": "cyclic",
                             "departureTimeOfDay": "07:55",
                             "departureWeekdayMask": "nnnnnyn",
+                            "currentCalendarProvider": {},
                         },
                     ]
                 },

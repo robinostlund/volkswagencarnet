@@ -48,4 +48,4 @@ class TimersConnection:
         with open(timers_json_file) as f:
             json = json_loads(f.read()).get("timer", {})
             data = TimerData(**json)
-            return {"timer": data}
+            return data

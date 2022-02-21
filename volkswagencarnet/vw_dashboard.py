@@ -522,7 +522,7 @@ class DepartureTimer(Switch):
     async def turn_on(self):
         schedule: TimerData = self.vehicle.attrs["timer"]
         schedule.get_schedule(self._id).enable()
-        await self.vehicle.set_schedule(self._id, schedule)
+        await self.vehicle.set_schedule(schedule)
         await self.vehicle.update()
 
     async def turn_off(self):
@@ -539,7 +539,7 @@ class DepartureTimer(Switch):
     def attributes(self):
         s: Timer = self.vehicle.schedule(self._id)
         return dict(
-            last_result="FIXME",
+            # last_result="FIXME",
             profile_id=s.profileID,
             last_updated=s.timestamp,
             timer_id=s.timerID,
@@ -944,6 +944,7 @@ def create_instruments():
 
 class Dashboard:
     """Helper for accessing the instruments."""
+
     def __init__(self, vehicle, **config):
         """Initialize instruments."""
         _LOGGER.debug("Setting up dashboard with config :%s", config)
