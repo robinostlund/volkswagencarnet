@@ -39,8 +39,8 @@ class DepartureTimerClass:
             if i[0] != "_"
         }
         if issubclass(type(o), DepartureTimerClass) and hasattr(o, "timestamp"):
-            if not o._changed:
-                del res["timestamp"]
+            # if not o._changed:
+            del res["timestamp"]
         # Remove any None valued keys
         for k in res:
             if res[k] is None:
@@ -86,6 +86,7 @@ class Timer(DepartureTimerClass):
         departureTimeOfDay: str = None,
         departureWeekdayMask: str = None,
         departureDateTime: str = None,
+        **kw,
     ):
         """Init."""
         self.timestamp = timestamp
@@ -96,9 +97,13 @@ class Timer(DepartureTimerClass):
         # single timers have a specific date, cyclic have time and day mask
         if timerFrequency == "single":
             self.departureDateTime = departureDateTime
+            self.departureTimeOfDay = "00:00"
         else:
-            self.departureTimeOfDay = departureTimeOfDay
+            self.departureTimeOfDay = departureTimeOfDay if departureTimeOfDay else "00:00"
             self.departureWeekdayMask = departureWeekdayMask
+        self.currentCalendarProvider: dict = {}
+        for k in kw:
+            _LOGGER.debug(f"Timer: Got unhandled property {k} with value {kw[k]}")
 
     @property
     def enabled(self):

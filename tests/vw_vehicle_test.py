@@ -3,11 +3,11 @@ import sys
 from datetime import datetime
 
 import pytest
-from volkswagencarnet.vw_timer import Timer, TimerData
 
-from .fixtures.connection import TimersConnection
-from .fixtures.constants import status_report_json_file, MOCK_VIN, timers_json_file
+from volkswagencarnet.vw_timer import TimerData
 from volkswagencarnet.vw_utilities import json_loads
+from .fixtures.connection import TimersConnection
+from .fixtures.constants import status_report_json_file, MOCK_VIN
 
 if sys.version_info >= (3, 8):
     # This won't work on python versions less than 3.8
@@ -49,7 +49,7 @@ class VehicleTest(IsolatedAsyncioTestCase):
                 {
                     "batterycharge": {"status": "", "timestamp": target_date},
                     "climatisation": {"status": "", "timestamp": target_date},
-                    # 'departuretimer': {'status': '', 'timestamp': datetime.now()}, # Not yet implemented
+                    "departuretimer": {"status": "", "timestamp": target_date},
                     "latest": "",
                     "lock": {"status": "", "timestamp": target_date},
                     "preheater": {"status": "", "timestamp": target_date},
@@ -164,14 +164,14 @@ class VehiclePropertyTest(IsolatedAsyncioTestCase):
             res = vehicle.is_last_connected_supported
             self.assertTrue(res, "Last connected supported returned False when it should have been True")
 
-    async def test_get_schedule1(self):
-        """Test that schedule 1 support works."""
+    async def test_get_schedule3(self):
+        """Test that schedule 3 support works."""
         vehicle = Vehicle(conn=TimersConnection(None), url=MOCK_VIN)
         vehicle._discovered = True
 
         with patch.dict(vehicle._services, {"timerprogramming_v1": {"active": True}}):
             await vehicle.get_timerprogramming()
-            self.assertTrue(vehicle.is_schedule1_supported)
+            self.assertTrue(vehicle.is_departure_timer3_supported)
             self.assertEqual(
                 {
                     "timestamp": datetime.fromisoformat("2022-02-22T20:00:22+00:00"),
@@ -179,10 +179,11 @@ class VehiclePropertyTest(IsolatedAsyncioTestCase):
                     "profileID": "1",
                     "timerProgrammedStatus": "notProgrammed",
                     "timerFrequency": "cyclic",
+                    "currentCalendarProvider": {},
                     "departureTimeOfDay": "07:55",
                     "departureWeekdayMask": "nnnnnyn",
                 },
-                vehicle.schedule1.__dict__,
+                vehicle.departure_timer3.__dict__,
             )
 
     async def test_get_schedule2(self):
@@ -192,18 +193,28 @@ class VehiclePropertyTest(IsolatedAsyncioTestCase):
 
         with patch.dict(vehicle._services, {"timerprogramming_v1": {"active": True}}):
             await vehicle.get_timerprogramming()
-            self.assertFalse(vehicle.is_schedule2_supported)
-            self.assertIsNone(vehicle.schedule2)
+            self.assertFalse(vehicle.is_departure_timer2_supported)
+            self.assertIsNone(vehicle.departure_timer2)
 
-    async def test_get_schedule3(self):
-        """Test that schedule 3 support works."""
+    async def test_get_schedule1(self):
+        """Test that schedule 1 support works."""
         vehicle = Vehicle(conn=TimersConnection(None), url=MOCK_VIN)
         vehicle._discovered = True
 
         with patch.dict(vehicle._services, {"timerprogramming_v1": {"active": True}}):
             await vehicle.get_timerprogramming()
-            self.assertFalse(vehicle.is_schedule2_supported)
-            self.assertIsNone(vehicle.schedule2)
+            self.assertFalse(vehicle.is_departure_timer1_supported)
+            self.assertIsNone(vehicle.departure_timer1)
+
+    async def test_get_schedule_not_supported(self):
+        """Test that not found schedule is unsupported."""
+        vehicle = Vehicle(conn=TimersConnection(None), url=MOCK_VIN)
+        vehicle._discovered = True
+
+        with patch.dict(vehicle._services, {"timerprogramming_v1": {"active": True}}):
+            await vehicle.get_timerprogramming()
+            self.assertFalse(vehicle.is_schedule_supported(42))
+            self.assertIsNone(vehicle.schedule(42))
 
     async def test_last_connected(self):
         """
