@@ -1,3 +1,4 @@
+"""Utilities class tests."""
 from datetime import datetime, timezone, timedelta
 from json import JSONDecodeError
 from unittest import TestCase, mock
@@ -7,23 +8,39 @@ from volkswagencarnet.vw_utilities import camel2slug, is_valid_path, obj_parser,
 
 
 class UtilitiesTest(TestCase):
+    """Test methods in utilities."""
+
     def test_camel_to_slug(self):
-        data = {"foo": "foo", "fooBar": "foo_bar", "XYZ": "x_y_z", "B4R": "b4_r"}  # Should this actually be "b_4_r"? =)
+        """Test camel_to_slug conversion."""
+        data = {
+            "foo": "foo",
+            "fooBar": "foo_bar",
+            "XYZ": "x_y_z",
+            "B4R": "b4_r",  # Should this actually be "b_4_r"? =)
+            "Foo_Bar": "foo_bar",
+            "_removeExtra_Underscores__": "remove_extra_underscores",
+            "preserve___existing": "preserve___existing",
+        }
         for v in data:
-            res = camel2slug(v)
-            self.assertEqual(data[v], res)
+            with self.subTest(msg=v, v=v):
+                res = camel2slug(v)
+                self.assertEqual(data[v], res)
 
     def test_is_valid_path(self):
+        """Test that is_valid_path works as expected."""
         data = {
             "None": [None, None, True],
             "a in a": [{"a": 1}, "a", True],
             "b in a": [{"a": 1}, "b", False],
             "a.b in a.b": [{"a": {"b": 7}}, "a.b", True],
-            "list": [[1, "a", None], "a", TypeError],
+            "false path": [{"a": {"b": 7}}, False, True],
+            "dict path": [{1, "a", "[[ :) ]]"}, {"crash": "me"}, False],
+            # "list with True path": [[1, "a", None], True, False], # FIXME
+            "": [{"a": []}, datetime.now(), TypeError],
         }
 
         for v in data:
-            with self.subTest():
+            with self.subTest(msg=data[v]):
                 try:
                     if isinstance(data[v][2], bool):
                         self.assertEqual(
@@ -32,14 +49,20 @@ class UtilitiesTest(TestCase):
                             msg=f"Path validation error for {data[v][1]} in {data[v][0]}",
                         )
                     else:
-                        with self.assertRaises(data[v][2]):
+                        with self.assertRaises(data[v][2], msg=data[v]):
                             is_valid_path(data[v][0], data[v][1])
                 except Exception as e:
                     if isinstance(e, AssertionError):
                         raise
                     self.fail(f"Wrong exception? Got {type(e)} but expected {data[v][2]}")
 
+    def test_is_valid_path_with_lists(self):
+        """Test that is_valid_path can process lists."""
+        self.assertTrue(is_valid_path({"a": [{"b": True}, {"c": True}]}, "a.0.b"))
+        self.assertFalse(is_valid_path({"a": [{"b": True}, {"c": True}]}, "a.2"))
+
     def test_obj_parser(self):
+        """Test that the object parser works."""
         data = {
             "int": [0, AttributeError],
             "dict": [{"foo": "bar"}, {"foo": "bar"}],
@@ -61,6 +84,7 @@ class UtilitiesTest(TestCase):
                     obj_parser(data[v][0])
 
     def test_json_loads(self):
+        """Test that json_loads works."""
         expected = {"foo": {"bar": "baz"}}
         actual = json_loads('{"foo":  {\n"bar":\t"baz"}}')
         self.assertEqual(expected, actual)
@@ -73,7 +97,7 @@ class UtilitiesTest(TestCase):
             json_loads(42)
 
     def test_read_config_success(self):
-        """successfully read configuration from a file"""
+        """Successfully read configuration from a file."""
         read_data = """
 # Comment
 foo: bar
@@ -84,7 +108,7 @@ foo: bar
             self.assertEqual({"foo": "bar"}, res)
 
     def test_read_config_error(self):
-        """success on second file, but parse error"""
+        """Success on second file, but parse error."""
         read_data = """
 foo: bar
 baz
@@ -96,7 +120,7 @@ baz
                 read_config()
 
     def test_read_config_not_found(self):
-        """empty config on no file found"""
+        """Empty config on no file found."""
         mock_open = mock.mock_open()
         mock_open.side_effect = IOError
         with mock.patch("builtins.open", mock_open):

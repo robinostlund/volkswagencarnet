@@ -11,6 +11,8 @@ from volkswagencarnet.vw_connection import Connection
 current_path = Path(os.path.dirname(os.path.realpath(__file__)))
 resource_path = os.path.join(current_path, "resources")
 
+status_report_json_file = os.path.join(resource_path, "responses", "status.json")
+
 
 @pytest_asyncio.fixture
 async def session():

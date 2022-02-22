@@ -309,15 +309,15 @@ class Connection:
             except Exception as e:
                 # If we get excepted it should be because we can't redirect to the APP_URI URL
                 if "error" in ref:
-                    error = parse_qs(urlparse(ref).query).get("error", "")[0]
-                    if error == "login.error.throttled":
+                    error_msg = parse_qs(urlparse(ref).query).get("error", "")[0]
+                    if error_msg == "login.error.throttled":
                         timeout = parse_qs(urlparse(ref).query).get("enableNextButtonAfterSeconds", "")[0]
                         _LOGGER.warning(f"Login failed, login is disabled for another {timeout} seconds")
-                    elif error == "login.errors.password_invalid":
+                    elif error_msg == "login.errors.password_invalid":
                         _LOGGER.warning("Login failed, invalid password")
                     else:
-                        _LOGGER.warning(f"Login failed: {error}")
-                    raise AuthenticationException(error)
+                        _LOGGER.warning(f"Login failed: {error_msg}")
+                    raise AuthenticationException(error_msg)
                 if "code" in ref:
                     _LOGGER.debug("Got code: %s" % ref)
                 else:
@@ -346,12 +346,12 @@ class Connection:
             # Save tokens as "identity", these are tokens representing the user
             self._session_tokens[client] = await req.json()
             if "error" in self._session_tokens[client]:
-                error = self._session_tokens[client].get("error", "")
+                error_msg = self._session_tokens[client].get("error", "")
                 if "error_description" in self._session_tokens[client]:
                     error_description = self._session_tokens[client].get("error_description", "")
-                    raise Exception(f"{error} - {error_description}")
+                    raise Exception(f"{error_msg} - {error_description}")
                 else:
-                    raise Exception(error)
+                    raise Exception(error_msg)
             if self._session_fulldebug:
                 for token in self._session_tokens.get(client, {}):
                     _LOGGER.debug(f"Got token {token}")

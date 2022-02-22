@@ -7,7 +7,7 @@ from itertools import product
 from os import environ as env
 from os.path import join, dirname, expanduser
 from sys import argv
-from typing import Any
+from typing import Any, TextIO, Union
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -23,9 +23,10 @@ def read_config() -> dict:
         ["vw.conf", ".vw.conf"],
     ):
         try:
-            config = join(directory, filename)
-            _LOGGER.debug("checking for config file %s", config)
-            with open(config) as config:
+            config_file = join(directory, filename)
+            _LOGGER.debug("checking for config file %s", config_file)
+            config: TextIO
+            with open(config_file) as config:
                 return dict(x.split(": ") for x in config.read().strip().splitlines() if not x.startswith("#"))
         except OSError:
             continue
@@ -47,7 +48,7 @@ def obj_parser(obj: dict) -> dict:
     return obj
 
 
-def find_path(src, path) -> Any:
+def find_path(src: Union[dict, list], path: Union[str, list]) -> Any:
     """
     Return data at path in source.
 
@@ -83,6 +84,16 @@ def find_path(src, path) -> Any:
         return src
     if isinstance(path, str):
         path = path.split(".")
+    if isinstance(src, list):
+        try:
+            f = float(path[0])
+            if f.is_integer() and len(src) > 0:
+                return find_path(src[int(f)], path[1:])
+            raise KeyError("Key not found")
+        except ValueError:
+            raise KeyError(f"{path[0]} should be an integer")
+        except IndexError:
+            raise KeyError("Index out of range")
     return find_path(src[path[0]], path[1:])
 
 
@@ -101,6 +112,12 @@ def is_valid_path(src, path):
 
     >>> is_valid_path(dict(a=1), 'b')
     False
+
+    >>> is_valid_path({"a": [{"b": True}, {"c": True}]}, 'a.0.b')
+    True
+
+    >>> is_valid_path({"a": [{"b": True}, {"c": True}]}, 'a.1.b')
+    False
     """
     try:
         find_path(src, path)
@@ -114,5 +131,7 @@ def camel2slug(s: str) -> str:
 
     >>> camel2slug('fooBar')
     'foo_bar'
+
+    Should not produce "__" in case input contains something like "Foo_Bar"
     """
-    return re.sub("([A-Z])", "_\\1", s).lower().lstrip("_")
+    return re.sub("((?<!_)[A-Z])", "_\\1", s).lower().strip("_ \n\t\r")

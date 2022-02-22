@@ -2,6 +2,9 @@
 import sys
 from datetime import datetime
 
+from tests.fixtures.connection import status_report_json_file
+from volkswagencarnet.vw_utilities import json_loads
+
 if sys.version_info >= (3, 8):
     # This won't work on python versions less than 3.8
     from unittest import IsolatedAsyncioTestCase
@@ -27,7 +30,7 @@ class VehicleTest(IsolatedAsyncioTestCase):
 
     @freeze_time("2022-02-14 03:04:05")
     async def test_init(self):
-        """Test that init does what it should."""
+        """Test __init__."""
         async with ClientSession() as conn:
             target_date = datetime.fromisoformat("2022-02-14 03:04:05")
             url = "https://foo.bar"
@@ -67,6 +70,11 @@ class VehicleTest(IsolatedAsyncioTestCase):
                 },
                 vehicle._services,
             )
+
+    def test_str(self):
+        """Test __str__."""
+        vehicle = Vehicle(None, "XYZ1234567890")
+        self.assertEqual("XYZ1234567890", vehicle.__str__())
 
     def test_discover(self):
         """Test the discovery process."""
@@ -108,8 +116,79 @@ class VehicleTest(IsolatedAsyncioTestCase):
             8, vehicle.method_calls.__len__(), f"Wrong number of methods called. Expected 8, got {vehicle.method_calls}"
         )
 
+
+class VehiclePropertyTest(IsolatedAsyncioTestCase):
+    """Tests for properties in Vehicle."""
+
+    async def test_is_last_connected_supported(self):
+        """Test that parsing last connected works."""
+        vehicle = Vehicle(conn=None, url="dummy34")
+
+        vehicle._discovered = True
+
+        with patch.dict(vehicle.attrs, {}):
+            res = vehicle.is_last_connected_supported
+            self.assertFalse(res, "Last connected supported returned True without attributes.")
+
+        with patch.dict(vehicle.attrs, {"StoredVehicleDataResponse": {}}):
+            res = vehicle.is_last_connected_supported
+            self.assertFalse(res, "Last connected supported returned True without 'vehicleData'.")
+
+        with patch.dict(vehicle.attrs, {"StoredVehicleDataResponse": {"vehicleData": {}}}):
+            res = vehicle.is_last_connected_supported
+            self.assertFalse(res, "Last connected supported returned True without 'vehicleData.data'.")
+
+        with patch.dict(vehicle.attrs, {"StoredVehicleDataResponse": {"vehicleData": {"data": []}}}):
+            res = vehicle.is_last_connected_supported
+            self.assertFalse(res, "Last connected supported returned True without 'vehicleData.data[].field[]'.")
+
+        # test with a "real" response
+        with open(status_report_json_file) as f:
+            data = json_loads(f.read())
+        with patch.dict(vehicle.attrs, data):
+            res = vehicle.is_last_connected_supported
+            self.assertTrue(res, "Last connected supported returned False when it should have been True")
+
+    async def test_last_connected(self):
+        """
+        Test that parsing last connected works.
+
+        Data in json is: "tsCarSentUtc": "2022-02-14T00:00:45Z",
+        and the function returns local time
+        """
+        vehicle = Vehicle(conn=None, url="dummy34")
+
+        vehicle._discovered = True
+
+        with open(status_report_json_file) as f:
+            data = json_loads(f.read())
+        with patch.dict(vehicle.attrs, data):
+            res = vehicle.last_connected
+            self.assertEqual(
+                datetime.fromisoformat("2022-02-14T00:00:45+00:00").astimezone(None).strftime("%Y-%m-%d %H:%M:%S"), res
+            )
+
+    def test_requests_remaining(self):
+        """Test requests remaining logic."""
+        vehicle = Vehicle(conn=None, url="")
+        with patch.dict(vehicle._requests, {"remaining": 22}):
+            self.assertTrue(vehicle.is_requests_remaining_supported)
+            self.assertEqual(22, vehicle.requests_remaining)
+        # if remaining is missing _and_ attrs has no rate limit remaining attribute
+        with patch.dict(vehicle._requests, {}):
+            del vehicle._requests["remaining"]
+            self.assertFalse(vehicle.is_requests_remaining_supported)
+            with self.assertRaises(KeyError):
+                vehicle.requests_remaining()
+
+            # and with the attribute
+            with patch.dict(vehicle._states, {"rate_limit_remaining": 99}):
+                self.assertEqual(99, vehicle.requests_remaining)
+                # attribute should be removed once read
+                self.assertNotIn("rate_limit_remaining", vehicle.attrs)
+
     async def test_json(self):
-        """Test that update calls the wanted methods and nothing else."""
+        """Test JSON serialization of dict containing datetime."""
         vehicle = Vehicle(conn=None, url="dummy34")
 
         vehicle._discovered = True
