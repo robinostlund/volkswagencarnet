@@ -71,6 +71,16 @@ class BasicSettings(DepartureTimerClass):
         self.chargeMinLimit = int(chargeMinLimit)
         self.targetTemperature = int(targetTemperature)
 
+    def set_target_temperature(self, temp: int):
+        """Set target temperature for departure timers with climatisation enabled."""
+        self.targetTemperature = temp
+        self._changed = True
+
+    def set_charge_min_limit(self, limit: int):
+        """Set the global minimum charge limit."""
+        self.chargeMinLimit = limit
+        self._changed = True
+
 
 # noinspection PyPep8Naming
 class Timer(DepartureTimerClass):
