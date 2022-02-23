@@ -1,11 +1,10 @@
-# Utilities for integration with Home Assistant
+"""Utilities for integration with Home Assistant."""
 # Thanks to molobrakos
 
 import logging
 from typing import Union
 
 from volkswagencarnet.vw_timer import Timer, TimerData
-
 from .vw_utilities import camel2slug
 
 CLIMA_DEFAULT_DURATION = 30
@@ -14,6 +13,8 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class Instrument:
+    """Base class for all components."""
+
     def __init__(self, component, attr, name, icon=None):
         self.attr = attr
         self.component = component
@@ -510,22 +511,27 @@ class Charging(Switch):
 
 
 class DepartureTimer(Switch):
+    """Departure timers."""
+
     def __init__(self, id: Union[str, int]):
         self._id = id
         super().__init__(attr=f"departure_timer{id}", name=f"Departure Schedule {id}", icon="mdi:car-clock")
 
     @property
     def state(self):
+        """Return switch state."""
         s: Timer = self.vehicle.schedule(self._id)
         return 1 if s.enabled else 0
 
     async def turn_on(self):
+        """Enable schedule."""
         schedule: TimerData = self.vehicle.attrs["timer"]
         schedule.get_schedule(self._id).enable()
         await self.vehicle.set_schedule(schedule)
         await self.vehicle.update()
 
     async def turn_off(self):
+        """Disable schedule."""
         schedule: TimerData = self.vehicle.attrs["timer"]
         schedule.get_schedule(self._id).disable()
         await self.vehicle.set_schedule(schedule)
@@ -533,10 +539,12 @@ class DepartureTimer(Switch):
 
     @property
     def assumed_state(self):
+        """Don't assume state info."""
         return False
 
     @property
     def attributes(self):
+        """Schedule attributes."""
         s: Timer = self.vehicle.schedule(self._id)
         return dict(
             # last_result="FIXME",
@@ -680,6 +688,31 @@ class RequestResults(Sensor):
         return dict(self.vehicle.request_results)
 
 
+class ChargeMinLevel(Sensor):
+    """Get minimum charge level."""
+
+    def __init__(self):
+        """Init."""
+        super().__init__(
+            attr="schedule_min_charge_level",
+            name="Minimum charge level for departure timers",
+            icon="mdi:battery-arrow-up",
+            unit="%",
+        )
+
+    @property
+    def state(self) -> Union[int, str]:
+        """Return the desired minimum charge level."""
+        if self.vehicle.is_timer_basic_settings_supported:
+            return self.vehicle.timer_basic_settings.chargeMinLimit
+        return "Unknown"
+
+    @property
+    def assumed_state(self):
+        """Don't assume anything about state."""
+        return False
+
+
 def create_instruments():
     return [
         Position(),
@@ -695,6 +728,7 @@ def create_instruments():
         # ElectricClimatisationClimate(),
         # CombustionClimatisationClimate(),
         Charging(),
+        ChargeMinLevel(),
         DepartureTimer(1),
         DepartureTimer(2),
         DepartureTimer(3),

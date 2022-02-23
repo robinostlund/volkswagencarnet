@@ -1,32 +1,27 @@
 #!/usr/bin/env python3
 """Communicate with We Connect services."""
+import asyncio
+import hashlib
+import logging
 import re
 import secrets
 import sys
 import time
-import logging
-import asyncio
-import hashlib
+from base64 import b64encode, urlsafe_b64encode
+from datetime import timedelta, datetime
+from json import dumps as to_json
 from random import random
+from sys import version_info
 from typing import Optional
+from urllib.parse import urljoin, parse_qs, urlparse
 
 import jwt
-
-from sys import version_info
-from datetime import timedelta, datetime
-from urllib.parse import urljoin, parse_qs, urlparse
-from json import dumps as to_json
-from bs4 import BeautifulSoup
-from base64 import b64encode, urlsafe_b64encode
-
 from aiohttp import ClientSession, ClientTimeout, client_exceptions
 from aiohttp.hdrs import METH_GET, METH_POST
-from volkswagencarnet.vw_timer import TimerData
+from bs4 import BeautifulSoup
 
 from volkswagencarnet.vw_exceptions import AuthenticationException
-from .vw_utilities import json_loads, read_config
-from .vw_vehicle import Vehicle
-
+from volkswagencarnet.vw_timer import TimerData, TimersAndProfiles
 from .vw_const import (
     BRAND,
     COUNTRY,
@@ -41,6 +36,8 @@ from .vw_const import (
     USER_AGENT,
     APP_URI,
 )
+from .vw_utilities import json_loads, read_config
+from .vw_vehicle import Vehicle
 
 version_info >= (3, 0) or exit("Python 3 required")
 
@@ -50,6 +47,7 @@ TIMEOUT = timedelta(seconds=30)
 JWT_ALGORITHMS = ["RS256"]
 
 
+# noinspection PyPep8Naming
 class Connection:
     """Connection to VW-Group Connect services."""
 
@@ -1068,7 +1066,19 @@ class Connection:
                 self._session_headers["Content-Type"] = content_type
             raise
 
-    async def setSchedule(self, vin, data: TimerData):
+    async def setTimersAndProfiles(self, vin, data: TimersAndProfiles):
+        """Set schedules."""
+        return await self._setDepartureTimer(vin, data, "setTimersAndProfiles")
+
+    async def setChargeMinLevel(self, vin, limit: int):
+        """Set schedules."""
+        data: Optional[TimerData] = await self.getTimers(vin)
+        if data is None:
+            raise Exception("No existing timer data?")
+        data.timersAndProfiles.timerBasicSetting.set_charge_min_limit(limit)
+        return await self._setDepartureTimer(vin, data.timersAndProfiles, "setChargeMinLimit")
+
+    async def _setDepartureTimer(self, vin, data: TimersAndProfiles, action: str):
         """Set schedules."""
         try:
             await self.set_token("vwg")
@@ -1077,8 +1087,8 @@ class Connection:
                 vin=vin,
                 json={
                     "action": {
-                        "timersAndProfiles": data.timersAndProfiles.json_updated["timer"],
-                        "type": "setTimersAndProfiles",
+                        "timersAndProfiles": data.json_updated["timer"],
+                        "type": action,
                     }
                 },
             )

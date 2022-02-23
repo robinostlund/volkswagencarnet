@@ -41,7 +41,7 @@ async def test_set_timer():
         connection = vw_connection.Connection(session, username, password)
         await connection.doLogin()
         data = TimerData({}, {})
-        await connection.setSchedule(vin=vin, data=data)
+        await connection.setTimersAndProfiles(vin=vin, data=data)
 
         assert 1 == 1
 

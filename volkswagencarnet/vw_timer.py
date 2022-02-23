@@ -4,6 +4,8 @@ import logging
 from datetime import datetime
 from typing import Union, List, Optional, Dict
 
+from volkswagencarnet.vw_utilities import celsius_to_vw, fahrenheit_to_vw, vw_to_celsius
+
 _LOGGER = logging.getLogger(__name__)
 
 
@@ -68,13 +70,27 @@ class BasicSettings(DepartureTimerClass):
     def __init__(self, timestamp: str, chargeMinLimit: Union[str, int], targetTemperature: Union[str, int]):
         """Init."""
         self.timestamp = timestamp
-        self.chargeMinLimit = int(chargeMinLimit)
-        self.targetTemperature = int(targetTemperature)
+        self.chargeMinLimit: int = int(chargeMinLimit)
+        self.targetTemperature: int = int(targetTemperature)
 
-    def set_target_temperature(self, temp: int):
+    @property
+    def target_temperature_celsius(self):
+        """Get target temperature in Celsius."""
+        return vw_to_celsius(self.targetTemperature)
+
+    def set_target_temperature_celsius(self, temp: float):
         """Set target temperature for departure timers with climatisation enabled."""
-        self.targetTemperature = temp
-        self._changed = True
+        new_temp = celsius_to_vw(temp)
+        if new_temp != self.targetTemperature:
+            self.targetTemperature = new_temp
+            self._changed = True
+
+    def set_target_temperature_fahrenheit(self, temp: float):
+        """Set target temperature for departure timers with climatisation enabled."""
+        new_temp = fahrenheit_to_vw(temp)
+        if new_temp != self.targetTemperature:
+            self.targetTemperature = new_temp
+            self._changed = True
 
     def set_charge_min_limit(self, limit: int):
         """Set the global minimum charge limit."""
@@ -183,7 +199,7 @@ class TimerProfileList(DepartureTimerClass):
 
 
 # noinspection PyPep8Naming
-class TimerAndProfiles(DepartureTimerClass):
+class TimersAndProfiles(DepartureTimerClass):
     """Timer and profile object."""
 
     def __init__(
@@ -206,13 +222,13 @@ class TimerAndProfiles(DepartureTimerClass):
 class TimerData(DepartureTimerClass):
     """Top level timer object."""
 
-    def __init__(self, timersAndProfiles: Union[Dict, TimerAndProfiles], status: Optional[dict]):
+    def __init__(self, timersAndProfiles: Union[Dict, TimersAndProfiles], status: Optional[dict]):
         """Init."""
         try:
             self.timersAndProfiles = (
                 timersAndProfiles
-                if isinstance(timersAndProfiles, TimerAndProfiles)
-                else TimerAndProfiles(**timersAndProfiles)
+                if isinstance(timersAndProfiles, TimersAndProfiles)
+                else TimersAndProfiles(**timersAndProfiles)
             )
             self.status = status
             self._valid = True

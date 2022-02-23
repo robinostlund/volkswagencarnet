@@ -4,7 +4,18 @@ from json import JSONDecodeError
 from unittest import TestCase, mock
 from unittest.mock import DEFAULT
 
-from volkswagencarnet.vw_utilities import camel2slug, is_valid_path, obj_parser, json_loads, read_config, make_url
+from volkswagencarnet.vw_utilities import (
+    camel2slug,
+    is_valid_path,
+    obj_parser,
+    json_loads,
+    read_config,
+    make_url,
+    fahrenheit_to_vw,
+    vw_to_celsius,
+    vw_to_fahrenheit,
+    celsius_to_vw,
+)
 
 
 class UtilitiesTest(TestCase):
@@ -130,3 +141,27 @@ baz
         """Test placeholder replacements."""
         self.assertEqual("foo/2/baz", make_url("foo/{bar}/baz{baz}", bar=2, baz=""))
         self.assertEqual("foo/asd/2", make_url("foo/{baz}/$bar", bar=2, baz="asd"))
+
+    def test_celcius_to_vw(self):
+        """Test Celsius conversion."""
+        self.assertEqual(2730, celsius_to_vw(0))
+        self.assertEqual(2955, celsius_to_vw(22.4))
+        self.assertEqual(2960, celsius_to_vw(22.7))
+
+    def test_fahrenheit_to_vw(self):
+        """Test Fahrenheit conversion."""
+        self.assertEqual(2730, fahrenheit_to_vw(32))
+        self.assertEqual(2955, fahrenheit_to_vw(72.3))
+        self.assertEqual(2960, fahrenheit_to_vw(72.9))
+
+    def test_vw_to_celcius(self):
+        """Test Celsius conversion."""
+        self.assertEqual(0, vw_to_celsius(2730))
+        self.assertEqual(22.5, vw_to_celsius(2955))
+        self.assertEqual(23, vw_to_celsius(2960))
+
+    def test_vw_to_fahrenheit(self):
+        """Test Fahrenheit conversion."""
+        self.assertEqual(32, vw_to_fahrenheit(2730))
+        self.assertEqual(72, vw_to_fahrenheit(2955))
+        self.assertEqual(73, vw_to_fahrenheit(2960))

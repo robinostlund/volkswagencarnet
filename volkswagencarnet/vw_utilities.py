@@ -145,3 +145,25 @@ def make_url(url: str, **kwargs):
     if "{" in url or "}" in url:
         raise ValueError("Not all values were substituted")
     return url
+
+
+# TODO: is VW using 273.15 or 273? :)
+def celsius_to_vw(val: float) -> int:
+    """Convert Celsius to VW format."""
+    return int(5 * round(2 * (273.15 + val)))
+
+
+def fahrenheit_to_vw(val: float) -> int:
+    """Convert Fahrenheit to VW format."""
+    return int(5 * round(2 * (273.15 + (val - 32) * 5 / 9)))
+
+
+def vw_to_celsius(val: int) -> float:
+    """Convert Celsius to VW format."""
+    return round(2 * ((val / 10) - 273.15)) / 2
+
+
+# TODO: are F ints of floats?
+def vw_to_fahrenheit(val: int) -> int:
+    """Convert Fahrenheit to VW format."""
+    return int(round((val / 10 - 273.15) * 9 / 5 + 32))
