@@ -86,7 +86,7 @@ class Vehicle:
                 return True
         return False
 
-    async def _handle_response(self, response, topic: str, error_msg: Optional[str] = None):
+    async def _handle_response(self, response, topic: str, error_msg: Optional[str] = None) -> bool:
         """Handle errors in response and get requests remaining."""
         if not response:
             self._requests[topic] = {"status": "Failed"}
@@ -94,7 +94,7 @@ class Vehicle:
             raise Exception(error_msg if error_msg is not None else "Failed to perform {topic} action")
         else:
             remaining = response.get("rate_limit_remaining", -1)
-            if remaining >= 0:
+            if remaining != -1:
                 _LOGGER.info(f"{remaining} requests")
                 self._requests["remaining"] = remaining
             self._requests[topic] = {
@@ -517,7 +517,7 @@ class Vehicle:
             self._requests["refresh"] = {"status": "Exception"}
         raise Exception("Data refresh failed")
 
-    async def set_schedule(self, data: TimerData):
+    async def set_schedule(self, data: TimerData) -> bool:
         """Store schedule."""
         if not self._services.get("timerprogramming_v1", False):
             _LOGGER.info("Remote control of timer functions is not supported.")
