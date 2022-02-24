@@ -172,7 +172,7 @@ class TimerProfile(DepartureTimerClass):
         nightRateTimeStart: str,
         nightRateTimeEnd: str,
         chargeMaxCurrent: str,
-        profileName: str = "i-have-no-name",
+        profileName: str = "",
     ):
         """Init."""
         self.timestamp = timestamp
