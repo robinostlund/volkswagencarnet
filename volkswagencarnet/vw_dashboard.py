@@ -696,7 +696,7 @@ class ChargeMinLevel(Sensor):
         super().__init__(
             attr="schedule_min_charge_level",
             name="Minimum charge level for departure timers",
-            icon="mdi:battery-arrow-up",
+            icon="mdi:battery-arrow-down",
             unit="%",
         )
 
