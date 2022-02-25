@@ -1,7 +1,7 @@
 """Depature timer tests."""
 from unittest import TestCase
 
-from volkswagencarnet.vw_timer import TimerData
+from volkswagencarnet.vw_timer import TimerData, TimerProfile
 
 
 class TimerTest(TestCase):
@@ -103,3 +103,31 @@ class TimerTest(TestCase):
         timer.get_schedule(3).enable()
         self.assertTrue(timer.get_schedule(3)._changed)
         self.assertEqual(self.data_updated, timer.json_updated)
+
+    def test_get_profile(self):
+        """Test profile getter."""
+        timer = TimerData(**self.data["timer"])
+        self.assertIsNone(timer.get_profile(42))
+        self.assertIsNone(timer.get_profile("42"))
+
+        profile = timer.get_profile(1)
+        self.assertIsInstance(profile, TimerProfile)
+
+        self.assertEqual("21:00", profile.nightRateTimeStart)
+
+    def test_update_profile(self):
+        """Test updating profiles."""
+        timer = TimerData(**self.data["timer"])
+        profile = timer.get_profile(1)
+
+        self.assertNotEqual("unit test profile 42", profile.profileName)
+        profile.profileName = "unit test profile 42"
+
+        timer.update_profile(profile)
+
+        profile = timer.get_profile(1)
+
+        self.assertEqual("unit test profile 42", profile.profileName)
+
+        profile.profileID = 42
+        self.assertRaises(Exception, timer.update_profile(profile))

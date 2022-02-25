@@ -245,6 +245,22 @@ class TimerData(DepartureTimerClass):
         """Check if timer exists by id."""
         return self._valid and any(p.timerID == str(schedule_id) for p in self.timersAndProfiles.timerList.timer)
 
-    def get_schedule(self, schedule_id: Union[str, int]):
+    def get_schedule(self, id: Union[str, int]):
         """Find timer by id."""
-        return next(filter(lambda p: p.timerID == str(schedule_id), self.timersAndProfiles.timerList.timer), None)
+        return next(filter(lambda p: p.timerID == str(id), self.timersAndProfiles.timerList.timer), None)
+
+    def get_profile(self, id: Union[str, int]):
+        """Find profile by id."""
+        return next(
+            filter(lambda p: p.profileID == str(id), self.timersAndProfiles.timerProfileList.timerProfile), None
+        )
+
+    def update_profile(self, profile: TimerProfile) -> None:
+        """Replace a profile with given input."""
+        for p in self.timersAndProfiles.timerProfileList.timerProfile:
+            if str(p.profileID) == str(profile.profileID):
+                # hackish way to update all properties, but easier than replacing
+                # the actual object
+                p.__dict__.update(profile.__dict__)
+                return
+        raise Exception("Profile not found")
