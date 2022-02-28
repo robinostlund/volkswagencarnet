@@ -65,21 +65,36 @@ class DepartureTimerClass:
 
 # noinspection PyPep8Naming
 class BasicSettings(DepartureTimerClass):
-    """Basic settings."""
+    """
+    Basic settings.
 
-    def __init__(self, timestamp: str, chargeMinLimit: Union[str, int], targetTemperature: Union[str, int]):
+    EV:s might have a target temperature, and PHEVs have a heaterSource...
+    """
+
+    def __init__(
+        self,
+        timestamp: str,
+        chargeMinLimit: Union[str, int],
+        targetTemperature: Optional[Union[str, int]],
+        heaterSource: Optional[str],
+    ):
         """Init."""
         self.timestamp = timestamp
         self.chargeMinLimit: int = int(chargeMinLimit)
-        self.targetTemperature: int = int(targetTemperature)
+        self.targetTemperature: Optional[int] = int(targetTemperature) if targetTemperature is not None else None
+        self.heaterSource: Optional[str] = heaterSource
 
     @property
     def target_temperature_celsius(self):
         """Get target temperature in Celsius."""
+        if self.targetTemperature is None:
+            return None
         return vw_to_celsius(self.targetTemperature)
 
     def set_target_temperature_celsius(self, temp: float):
         """Set target temperature for departure timers with climatisation enabled."""
+        if self.targetTemperature is None:
+            raise ValueError("This vehicle does not support setting the target temperature using timer settings.")
         new_temp = celsius_to_vw(temp)
         if new_temp != self.targetTemperature:
             self.targetTemperature = new_temp
@@ -87,6 +102,8 @@ class BasicSettings(DepartureTimerClass):
 
     def set_target_temperature_fahrenheit(self, temp: float):
         """Set target temperature for departure timers with climatisation enabled."""
+        if self.targetTemperature is None:
+            raise ValueError("This vehicle does not support setting the target temperature using timer settings.")
         new_temp = fahrenheit_to_vw(temp)
         if new_temp != self.targetTemperature:
             self.targetTemperature = new_temp
@@ -96,6 +113,17 @@ class BasicSettings(DepartureTimerClass):
         """Set the global minimum charge limit."""
         self.chargeMinLimit = limit
         self._changed = True
+
+    def set_heater_source(self, heater_source: str):
+        """Set the heater source (electric or auxiliary)."""
+        if self.heaterSource is None:
+            raise ValueError("Looks like this vehicle does not support setting heater source")
+        if heater_source in ["electric", "auxiliary"]:
+            self.heaterSource = heater_source
+        else:
+            raise ValueError(
+                f"Unknown heater source {heater_source}. If you believe it should be supported, please open a bug ticket."
+            )
 
 
 # noinspection PyPep8Naming
