@@ -1,7 +1,10 @@
-# Utilities for integration with Home Assistant
+"""Utilities for integration with Home Assistant."""
 # Thanks to molobrakos
 
 import logging
+from typing import Union
+
+from volkswagencarnet.vw_timer import Timer, TimerData
 from .vw_utilities import camel2slug
 
 CLIMA_DEFAULT_DURATION = 30
@@ -10,6 +13,8 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class Instrument:
+    """Base class for all components."""
+
     def __init__(self, component, attr, name, icon=None):
         self.attr = attr
         self.component = component
@@ -505,6 +510,53 @@ class Charging(Switch):
         return dict(last_result=self.vehicle.charger_action_status)
 
 
+class DepartureTimer(Switch):
+    """Departure timers."""
+
+    def __init__(self, id: Union[str, int]):
+        self._id = id
+        super().__init__(attr=f"departure_timer{id}", name=f"Departure Schedule {id}", icon="mdi:car-clock")
+
+    @property
+    def state(self):
+        """Return switch state."""
+        s: Timer = self.vehicle.schedule(self._id)
+        return 1 if s.enabled else 0
+
+    async def turn_on(self):
+        """Enable schedule."""
+        schedule: TimerData = self.vehicle.attrs["timer"]
+        schedule.get_schedule(self._id).enable()
+        await self.vehicle.set_schedule(schedule)
+        await self.vehicle.update()
+
+    async def turn_off(self):
+        """Disable schedule."""
+        schedule: TimerData = self.vehicle.attrs["timer"]
+        schedule.get_schedule(self._id).disable()
+        await self.vehicle.set_schedule(schedule)
+        await self.vehicle.update()
+
+    @property
+    def assumed_state(self):
+        """Don't assume state info."""
+        return False
+
+    @property
+    def attributes(self):
+        """Schedule attributes."""
+        s: Timer = self.vehicle.schedule(self._id)
+        return dict(
+            # last_result="FIXME",
+            profile_id=s.profileID,
+            last_updated=s.timestamp,
+            timer_id=s.timerID,
+            frequency=s.timerFrequency,
+            departure_time=s.departureDateTime if s.timerFrequency == "single" else s.departureTimeOfDay,
+            weekday_mask=None if s.timerFrequency == "single" else s.departureWeekdayMask,
+        )
+
+
 class WindowHeater(Switch):
     def __init__(self):
         super().__init__(attr="window_heater", name="Window Heater", icon="mdi:car-defrost-rear")
@@ -636,6 +688,31 @@ class RequestResults(Sensor):
         return dict(self.vehicle.request_results)
 
 
+class ChargeMinLevel(Sensor):
+    """Get minimum charge level."""
+
+    def __init__(self):
+        """Init."""
+        super().__init__(
+            attr="schedule_min_charge_level",
+            name="Minimum charge level for departure timers",
+            icon="mdi:battery-arrow-down",
+            unit="%",
+        )
+
+    @property
+    def state(self) -> Union[int, str]:
+        """Return the desired minimum charge level."""
+        if self.vehicle.is_timer_basic_settings_supported:
+            return self.vehicle.timer_basic_settings.chargeMinLimit
+        return "Unknown"
+
+    @property
+    def assumed_state(self):
+        """Don't assume anything about state."""
+        return False
+
+
 def create_instruments():
     return [
         Position(),
@@ -651,6 +728,10 @@ def create_instruments():
         # ElectricClimatisationClimate(),
         # CombustionClimatisationClimate(),
         Charging(),
+        ChargeMinLevel(),
+        DepartureTimer(1),
+        DepartureTimer(2),
+        DepartureTimer(3),
         RequestResults(),
         Sensor(
             attr="distance",
@@ -896,6 +977,9 @@ def create_instruments():
 
 
 class Dashboard:
+    """Helper for accessing the instruments."""
+
     def __init__(self, vehicle, **config):
+        """Initialize instruments."""
         _LOGGER.debug("Setting up dashboard with config :%s", config)
         self.instruments = [instrument for instrument in create_instruments() if instrument.setup(vehicle, **config)]

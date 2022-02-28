@@ -7,6 +7,8 @@ from datetime import datetime, timedelta, timezone
 from json import dumps as to_json
 from typing import Optional, Union, Any, Dict
 
+from volkswagencarnet.vw_timer import TimerData, Timer, BasicSettings
+
 from .vw_utilities import find_path, is_valid_path
 
 LOCKED_STATE = 2
@@ -42,7 +44,7 @@ class Vehicle:
         self._discovered = False
         self._states = {}
         self._requests: Dict[str, Any] = {
-            # 'departuretimer': {'status': '', 'timestamp': datetime.now()}, # Not yet implemented
+            "departuretimer": {"status": "", "timestamp": datetime.now()},
             "batterycharge": {"status": "", "timestamp": datetime.now()},
             "climatisation": {"status": "", "timestamp": datetime.now()},
             "refresh": {"status": "", "timestamp": datetime.now()},
@@ -65,8 +67,48 @@ class Vehicle:
             "rbatterycharge_v1": {"active": False},
             "rhonk_v1": {"active": False},
             "carfinder_v1": {"active": False},
-            # 'timerprogramming_v1': {'active': False}, # Not yet implemented
+            "timerprogramming_v1": {"active": False},
+            # "jobs_v1": {"active": False},
+            # "owner_v1": {"active": False},
+            # vehicles_v1_cai, services_v1, vehicletelemetry_v1
         }
+
+    def _in_progress(self, topic: str, unknown_offset: int = 0) -> bool:
+        """Check if request is already in progress."""
+        if self._requests[topic].get("id", False):
+            timestamp = self._requests.get(topic, {}).get(
+                "timestamp", datetime.now() - timedelta(minutes=unknown_offset)
+            )
+            if timestamp + timedelta(minutes=3) > datetime.now():
+                self._requests.get(topic, {}).pop("id")
+            else:
+                _LOGGER.info(f"Action ({topic}) already in progress")
+                return True
+        return False
+
+    async def _handle_response(self, response, topic: str, error_msg: Optional[str] = None) -> bool:
+        """Handle errors in response and get requests remaining."""
+        if not response:
+            self._requests[topic] = {"status": "Failed"}
+            _LOGGER.error(error_msg if error_msg is not None else "Failed to perform {topic} action")
+            raise Exception(error_msg if error_msg is not None else "Failed to perform {topic} action")
+        else:
+            remaining = response.get("rate_limit_remaining", -1)
+            if remaining != -1:
+                _LOGGER.info(f"{remaining} requests")
+                self._requests["remaining"] = remaining
+            self._requests[topic] = {
+                "timestamp": datetime.now(),
+                "status": response.get("state", "Unknown"),
+                "id": response.get("id", 0),
+            }
+            if response.get("state", None) == "Throttled":
+                status = "Throttled"
+                _LOGGER.warning(f"Request throttled ({topic}")
+            else:
+                status = await self.wait_for_request(topic, response.get("id", 0))
+            self._requests[topic] = {"status": status}
+        return True
 
     # API get and set functions #
     # Init and update vehicle data
@@ -136,7 +178,7 @@ class Vehicle:
 
     # Data collection functions
     async def get_realcardata(self):
-        """Fetch realcar data."""
+        """Fetch realcardata."""
         data = await self._connection.getRealCarData(self.vin)
         if data:
             self._states.update(data)
@@ -223,13 +265,13 @@ class Vehicle:
         else:
             self._requests.pop("charger", None)
 
-    async def get_timerprogramming(self):
+    async def get_timerprogramming(self) -> None:
         """Fetch timer data if function is enabled."""
         if self._services.get("timerprogramming_v1", {}).get("active", False):
             if not await self.expired("timerprogramming_v1"):
                 data = await self._connection.getTimers(self.vin)
                 if data:
-                    self._states.update(data)
+                    self._states.update({"timer": data})
                 else:
                     _LOGGER.debug("Could not fetch timers")
         else:
@@ -270,19 +312,35 @@ class Vehicle:
             _LOGGER.error("No charger support.")
             raise Exception("No charger support.")
 
+    async def set_charge_min_level(self, level: int):
+        """Set the desired minimum charge level for departure schedules."""
+        if self.is_schedule_min_charge_level_supported:
+            if (0 <= level <= 100) and level % 10 == 0:
+                if self._in_progress("departuretimer"):
+                    return False
+                try:
+                    self._requests["latest"] = "Departuretimer"
+                    response = await self._connection.setChargeMinLevel(self.vin, level)
+                    return await self._handle_response(
+                        response=response, topic="departuretimer", error_msg="Failed to set minimum charge level"
+                    )
+                except Exception as error:
+                    _LOGGER.warning(f"Failed to set minimum charge level - {error}")
+                    self._requests["departuretimer"] = {"status": "Exception"}
+                    raise Exception(f"Failed to set minimum charge level - {error}")
+            else:
+                raise Exception("Level must be 0, 10, ..., 100")
+        else:
+            _LOGGER.error("Cannot set minimum level")
+            raise Exception("Cannot set minimum level")
+
     async def set_charger(self, action):
         """Charging actions."""
         if not self._services.get("rbatterycharge_v1", False):
             _LOGGER.info("Remote start/stop of charger is not supported.")
             raise Exception("Remote start/stop of charger is not supported.")
-        if self._requests["batterycharge"].get("id", False):
-            timestamp = self._requests.get("batterycharge", {}).get("timestamp", datetime.now())
-            expired = datetime.now() - timedelta(minutes=3)
-            if expired > timestamp:
-                self._requests.get("batterycharge", {}).pop("id")
-            else:
-                _LOGGER.debug("Charging action already in progress")
-                return False
+        if self._in_progress("batterycharge"):
+            return False
         if action in ["start", "stop"]:
             data = {"action": {"type": action}}
         elif action.get("action", {}).get("type", "") == "setSettings":
@@ -293,23 +351,9 @@ class Vehicle:
         try:
             self._requests["latest"] = "Charger"
             response = await self._connection.setCharger(self.vin, data)
-            if not response:
-                self._requests["batterycharge"] = {"status": "Failed"}
-                _LOGGER.error(f"Failed to {action} charging")
-                raise Exception(f"Failed to {action} charging")
-            else:
-                self._requests["remaining"] = response.get("rate_limit_remaining", -1)
-                self._requests["batterycharge"] = {
-                    "timestamp": datetime.now(),
-                    "status": response.get("state", "Unknown"),
-                    "id": response.get("id", 0),
-                }
-                if response.get("state", None) == "Throttled":
-                    status = "Throttled"
-                else:
-                    status = await self.wait_for_request("batterycharge", response.get("id", 0))
-                self._requests["batterycharge"] = {"status": status}
-                return True
+            return await self._handle_response(
+                response=response, topic="batterycharge", error_msg=f"Failed to {action} charging"
+            )
         except Exception as error:
             _LOGGER.warning(f"Failed to {action} charging - {error}")
             self._requests["batterycharge"] = {"status": "Exception"}
@@ -322,6 +366,8 @@ class Vehicle:
             if 16 <= int(temperature) <= 30:
                 temp = int((temperature + 273) * 10)
                 data = {"action": {"settings": {"targetTemperature": temp}, "type": "setSettings"}}
+            elif 2885 <= int(temperature) <= 3030:
+                data = {"action": {"settings": {"targetTemperature": temperature}, "type": "setSettings"}}
             else:
                 _LOGGER.error(f"Set climatisation target temp to {temperature} is not supported.")
                 raise Exception(f"Set climatisation target temp to {temperature} is not supported.")
@@ -387,34 +433,14 @@ class Vehicle:
         if not self._services.get("rclima_v1", False):
             _LOGGER.info("Remote control of climatisation functions is not supported.")
             raise Exception("Remote control of climatisation functions is not supported.")
-        if self._requests["climatisation"].get("id", False):
-            timestamp = self._requests.get("climatisation", {}).get("timestamp", datetime.now())
-            expired = datetime.now() - timedelta(minutes=3)
-            if expired > timestamp:
-                self._requests.get("climatisation", {}).pop("id")
-            else:
-                _LOGGER.debug("A climatisation action is already in progress")
-                return False
+        if self._in_progress("climatisation"):
+            return False
         try:
             self._requests["latest"] = "Climatisation"
             response = await self._connection.setClimater(self.vin, data, spin)
-            if not response:
-                self._requests["climatisation"] = {"status": "Failed"}
-                _LOGGER.error("Failed to execute climatisation request")
-                raise Exception("Failed to execute climatisation request")
-            else:
-                self._requests["remaining"] = response.get("rate_limit_remaining", -1)
-                self._requests["climatisation"] = {
-                    "timestamp": datetime.now(),
-                    "status": response.get("state", "Unknown"),
-                    "id": response.get("id", 0),
-                }
-                if response.get("state", None) == "Throttled":
-                    status = "Throttled"
-                else:
-                    status = await self.wait_for_request("climatisation", response.get("id", 0))
-                self._requests["climatisation"] = {"status": status}
-                return True
+            return await self._handle_response(
+                response=response, topic="climatisation", error_msg="Failed to execute climatisation request"
+            )
         except Exception as error:
             _LOGGER.warning(f"Failed to execute climatisation request - {error}")
             self._requests["climatisation"] = {"status": "Exception"}
@@ -426,14 +452,8 @@ class Vehicle:
         if not self.is_pheater_heating_supported:
             _LOGGER.error("No parking heater support.")
             raise Exception("No parking heater support.")
-        if self._requests["preheater"].get("id", False):
-            timestamp = self._requests.get("preheater", {}).get("timestamp", datetime.now())
-            expired = datetime.now() - timedelta(minutes=3)
-            if expired > timestamp:
-                self._requests.get("preheater", {}).pop("id")
-            else:
-                _LOGGER.debug("A parking heater action is already in progress")
-                return False
+        if self._in_progress("preheater"):
+            return False
         if mode not in ["heating", "ventilation", "off"]:
             _LOGGER.error(f"{mode} is an invalid action for parking heater")
             raise Exception(f"{mode} is an invalid action for parking heater")
@@ -448,23 +468,9 @@ class Vehicle:
         try:
             self._requests["latest"] = "Preheater"
             response = await self._connection.setPreHeater(self.vin, data, spin)
-            if not response:
-                self._requests["preheater"] = {"status": "Failed"}
-                _LOGGER.error(f"Failed to set parking heater to {mode}")
-                raise Exception(f'setPreHeater returned "{response}"')
-            else:
-                self._requests["remaining"] = response.get("rate_limit_remaining", -1)
-                self._requests["preheater"] = {
-                    "timestamp": datetime.now(),
-                    "status": response.get("state", "Unknown"),
-                    "id": response.get("id", 0),
-                }
-                if response.get("state", None) == "Throttled":
-                    status = "Throttled"
-                else:
-                    status = await self.wait_for_request("rs", response.get("id", 0))
-                self._requests["preheater"] = {"status": status}
-                return True
+            return await self._handle_response(
+                response=response, topic="preheater", error_msg=f"Failed to set parking heater to {mode}"
+            )
         except Exception as error:
             _LOGGER.warning(f"Failed to set parking heater mode to {mode} - {error}")
             self._requests["preheater"] = {"status": "Exception"}
@@ -476,14 +482,8 @@ class Vehicle:
         if not self._services.get("rlu_v1", False):
             _LOGGER.info("Remote lock/unlock is not supported.")
             raise Exception("Remote lock/unlock is not supported.")
-        if self._requests["lock"].get("id", False):
-            timestamp = self._requests.get("lock", {}).get("timestamp", datetime.now() - timedelta(minutes=5))
-            expired = datetime.now() - timedelta(minutes=3)
-            if expired > timestamp:
-                self._requests.get("lock", {}).pop("id")
-            else:
-                _LOGGER.debug("A lock action is already in progress")
-                return False
+        if self._in_progress("lock", unknown_offset=-5):
+            return False
         if action in ["lock", "unlock"]:
             data = '<rluAction xmlns="http://audi.de/connect/rlu"><action>' + action + "</action></rluAction>"
         else:
@@ -492,23 +492,7 @@ class Vehicle:
         try:
             self._requests["latest"] = "Lock"
             response = await self._connection.setLock(self.vin, data, spin)
-            if not response:
-                self._requests["lock"] = {"status": "Failed"}
-                _LOGGER.error(f"Failed to {action} vehicle")
-                raise Exception(f"Failed to {action} vehicle")
-            else:
-                self._requests["remaining"] = response.get("rate_limit_remaining", -1)
-                self._requests["lock"] = {
-                    "timestamp": datetime.now(),
-                    "status": response.get("state", "Unknown"),
-                    "id": response.get("id", 0),
-                }
-                if response.get("state", None) == "Throttled":
-                    status = "Throttled"
-                else:
-                    status = await self.wait_for_request("rlu", response.get("id", 0))
-                self._requests["lock"] = {"status": status}
-                return True
+            return await self._handle_response(response=response, topic="lock", error_msg=f"Failed to {action} vehicle")
         except Exception as error:
             _LOGGER.warning(f"Failed to {action} vehicle - {error}")
             self._requests["lock"] = {"status": "Exception"}
@@ -520,38 +504,36 @@ class Vehicle:
         if not self._services.get("statusreport_v1", {}).get("active", False):
             _LOGGER.info("Data refresh is not supported.")
             raise Exception("Data refresh is not supported.")
-        if self._requests["refresh"].get("id", False):
-            timestamp = self._requests.get("refresh", {}).get("timestamp", datetime.now() - timedelta(minutes=5))
-            expired = datetime.now() - timedelta(minutes=3)
-            if expired > timestamp:
-                self._requests.get("refresh", {}).pop("id")
-            else:
-                _LOGGER.debug("A data refresh request is already in progress")
-                return False
+        if self._in_progress("refresh", unknown_offset=-5):
+            return False
         try:
             self._requests["latest"] = "Refresh"
             response = await self._connection.setRefresh(self.vin)
-            if not response:
-                _LOGGER.error("Failed to request vehicle update")
-                self._requests["refresh"] = {"status": "Failed"}
-                raise Exception("Failed to execute data refresh")
-            else:
-                self._requests["remaining"] = response.get("rate_limit_remaining", -1)
-                self._requests["refresh"] = {
-                    "timestamp": datetime.now(),
-                    "status": response.get("status", "Unknown"),
-                    "id": response.get("id", 0),
-                }
-                if response.get("state", None) == "Throttled":
-                    status = "Throttled"
-                else:
-                    status = await self.wait_for_request("vsr", response.get("id", 0))
-                self._requests["refresh"] = {"status": status}
-                return True
+            return await self._handle_response(
+                response=response, topic="refresh", error_msg="Failed to request vehicle update"
+            )
         except Exception as error:
             _LOGGER.warning(f"Failed to execute data refresh - {error}")
             self._requests["refresh"] = {"status": "Exception"}
         raise Exception("Data refresh failed")
+
+    async def set_schedule(self, data: TimerData) -> bool:
+        """Store schedule."""
+        if not self._services.get("timerprogramming_v1", False):
+            _LOGGER.info("Remote control of timer functions is not supported.")
+            raise Exception("Remote control of timer functions is not supported.")
+        if self._in_progress("departuretimer"):
+            return False
+        try:
+            self._requests["latest"] = "Departuretimer"
+            response = await self._connection.setTimersAndProfiles(self.vin, data.timersAndProfiles)
+            return await self._handle_response(
+                response=response, topic="departuretimer", error_msg="Failed to execute timer request"
+            )
+        except Exception as error:
+            _LOGGER.warning(f"Failed to execute timer request - {error}")
+            self._requests["timer"] = {"status": "Exception"}
+        raise Exception("Timer action failed")
 
     # Vehicle class helpers #
     # Vehicle info
@@ -606,7 +588,7 @@ class Vehicle:
 
     def dashboard(self, **config):
         """
-        Return dashboard with specified configuraion.
+        Return dashboard with specified configuration.
 
         :param config:
         :return:
@@ -1335,7 +1317,7 @@ class Vehicle:
 
     @property
     def is_window_heater_supported(self) -> bool:
-        """Return true if vehichle has heater."""
+        """Return true if vehicle has heater."""
         if self.is_electric_climatisation_supported:
             if self.attrs.get("climater", {}).get("status", {}).get("windowHeatingStatusData", {}).get(
                 "windowHeatingStateFront", {}
@@ -1383,7 +1365,7 @@ class Vehicle:
 
     @property
     def is_pheater_ventilation_supported(self) -> bool:
-        """Return true if vehichle has combustion climatisation."""
+        """Return true if vehicle has combustion climatisation."""
         return self.is_pheater_heating_supported
 
     @property
@@ -1396,7 +1378,7 @@ class Vehicle:
 
     @property
     def is_pheater_heating_supported(self) -> bool:
-        """Return true if vehichle has combustion engine heating."""
+        """Return true if vehicle has combustion engine heating."""
         return self.attrs.get("heating", {}).get("climatisationStateReport", {}).get("climatisationState", False)
 
     @property
@@ -1406,7 +1388,7 @@ class Vehicle:
 
     @property
     def is_pheater_status_supported(self) -> bool:
-        """Return true if vehichle has combustion engine heating/ventilation."""
+        """Return true if vehicle has combustion engine heating/ventilation."""
         return self.attrs.get("heating", {}).get("climatisationStateReport", {}).get("climatisationState", False)
 
     # Windows
@@ -1691,60 +1673,89 @@ class Vehicle:
         return False
 
     # Departure timers
-    # Not yet implemented
     @property
-    def schedule1(self):
+    def departure_timer1(self):
         """
         Return schedule #1.
 
         :return:
         """
-        return False
+        return self.schedule(1)
 
     @property
-    def is_schedule1_supported(self) -> bool:
-        """
-        Return true if supported.
-
-        :return:
-        """
-        return self.attrs.get("timers", {}).get("timersAndProfiles", {}).get("timerList", {}).get("timer", False)
-
-    @property
-    def schedule2(self):
+    def departure_timer2(self):
         """
         Return schedule #2.
 
         :return:
         """
-        return False
+        return self.schedule(2)
 
     @property
-    def is_schedule2_supported(self) -> bool:
-        """
-        Return true if supported.
-
-        :return:
-        """
-        return self.attrs.get("timers", {}).get("timersAndProfiles", {}).get("timerList", {}).get("timer", False)
-
-    @property
-    def schedule3(self):
+    def departure_timer3(self):
         """
         Return schedule #3.
 
         :return:
         """
-        return False
+        return self.schedule(3)
 
-    @property
-    def is_schedule3_supported(self) -> bool:
+    def schedule(self, schedule_id: Union[str, int]) -> Optional[Timer]:
         """
-        Return true if supported.
+        Return schedule #1.
 
         :return:
         """
-        return self.attrs.get("timers", {}).get("timersAndProfiles", {}).get("timerList", {}).get("timer", False)
+        timer: TimerData = self.attrs.get("timer", None)
+        return timer.get_schedule(schedule_id)
+
+    @property
+    def schedule_min_charge_level(self) -> int:
+        """Get charge minimum level."""
+        timer: TimerData = self.attrs.get("timer")
+        return timer.timersAndProfiles.timerBasicSetting.chargeMinLimit
+
+    @property
+    def is_schedule_min_charge_level_supported(self) -> bool:
+        """Check if charge minimum level is supported."""
+        timer: TimerData = self.attrs.get("timer", None)
+        return timer.timersAndProfiles.timerBasicSetting.chargeMinLimit is not None
+
+    @property
+    def timer_basic_settings(self) -> BasicSettings:
+        """Check if timer basic settings are supported."""
+        timer: TimerData = self.attrs.get("timer")
+        return timer.timersAndProfiles.timerBasicSetting
+
+    @property
+    def is_timer_basic_settings_supported(self) -> bool:
+        """Check if timer basic settings are supported."""
+        timer: TimerData = self.attrs.get("timer", None)
+        return timer.timersAndProfiles.timerBasicSetting is not None
+
+    @property
+    def is_departure_timer1_supported(self) -> bool:
+        """Check if timer 1 is supported."""
+        return self.is_schedule_supported(1)
+
+    @property
+    def is_departure_timer2_supported(self) -> bool:
+        """Check if timer 2is supported."""
+        return self.is_schedule_supported(2)
+
+    @property
+    def is_departure_timer3_supported(self) -> bool:
+        """Check if timer 3 is supported."""
+        return self.is_schedule_supported(3)
+
+    def is_schedule_supported(self, id: Union[str, int]) -> bool:
+        """
+        Return true if schedule is supported.
+
+        :return:
+        """
+        timer: TimerData = self.attrs.get("timer", None)
+        return timer.has_schedule(id)
 
     # Trip data
     @property
@@ -2034,7 +2045,7 @@ class Vehicle:
     @property
     def is_requests_remaining_supported(self):
         """
-        Return true if requests remaining is supperted.
+        Return true if requests remaining is supported.
 
         :return:
         """

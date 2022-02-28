@@ -1,30 +1,27 @@
 #!/usr/bin/env python3
 """Communicate with We Connect services."""
+import asyncio
+import hashlib
+import logging
 import re
 import secrets
 import sys
 import time
-import logging
-import asyncio
-import hashlib
+from base64 import b64encode, urlsafe_b64encode
+from datetime import timedelta, datetime
+from json import dumps as to_json
 from random import random
+from sys import version_info
+from typing import Optional
+from urllib.parse import urljoin, parse_qs, urlparse
 
 import jwt
-
-from sys import version_info
-from datetime import timedelta, datetime
-from urllib.parse import urljoin, parse_qs, urlparse
-from json import dumps as to_json
-from bs4 import BeautifulSoup
-from base64 import b64encode, urlsafe_b64encode
-
 from aiohttp import ClientSession, ClientTimeout, client_exceptions
 from aiohttp.hdrs import METH_GET, METH_POST
+from bs4 import BeautifulSoup
 
 from volkswagencarnet.vw_exceptions import AuthenticationException
-from .vw_utilities import json_loads, read_config
-from .vw_vehicle import Vehicle
-
+from volkswagencarnet.vw_timer import TimerData, TimersAndProfiles
 from .vw_const import (
     BRAND,
     COUNTRY,
@@ -39,6 +36,8 @@ from .vw_const import (
     USER_AGENT,
     APP_URI,
 )
+from .vw_utilities import json_loads, read_config
+from .vw_vehicle import Vehicle
 
 version_info >= (3, 0) or exit("Python 3 required")
 
@@ -48,6 +47,7 @@ TIMEOUT = timedelta(seconds=30)
 JWT_ALGORITHMS = ["RS256"]
 
 
+# noinspection PyPep8Naming
 class Connection:
     """Connection to VW-Group Connect services."""
 
@@ -736,25 +736,25 @@ class Connection:
             _LOGGER.warning(f"Could not fetch position, error: {error}")
         return False
 
-    async def getTimers(self, vin):
+    async def getTimers(self, vin) -> Optional[TimerData]:
         """Get departure timers."""
         if not await self.validate_tokens:
-            return False
+            return None
         try:
             await self.set_token("vwg")
             response = await self.get(
                 f"fs-car/bs/departuretimer/v1/{BRAND}/{self._session_country}/vehicles/$vin/timer", vin=vin
             )
-            if response.get("timer", {}):
-                data = {"timers": response.get("timer", {})}
-                return data
+            timer = TimerData(**(response.get("timer", {})))
+            if timer.valid:
+                return timer
             elif response.get("status_code", {}):
                 _LOGGER.warning(f'Could not fetch timers, HTTP status code: {response.get("status_code")}')
             else:
                 _LOGGER.info("Unknown error while trying to fetch data for departure timers")
         except Exception as error:
             _LOGGER.warning(f"Could not fetch timers, error: {error}")
-        return False
+        return None
 
     async def getClimater(self, vin):
         """Get climatisation data."""
@@ -1064,6 +1064,51 @@ class Connection:
             self._session_headers.pop("Content-Type", None)
             if content_type:
                 self._session_headers["Content-Type"] = content_type
+            raise
+
+    async def setTimersAndProfiles(self, vin, data: TimersAndProfiles):
+        """Set schedules."""
+        return await self._setDepartureTimer(vin, data, "setTimersAndProfiles")
+
+    async def setChargeMinLevel(self, vin, limit: int):
+        """Set schedules."""
+        data: Optional[TimerData] = await self.getTimers(vin)
+        if data is None:
+            raise Exception("No existing timer data?")
+        data.timersAndProfiles.timerBasicSetting.set_charge_min_limit(limit)
+        return await self._setDepartureTimer(vin, data.timersAndProfiles, "setChargeMinLimit")
+
+    async def _setDepartureTimer(self, vin, data: TimersAndProfiles, action: str):
+        """Set schedules."""
+        try:
+            await self.set_token("vwg")
+            response = await self.dataCall(
+                f"fs-car/bs/departuretimer/v1/{BRAND}/{self._session_country}/vehicles/$vin/timer/actions",
+                vin=vin,
+                json={
+                    "action": {
+                        "timersAndProfiles": data.json_updated["timer"],
+                        "type": action,
+                    }
+                },
+            )
+
+            self._session_headers.pop("X-securityToken", None)
+            if not response:
+                raise Exception("Invalid or no response")
+            elif response == 429:
+                return dict({"id": None, "state": "Throttled", "rate_limit_remaining": 0})
+            else:
+                request_id = response.get("action", {}).get("actionId", 0)
+                request_state = response.get("action", {}).get("actionState", "unknown")
+                remaining = response.get("rate_limit_remaining", -1)
+                _LOGGER.debug(
+                    f'Request for timer action returned with state "{request_state}", request id: {request_id},'
+                    f" remaining requests: {remaining}"
+                )
+                return dict({"id": str(request_id), "state": request_state, "rate_limit_remaining": remaining})
+        except:
+            self._session_headers.pop("X-securityToken", None)
             raise
 
     async def setLock(self, vin, data, spin):
