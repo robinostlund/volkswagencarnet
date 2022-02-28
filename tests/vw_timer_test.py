@@ -44,6 +44,7 @@ class TimerTest(TestCase):
                     "timestamp": "2022-02-22T20:00:22Z",
                     "chargeMinLimit": 20,
                     "targetTemperature": 2955,
+                    "heaterSource": None,
                 },
             },
             "status": {"timer": []},

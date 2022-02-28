@@ -41,12 +41,14 @@ class DepartureTimerClass:
             if i[0] != "_"
         }
         if issubclass(type(o), DepartureTimerClass) and hasattr(o, "timestamp"):
-            # if not o._changed:
-            del res["timestamp"]
+            res.pop("timestamp", None)
         # Remove any None valued keys
+        nones = []
         for k in res:
             if res[k] is None:
-                del res[k]
+                nones.append(k)
+        for k in nones:
+            res.pop(k, None)
         return res
 
     def serialize(self, o):
@@ -74,13 +76,13 @@ class BasicSettings(DepartureTimerClass):
     def __init__(
         self,
         timestamp: str,
-        chargeMinLimit: Union[str, int],
-        targetTemperature: Optional[Union[str, int]],
-        heaterSource: Optional[str],
+        chargeMinLimit: Union[str, int] = None,
+        targetTemperature: Optional[Union[str, int]] = None,
+        heaterSource: Optional[str] = None,
     ):
         """Init."""
         self.timestamp = timestamp
-        self.chargeMinLimit: int = int(chargeMinLimit)
+        self.chargeMinLimit: Optional[int] = int(chargeMinLimit) if chargeMinLimit is not None else None
         self.targetTemperature: Optional[int] = int(targetTemperature) if targetTemperature is not None else None
         self.heaterSource: Optional[str] = heaterSource
 
