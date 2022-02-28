@@ -230,15 +230,15 @@ class Vehicle:
                 data = await self._connection.getPosition(self.vin)
                 if data:
                     # Reset requests remaining to 15 if parking time has been updated
-                    if data.get("findCarResponse", {}).get("parkingTimeUTC", False):
+                    if data.get("findCarResponse", {}).get("parkingTimeUTC", None) is not None:
                         try:
                             new_time = data.get("findCarResponse").get("parkingTimeUTC")
-                            old_time = self.attrs.get("findCarResponse").get("parkingTimeUTC")
-                            if new_time > old_time:
+                            old_time = self.attrs.get("findCarResponse", {}).get("parkingTimeUTC", None)
+                            if old_time is None or new_time > old_time:
                                 _LOGGER.debug(f"Detected new parking time: {new_time}")
                                 self.requests_remaining = 15
                         except Exception as e:
-                            _LOGGER.warning(e)
+                            _LOGGER.warning(f"Failed to parse parking time: {e}")
                     self._states.update(data)
                 else:
                     _LOGGER.debug("Could not fetch any positional data")
@@ -1710,7 +1710,7 @@ class Vehicle:
         return timer.get_schedule(schedule_id)
 
     @property
-    def schedule_min_charge_level(self) -> int:
+    def schedule_min_charge_level(self) -> Optional[int]:
         """Get charge minimum level."""
         timer: TimerData = self.attrs.get("timer")
         return timer.timersAndProfiles.timerBasicSetting.chargeMinLimit

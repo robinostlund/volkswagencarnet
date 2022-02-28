@@ -23,6 +23,7 @@ class TimerTest(TestCase):
                             "nightRateTimeStart": "21:00",
                             "nightRateTimeEnd": "05:00",
                             "chargeMaxCurrent": "10",
+                            "heaterSource": None,
                         }
                     ]
                 },

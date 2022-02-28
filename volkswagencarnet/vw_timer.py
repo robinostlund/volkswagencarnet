@@ -221,7 +221,7 @@ class TimerProfile(DepartureTimerClass):
 
 # noinspection PyPep8Naming
 class TimerProfileList(DepartureTimerClass):
-    """FIXME."""
+    """Holder for timers and profiles array."""
 
     def __init__(self, timerProfile: List[Union[dict, TimerProfile]]):
         """Init."""
@@ -254,7 +254,7 @@ class TimersAndProfiles(DepartureTimerClass):
 class TimerData(DepartureTimerClass):
     """Top level timer object."""
 
-    def __init__(self, timersAndProfiles: Union[Dict, TimersAndProfiles], status: Optional[dict]):
+    def __init__(self, timersAndProfiles: Union[Dict, TimersAndProfiles], status: Optional[dict] = None):
         """Init."""
         try:
             self.timersAndProfiles = (
