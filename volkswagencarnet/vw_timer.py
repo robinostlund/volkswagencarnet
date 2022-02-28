@@ -203,6 +203,7 @@ class TimerProfile(DepartureTimerClass):
         nightRateTimeEnd: str,
         chargeMaxCurrent: str,
         profileName: str = "",
+        heaterSource: Optional[str] = None,
     ):
         """Init."""
         self.timestamp = timestamp
@@ -215,6 +216,7 @@ class TimerProfile(DepartureTimerClass):
         self.nightRateTimeStart = nightRateTimeStart
         self.nightRateTimeEnd = nightRateTimeEnd
         self.chargeMaxCurrent = chargeMaxCurrent
+        self.heaterSource: Optional[str] = heaterSource
 
 
 # noinspection PyPep8Naming
