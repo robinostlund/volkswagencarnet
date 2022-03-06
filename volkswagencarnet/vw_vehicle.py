@@ -1722,6 +1722,18 @@ class Vehicle:
         return timer.timersAndProfiles.timerBasicSetting.chargeMinLimit is not None
 
     @property
+    def schedule_heater_source(self) -> Optional[str]:
+        """Get departure schedule heater source."""
+        timer: TimerData = self.attrs.get("timer")
+        return timer.timersAndProfiles.timerBasicSetting.heaterSource
+
+    @property
+    def is_schedule_heater_source_supported(self) -> bool:
+        """Check if departure timers heater source is supported."""
+        timer: TimerData = self.attrs.get("timer", None)
+        return timer.timersAndProfiles.timerBasicSetting.heaterSource is not None
+
+    @property
     def timer_basic_settings(self) -> BasicSettings:
         """Check if timer basic settings are supported."""
         timer: TimerData = self.attrs.get("timer")

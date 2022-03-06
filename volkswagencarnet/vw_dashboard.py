@@ -714,6 +714,12 @@ def create_instruments():
             unit="%",
         ),
         Sensor(
+            attr="schedule_heater_source",
+            name="Heater source for departure timers",
+            icon="mdi:radiator",
+            unit="",
+        ),
+        Sensor(
             attr="distance",
             name="Odometer",
             icon="mdi:speedometer",
