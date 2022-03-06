@@ -688,31 +688,6 @@ class RequestResults(Sensor):
         return dict(self.vehicle.request_results)
 
 
-class ChargeMinLevel(Sensor):
-    """Get minimum charge level."""
-
-    def __init__(self):
-        """Init."""
-        super().__init__(
-            attr="schedule_min_charge_level",
-            name="Minimum charge level for departure timers",
-            icon="mdi:battery-arrow-down",
-            unit="%",
-        )
-
-    @property
-    def state(self) -> Union[int, str]:
-        """Return the desired minimum charge level."""
-        if self.vehicle.is_timer_basic_settings_supported:
-            return self.vehicle.timer_basic_settings.chargeMinLimit
-        return "Unknown"
-
-    @property
-    def assumed_state(self):
-        """Don't assume anything about state."""
-        return False
-
-
 def create_instruments():
     return [
         Position(),
@@ -728,11 +703,22 @@ def create_instruments():
         # ElectricClimatisationClimate(),
         # CombustionClimatisationClimate(),
         Charging(),
-        ChargeMinLevel(),
         DepartureTimer(1),
         DepartureTimer(2),
         DepartureTimer(3),
         RequestResults(),
+        Sensor(
+            attr="schedule_min_charge_level",
+            name="Minimum charge level for departure timers",
+            icon="mdi:battery-arrow-down",
+            unit="%",
+        ),
+        Sensor(
+            attr="schedule_heater_source",
+            name="Heater source for departure timers",
+            icon="mdi:radiator",
+            unit="",
+        ),
         Sensor(
             attr="distance",
             name="Odometer",
@@ -949,7 +935,7 @@ def create_instruments():
         BinarySensor(attr="trunk_closed", name="Trunk closed", device_class="door", reverse_state=True),
         BinarySensor(attr="hood_closed", name="Hood closed", device_class="door", reverse_state=True),
         BinarySensor(
-            attr="charging_cable_connected", name="Charging cable connected", device_class="plug", reverse_state=True
+            attr="charging_cable_connected", name="Charging cable connected", device_class="plug", reverse_state=False
         ),
         BinarySensor(
             attr="charging_cable_locked", name="Charging cable locked", device_class="lock", reverse_state=True

@@ -1070,7 +1070,7 @@ class Connection:
         """Set schedules."""
         return await self._setDepartureTimer(vin, data, "setTimersAndProfiles")
 
-    async def setChargeMinLevel(self, vin, limit: int):
+    async def setChargeMinLevel(self, vin: str, limit: int):
         """Set schedules."""
         data: Optional[TimerData] = await self.getTimers(vin)
         if data is None:

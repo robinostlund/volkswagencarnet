@@ -203,6 +203,7 @@ class TimerProfile(DepartureTimerClass):
         nightRateTimeEnd: str,
         chargeMaxCurrent: str,
         profileName: str = "",
+        heaterSource: Optional[str] = None,
     ):
         """Init."""
         self.timestamp = timestamp
@@ -215,11 +216,12 @@ class TimerProfile(DepartureTimerClass):
         self.nightRateTimeStart = nightRateTimeStart
         self.nightRateTimeEnd = nightRateTimeEnd
         self.chargeMaxCurrent = chargeMaxCurrent
+        self.heaterSource: Optional[str] = heaterSource
 
 
 # noinspection PyPep8Naming
 class TimerProfileList(DepartureTimerClass):
-    """FIXME."""
+    """Holder for timers and profiles array."""
 
     def __init__(self, timerProfile: List[Union[dict, TimerProfile]]):
         """Init."""
@@ -252,7 +254,7 @@ class TimersAndProfiles(DepartureTimerClass):
 class TimerData(DepartureTimerClass):
     """Top level timer object."""
 
-    def __init__(self, timersAndProfiles: Union[Dict, TimersAndProfiles], status: Optional[dict]):
+    def __init__(self, timersAndProfiles: Union[Dict, TimersAndProfiles], status: Optional[dict] = None):
         """Init."""
         try:
             self.timersAndProfiles = (

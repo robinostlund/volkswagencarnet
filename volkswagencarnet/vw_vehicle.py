@@ -230,15 +230,15 @@ class Vehicle:
                 data = await self._connection.getPosition(self.vin)
                 if data:
                     # Reset requests remaining to 15 if parking time has been updated
-                    if data.get("findCarResponse", {}).get("parkingTimeUTC", False):
+                    if data.get("findCarResponse", {}).get("parkingTimeUTC", None) is not None:
                         try:
                             new_time = data.get("findCarResponse").get("parkingTimeUTC")
-                            old_time = self.attrs.get("findCarResponse").get("parkingTimeUTC")
-                            if new_time > old_time:
+                            old_time = self.attrs.get("findCarResponse", {}).get("parkingTimeUTC", None)
+                            if old_time is None or new_time > old_time:
                                 _LOGGER.debug(f"Detected new parking time: {new_time}")
                                 self.requests_remaining = 15
                         except Exception as e:
-                            _LOGGER.warning(e)
+                            _LOGGER.warning(f"Failed to parse parking time: {e}")
                     self._states.update(data)
                 else:
                     _LOGGER.debug("Could not fetch any positional data")
@@ -903,7 +903,7 @@ class Vehicle:
 
     @property
     def charging_cable_connected(self) -> bool:
-        """Return plug locked state."""
+        """Return plug connected state."""
         response = self.attrs.get("charger")["status"]["plugStatusData"]["plugState"].get("content", 0)
         return response == "connected"
 
@@ -1213,8 +1213,8 @@ class Vehicle:
     @property
     def outside_temperature(self) -> Union[float, bool]:  # FIXME should probably be Optional[float] instead
         """Return outside temperature."""
-        response = int(self.attrs.get("StoredVehicleDataResponseParsed")["0x0301020001"].get("value", 0))
-        if response:
+        response = int(self.attrs.get("StoredVehicleDataResponseParsed")["0x0301020001"].get("value", None))
+        if response is not None:
             return round(float((response / 10) - 273.15), 1)
         else:
             return False
@@ -1710,7 +1710,7 @@ class Vehicle:
         return timer.get_schedule(schedule_id)
 
     @property
-    def schedule_min_charge_level(self) -> int:
+    def schedule_min_charge_level(self) -> Optional[int]:
         """Get charge minimum level."""
         timer: TimerData = self.attrs.get("timer")
         return timer.timersAndProfiles.timerBasicSetting.chargeMinLimit
@@ -1720,6 +1720,18 @@ class Vehicle:
         """Check if charge minimum level is supported."""
         timer: TimerData = self.attrs.get("timer", None)
         return timer.timersAndProfiles.timerBasicSetting.chargeMinLimit is not None
+
+    @property
+    def schedule_heater_source(self) -> Optional[str]:
+        """Get departure schedule heater source."""
+        timer: TimerData = self.attrs.get("timer")
+        return timer.timersAndProfiles.timerBasicSetting.heaterSource
+
+    @property
+    def is_schedule_heater_source_supported(self) -> bool:
+        """Check if departure timers heater source is supported."""
+        timer: TimerData = self.attrs.get("timer", None)
+        return timer.timersAndProfiles.timerBasicSetting.heaterSource is not None
 
     @property
     def timer_basic_settings(self) -> BasicSettings:
