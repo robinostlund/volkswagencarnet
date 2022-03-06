@@ -334,6 +334,23 @@ class Vehicle:
             _LOGGER.error("Cannot set minimum level")
             raise Exception("Cannot set minimum level")
 
+    # Need to figure out a way to implement this...
+    # async def set_departure_timer_heater_source(self, source: str):
+    #     """Set the heater source to use."""
+    #     if self.is_timer_basic_settings_supported:
+    #         if source not in ["auxiliary", "electric"]:
+    #             raise ValueError(f"Source '{source}' not supported.")
+    #         try:
+    #             self._requests["latest"] = "Departuretimer"
+    #             response = await self._connection.setHeaterSource(self.vin, source)
+    #             return await self._handle_response(
+    #                 response=response, topic="departuretimer", error_msg="Failed to set heater source"
+    #             )
+    #         except Exception as error:
+    #             _LOGGER.warning(f"Failed to set heater source - {error}")
+    #             self._requests["departuretimer"] = {"status": "Exception"}
+    #             raise Exception(f"Failed to set heater source - {error}")
+
     async def set_charger(self, action):
         """Charging actions."""
         if not self._services.get("rbatterycharge_v1", False):

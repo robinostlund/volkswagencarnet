@@ -1078,6 +1078,15 @@ class Connection:
         data.timersAndProfiles.timerBasicSetting.set_charge_min_limit(limit)
         return await self._setDepartureTimer(vin, data.timersAndProfiles, "setChargeMinLimit")
 
+    # Not working :/
+    # async def setHeaterSource(self, vin: str, source: str):
+    #     """Set heater source for departure timers."""
+    #     data: Optional[TimerData] = await self.getTimers(vin)
+    #     if data is None:
+    #         raise Exception("No existing timer data?")
+    #     data.timersAndProfiles.timerBasicSetting.set_heater_source(source)
+    #     return await self._setDepartureTimer(vin, data.timersAndProfiles, "setHeaterSource")
+
     async def _setDepartureTimer(self, vin, data: TimersAndProfiles, action: str):
         """Set schedules."""
         try:
