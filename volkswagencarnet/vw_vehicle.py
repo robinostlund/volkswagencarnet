@@ -903,7 +903,7 @@ class Vehicle:
 
     @property
     def charging_cable_connected(self) -> bool:
-        """Return plug locked state."""
+        """Return plug connected state."""
         response = self.attrs.get("charger")["status"]["plugStatusData"]["plugState"].get("content", 0)
         return response == "connected"
 
@@ -1213,8 +1213,8 @@ class Vehicle:
     @property
     def outside_temperature(self) -> Union[float, bool]:  # FIXME should probably be Optional[float] instead
         """Return outside temperature."""
-        response = int(self.attrs.get("StoredVehicleDataResponseParsed")["0x0301020001"].get("value", 0))
-        if response:
+        response = int(self.attrs.get("StoredVehicleDataResponseParsed")["0x0301020001"].get("value", None))
+        if response is not None:
             return round(float((response / 10) - 273.15), 1)
         else:
             return False
