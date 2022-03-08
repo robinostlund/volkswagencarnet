@@ -2,9 +2,10 @@
 # Thanks to molobrakos
 
 import logging
-from typing import Union
+from typing import Union, Optional
 
 from volkswagencarnet.vw_timer import Timer, TimerData
+from .vw_const import TEMP_CELSIUS, VWDeviceClass, VWStateClass
 from .vw_utilities import camel2slug
 
 CLIMA_DEFAULT_DURATION = 30
@@ -15,12 +16,22 @@ _LOGGER = logging.getLogger(__name__)
 class Instrument:
     """Base class for all components."""
 
-    def __init__(self, component, attr, name, icon=None):
+    def __init__(
+        self,
+        component,
+        attr: str,
+        name: str,
+        icon: Optional[str] = None,
+        device_class: Optional[str] = None,
+        state_class: Optional[str] = None,
+    ):
         self.attr = attr
         self.component = component
         self.name = name
         self.vehicle = None
         self.icon = icon
+        self.device_class = device_class
+        self.state_class = state_class
         self.callback = None
 
     def __repr__(self):
@@ -81,8 +92,18 @@ class Instrument:
 
 
 class Sensor(Instrument):
-    def __init__(self, attr, name, icon, unit):
-        super().__init__(component="sensor", attr=attr, name=name, icon=icon)
+    def __init__(
+        self,
+        attr: str,
+        name: str,
+        icon: Optional[str],
+        unit: Optional[str],
+        device_class: Optional[str] = None,
+        state_class: Optional[str] = None,
+    ):
+        super().__init__(
+            component="sensor", attr=attr, name=name, icon=icon, device_class=device_class, state_class=state_class
+        )
         self.unit = unit
         self.convert = False
 
@@ -159,13 +180,13 @@ class BinarySensor(Instrument):
 
     @property
     def str_state(self):
-        if self.device_class in ["door", "window"]:
+        if self.device_class in [VWDeviceClass.DOOR, VWDeviceClass.WINDOW]:
             return "Open" if self.state else "Closed"
-        if self.device_class == "lock":
+        if self.device_class == VWDeviceClass.LOCK:
             return "Unlocked" if self.state else "Locked"
         if self.device_class == "safety":
             return "Warning!" if self.state else "OK"
-        if self.device_class == "plug":
+        if self.device_class == VWDeviceClass.PLUG:
             return "Charging" if self.state else "Plug removed"
         if self.state is None:
             _LOGGER.error("Can not encode state %s:%s", self.attr, self.state)
@@ -326,7 +347,7 @@ class Position(Instrument):
 
 class DoorLock(Instrument):
     def __init__(self):
-        super().__init__(component="lock", attr="door_locked", name="Door locked")
+        super().__init__(component=VWDeviceClass.LOCK, attr="door_locked", name="Door locked")
         self.spin = ""
 
     def configurate(self, **config):
@@ -350,7 +371,7 @@ class DoorLock(Instrument):
 
     async def lock(self):
         try:
-            response = await self.vehicle.set_lock("lock", self.spin)
+            response = await self.vehicle.set_lock(VWDeviceClass.LOCK, self.spin)
             await self.vehicle.update()
             if self.callback is not None:
                 self.callback()
@@ -377,7 +398,7 @@ class DoorLock(Instrument):
 
 class TrunkLock(Instrument):
     def __init__(self):
-        super().__init__(component="lock", attr="trunk_locked", name="Trunk locked")
+        super().__init__(component=VWDeviceClass.LOCK, attr="trunk_locked", name="Trunk locked")
 
     @property
     def is_mutable(self):
@@ -724,12 +745,15 @@ def create_instruments():
             name="Odometer",
             icon="mdi:speedometer",
             unit="km",
+            state_class=VWStateClass.TOTAL_INCREASING,
         ),
         Sensor(
             attr="battery_level",
             name="Battery level",
             icon="mdi:battery",
             unit="%",
+            device_class=VWDeviceClass.BATTERY,
+            state_class=VWStateClass.MEASUREMENT,
         ),
         Sensor(
             attr="adblue_level",
@@ -813,7 +837,9 @@ def create_instruments():
             attr="climatisation_target_temperature",
             name="Climatisation target temperature",
             icon="mdi:thermometer",
-            unit="°C",
+            unit=TEMP_CELSIUS,
+            device_class=VWDeviceClass.TEMPERATURE,
+            state_class=VWStateClass.MEASUREMENT,
         ),
         Sensor(
             attr="trip_last_average_speed",
@@ -826,12 +852,14 @@ def create_instruments():
             name="Last trip average electric engine consumption",
             icon="mdi:car-battery",
             unit="kWh/100 km",
+            state_class=VWStateClass.MEASUREMENT,
         ),
         Sensor(
             attr="trip_last_average_fuel_consumption",
             name="Last trip average fuel consumption",
             icon="mdi:fuel",
             unit="l/100 km",
+            state_class=VWStateClass.MEASUREMENT,
         ),
         Sensor(
             attr="trip_last_duration",
@@ -891,7 +919,9 @@ def create_instruments():
             attr="outside_temperature",
             name="Outside temperature",
             icon="mdi:thermometer",
-            unit="°C",
+            unit=TEMP_CELSIUS,
+            state_class=VWStateClass.MEASUREMENT,
+            device_class=VWDeviceClass.TEMPERATURE,
         ),
         Sensor(
             attr="requests_remaining",
@@ -899,66 +929,87 @@ def create_instruments():
             icon="mdi:chat-alert",
             unit="",
         ),
-        BinarySensor(attr="external_power", name="External power", device_class="power"),
-        BinarySensor(attr="energy_flow", name="Energy flow", device_class="power"),
-        BinarySensor(attr="parking_light", name="Parking light", device_class="light", icon="mdi:car-parking-lights"),
-        BinarySensor(attr="door_locked", name="Doors locked", device_class="lock", reverse_state=True),
+        BinarySensor(attr="external_power", name="External power", device_class=VWDeviceClass.POWER),
+        BinarySensor(attr="energy_flow", name="Energy flow", device_class=VWDeviceClass.POWER),
+        BinarySensor(
+            attr="parking_light", name="Parking light", device_class=VWDeviceClass.LIGHT, icon="mdi:car-parking-lights"
+        ),
+        BinarySensor(attr="door_locked", name="Doors locked", device_class=VWDeviceClass.LOCK, reverse_state=True),
         BinarySensor(
             attr="door_closed_left_front",
             name="Door closed left front",
-            device_class="door",
+            device_class=VWDeviceClass.DOOR,
             reverse_state=True,
             icon="mdi:car-door",
         ),
         BinarySensor(
             attr="door_closed_right_front",
             name="Door closed right front",
-            device_class="door",
+            device_class=VWDeviceClass.DOOR,
             reverse_state=True,
             icon="mdi:car-door",
         ),
         BinarySensor(
             attr="door_closed_left_back",
             name="Door closed left back",
-            device_class="door",
+            device_class=VWDeviceClass.DOOR,
             reverse_state=True,
             icon="mdi:car-door",
         ),
         BinarySensor(
             attr="door_closed_right_back",
             name="Door closed right back",
-            device_class="door",
+            device_class=VWDeviceClass.DOOR,
             reverse_state=True,
             icon="mdi:car-door",
         ),
-        BinarySensor(attr="trunk_locked", name="Trunk locked", device_class="lock", reverse_state=True),
-        BinarySensor(attr="trunk_closed", name="Trunk closed", device_class="door", reverse_state=True),
-        BinarySensor(attr="hood_closed", name="Hood closed", device_class="door", reverse_state=True),
+        BinarySensor(attr="trunk_locked", name="Trunk locked", device_class=VWDeviceClass.LOCK, reverse_state=True),
+        BinarySensor(attr="trunk_closed", name="Trunk closed", device_class=VWDeviceClass.DOOR, reverse_state=True),
+        BinarySensor(attr="hood_closed", name="Hood closed", device_class=VWDeviceClass.DOOR, reverse_state=True),
         BinarySensor(
-            attr="charging_cable_connected", name="Charging cable connected", device_class="plug", reverse_state=False
+            attr="charging_cable_connected",
+            name="Charging cable connected",
+            device_class=VWDeviceClass.PLUG,
+            reverse_state=False,
         ),
         BinarySensor(
-            attr="charging_cable_locked", name="Charging cable locked", device_class="lock", reverse_state=True
-        ),
-        BinarySensor(attr="sunroof_closed", name="Sunroof closed", device_class="window", reverse_state=True),
-        BinarySensor(attr="windows_closed", name="Windows closed", device_class="window", reverse_state=True),
-        BinarySensor(
-            attr="window_closed_left_front", name="Window closed left front", device_class="window", reverse_state=True
+            attr="charging_cable_locked",
+            name="Charging cable locked",
+            device_class=VWDeviceClass.LOCK,
+            reverse_state=True,
         ),
         BinarySensor(
-            attr="window_closed_left_back", name="Window closed left back", device_class="window", reverse_state=True
+            attr="sunroof_closed", name="Sunroof closed", device_class=VWDeviceClass.WINDOW, reverse_state=True
+        ),
+        BinarySensor(
+            attr="windows_closed", name="Windows closed", device_class=VWDeviceClass.WINDOW, reverse_state=True
+        ),
+        BinarySensor(
+            attr="window_closed_left_front",
+            name="Window closed left front",
+            device_class=VWDeviceClass.WINDOW,
+            reverse_state=True,
+        ),
+        BinarySensor(
+            attr="window_closed_left_back",
+            name="Window closed left back",
+            device_class=VWDeviceClass.WINDOW,
+            reverse_state=True,
         ),
         BinarySensor(
             attr="window_closed_right_front",
             name="Window closed right front",
-            device_class="window",
+            device_class=VWDeviceClass.WINDOW,
             reverse_state=True,
         ),
         BinarySensor(
-            attr="window_closed_right_back", name="Window closed right back", device_class="window", reverse_state=True
+            attr="window_closed_right_back",
+            name="Window closed right back",
+            device_class=VWDeviceClass.WINDOW,
+            reverse_state=True,
         ),
-        BinarySensor(attr="vehicle_moving", name="Vehicle Moving", device_class="moving"),
-        BinarySensor(attr="request_in_progress", name="Request in progress", device_class="connectivity"),
+        BinarySensor(attr="vehicle_moving", name="Vehicle Moving", device_class=VWDeviceClass.MOVING),
+        BinarySensor(attr="request_in_progress", name="Request in progress", device_class=VWDeviceClass.CONNECTIVITY),
     ]
 
 

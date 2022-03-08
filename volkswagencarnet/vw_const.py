@@ -57,3 +57,25 @@ HEADERS_AUTH = {
     "User-Agent": USER_AGENT,
     "X-App-Name": XAPPNAME,
 }
+
+TEMP_CELSIUS: str = "°C"
+TEMP_FAHRENHEIT: str = "°F"
+
+
+class VWStateClass:
+    MEASUREMENT = "measurement"
+    TOTAL = "total"
+    TOTAL_INCREASING = "total_increasing"
+
+
+class VWDeviceClass:
+    BATTERY = "battery"
+    CONNECTIVITY = "connectivity"
+    DOOR = "door"
+    LIGHT = "light"
+    LOCK = "lock"
+    MOVING = "moving"
+    PLUG = "plug"
+    POWER = "power"
+    TEMPERATURE = "temperature"
+    WINDOW = "window"
