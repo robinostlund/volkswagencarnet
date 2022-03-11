@@ -8,7 +8,6 @@ from json import dumps as to_json
 from typing import Optional, Union, Any, Dict
 
 from volkswagencarnet.vw_timer import TimerData, Timer, BasicSettings
-
 from .vw_utilities import find_path, is_valid_path
 
 LOCKED_STATE = 2
@@ -1881,6 +1880,8 @@ class Vehicle:
         :return:
         """
         value = self.trip_last_entry.get("averageAuxConsumerConsumption")
+        if value == 65535:
+            return None
         return float(value / 10)
 
     @property
