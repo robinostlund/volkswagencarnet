@@ -846,6 +846,7 @@ def create_instruments():
             name="Last trip average speed",
             icon="mdi:speedometer",
             unit="km/h",
+            state_class=VWStateClass.MEASUREMENT,
         ),
         Sensor(
             attr="trip_last_average_electric_engine_consumption",
