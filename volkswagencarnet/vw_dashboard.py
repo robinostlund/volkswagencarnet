@@ -4,9 +4,10 @@
 import logging
 from typing import Union, Optional, Any
 
-from volkswagencarnet.vw_timer import Timer, TimerData
 from .vw_const import TEMP_CELSIUS, VWDeviceClass, VWStateClass
+from .vw_timer import Timer, TimerData
 from .vw_utilities import camel2slug
+from .vw_vehicle import Vehicle
 
 CLIMA_DEFAULT_DURATION = 30
 
@@ -15,6 +16,8 @@ _LOGGER = logging.getLogger(__name__)
 
 class Instrument:
     """Base class for all components."""
+
+    vehicle: Vehicle
 
     def __init__(
         self,
@@ -29,7 +32,6 @@ class Instrument:
         self.attr = attr
         self.component = component
         self.name = name
-        self.vehicle = None
         self.icon = icon
         self.device_class = device_class
         self.state_class = state_class
@@ -48,7 +50,7 @@ class Instrument:
         """Return slugified attribute name."""
         return camel2slug(self.attr.replace(".", "_"))
 
-    def setup(self, vehicle, **config) -> bool:
+    def setup(self, vehicle: Vehicle, **config) -> bool:
         """Set up entity if supported."""
         self.vehicle = vehicle
         if not self.is_supported:
@@ -230,6 +232,8 @@ class BinarySensor(Instrument):
 
 
 class Switch(Instrument):
+    """Switch instrument."""
+
     def __init__(self, attr, name, icon):
         super().__init__(component="switch", attr=attr, name=name, icon=icon)
 
@@ -257,6 +261,8 @@ class Switch(Instrument):
 
 
 class Climate(Instrument):
+    """Climate instrument."""
+
     def __init__(self, attr, name, icon):
         super().__init__(component="climate", attr=attr, name=name, icon=icon)
         self.spin = ""
