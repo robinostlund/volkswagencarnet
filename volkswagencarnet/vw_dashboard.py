@@ -2,7 +2,7 @@
 # Thanks to molobrakos
 
 import logging
-from typing import Union, Optional
+from typing import Union, Optional, Any
 
 from volkswagencarnet.vw_timer import Timer, TimerData
 from .vw_const import TEMP_CELSIUS, VWDeviceClass, VWStateClass
@@ -25,6 +25,7 @@ class Instrument:
         device_class: Optional[str] = None,
         state_class: Optional[str] = None,
     ):
+        """Init."""
         self.attr = attr
         self.component = component
         self.name = name
@@ -34,17 +35,21 @@ class Instrument:
         self.state_class = state_class
         self.callback = None
 
-    def __repr__(self):
+    def __repr__(self) -> str:
+        """Return string representation of class."""
         return self.full_name
 
     def configurate(self, **args):
+        """Override in subclasses."""
         pass
 
     @property
-    def slug_attr(self):
+    def slug_attr(self) -> str:
+        """Return slugified attribute name."""
         return camel2slug(self.attr.replace(".", "_"))
 
-    def setup(self, vehicle, **config):
+    def setup(self, vehicle, **config) -> bool:
+        """Set up entity if supported."""
         self.vehicle = vehicle
         if not self.is_supported:
             _LOGGER.debug("%s (%s:%s) is not supported", self, type(self).__name__, self.attr)
@@ -55,23 +60,28 @@ class Instrument:
         return True
 
     @property
-    def vehicle_name(self):
+    def vehicle_name(self) -> str:
+        """Return vehicle name."""
         return self.vehicle.vin
 
     @property
-    def full_name(self):
+    def full_name(self) -> str:
+        """Return full device name."""
         return f"{self.vehicle_name} {self.name}"
 
     @property
-    def is_mutable(self):
+    def is_mutable(self) -> bool:
+        """Override in subclasses."""
         raise NotImplementedError("Must be set")
 
     @property
-    def str_state(self):
+    def str_state(self) -> str:
+        """Return current state as string."""
         return self.state
 
     @property
-    def state(self):
+    def state(self) -> Any:
+        """Return current state."""
         if hasattr(self.vehicle, self.attr):
             return getattr(self.vehicle, self.attr)
         else:
@@ -79,11 +89,13 @@ class Instrument:
         return self.vehicle.get_attr(self.attr)
 
     @property
-    def attributes(self):
+    def attributes(self) -> dict:
+        """Override in subclasses."""
         return {}
 
     @property
-    def is_supported(self):
+    def is_supported(self) -> bool:
+        """Check entity support."""
         supported = "is_" + self.attr + "_supported"
         if hasattr(self.vehicle, supported):
             return getattr(self.vehicle, supported)
@@ -92,6 +104,8 @@ class Instrument:
 
 
 class Sensor(Instrument):
+    """Base class for sensor type entities."""
+
     def __init__(
         self,
         attr: str,
@@ -101,6 +115,7 @@ class Sensor(Instrument):
         device_class: Optional[str] = None,
         state_class: Optional[str] = None,
     ):
+        """Init."""
         super().__init__(
             component="sensor", attr=attr, name=name, icon=icon, device_class=device_class, state_class=state_class
         )
@@ -236,7 +251,8 @@ class Switch(Instrument):
         pass
 
     @property
-    def assumed_state(self):
+    def assumed_state(self) -> bool:
+        """Assume state."""
         return True
 
 
@@ -392,7 +408,8 @@ class DoorLock(Instrument):
             return False
 
     @property
-    def attributes(self):
+    def attributes(self) -> dict:
+        """Return attributes."""
         return dict(last_result=self.vehicle.lock_action_status)
 
 
@@ -444,11 +461,13 @@ class RequestUpdate(Switch):
         pass
 
     @property
-    def assumed_state(self):
+    def assumed_state(self) -> bool:
+        """Don't assume state."""
         return False
 
     @property
-    def attributes(self):
+    def attributes(self) -> dict:
+        """Return attributes."""
         return dict(last_result=self.vehicle.refresh_action_status)
 
 
@@ -469,11 +488,13 @@ class ElectricClimatisation(Switch):
         await self.vehicle.update()
 
     @property
-    def assumed_state(self):
+    def assumed_state(self) -> bool:
+        """Don't assume state."""
         return False
 
     @property
-    def attributes(self):
+    def attributes(self) -> dict:
+        """Return attributes."""
         return dict(last_result=self.vehicle.climater_action_status)
 
 
@@ -498,11 +519,13 @@ class AuxiliaryClimatisation(Switch):
         await self.vehicle.update()
 
     @property
-    def assumed_state(self):
+    def assumed_state(self) -> bool:
+        """Don't assume state."""
         return False
 
     @property
-    def attributes(self):
+    def attributes(self) -> dict:
+        """Return attributes."""
         return dict(last_result=self.vehicle.climater_action_status)
 
 
@@ -523,11 +546,13 @@ class Charging(Switch):
         await self.vehicle.update()
 
     @property
-    def assumed_state(self):
+    def assumed_state(self) -> bool:
+        """Don't assume state."""
         return False
 
     @property
-    def attributes(self):
+    def attributes(self) -> dict:
+        """Return attributes."""
         return dict(last_result=self.vehicle.charger_action_status)
 
 
@@ -595,11 +620,13 @@ class WindowHeater(Switch):
         await self.vehicle.update()
 
     @property
-    def assumed_state(self):
+    def assumed_state(self) -> bool:
+        """Don't assume state."""
         return False
 
     @property
-    def attributes(self):
+    def attributes(self) -> dict:
+        """Return attributes."""
         return dict(last_result=self.vehicle.climater_action_status)
 
 
@@ -622,11 +649,13 @@ class BatteryClimatisation(Switch):
         await self.vehicle.update()
 
     @property
-    def assumed_state(self):
+    def assumed_state(self) -> bool:
+        """Don't assume state."""
         return False
 
     @property
-    def attributes(self):
+    def attributes(self) -> dict:
+        """Return attributes."""
         return dict(last_result=self.vehicle.climater_action_status)
 
 
@@ -651,11 +680,13 @@ class PHeaterHeating(Switch):
         await self.vehicle.update()
 
     @property
-    def assumed_state(self):
+    def assumed_state(self) -> bool:
+        """Don't assume state."""
         return False
 
     @property
-    def attributes(self):
+    def attributes(self) -> dict:
+        """Return attributes."""
         return dict(last_result=self.vehicle.pheater_action_status)
 
 
@@ -682,34 +713,43 @@ class PHeaterVentilation(Switch):
         await self.vehicle.update()
 
     @property
-    def assumed_state(self):
+    def assumed_state(self) -> bool:
+        """Don't assume state."""
         return False
 
     @property
-    def attributes(self):
+    def attributes(self) -> dict:
+        """Return attributes."""
         return dict(last_result=self.vehicle.pheater_action_status)
 
 
 class RequestResults(Sensor):
+    """Request results sensor class."""
+
     def __init__(self):
+        """Init."""
         super().__init__(attr="request_results", name="Request results", icon="mdi:chat-alert", unit="")
 
     @property
-    def state(self):
+    def state(self) -> Any:
+        """Return current state."""
         if self.vehicle.request_results.get("state", False):
             return self.vehicle.request_results.get("state")
         return "Unknown"
 
     @property
-    def assumed_state(self):
+    def assumed_state(self) -> bool:
+        """Don't assume state."""
         return False
 
     @property
-    def attributes(self):
+    def attributes(self) -> dict:
+        """Return attributes."""
         return dict(self.vehicle.request_results)
 
 
 def create_instruments():
+    """Return list of all entities."""
     return [
         Position(),
         DoorLock(),
