@@ -761,6 +761,11 @@ class Vehicle:
         return -int(self.attrs.get("StoredVehicleDataResponseParsed")["0x0203010004"].get("value"))
 
     @property
+    def service_inspection_last_updated(self):
+        """Return time left for service inspection last updated."""
+        return self.attrs.get("StoredVehicleDataResponseParsed")["0x0203010004"].get("tsTssReceivedUtc")
+
+    @property
     def is_service_inspection_supported(self) -> bool:
         """
         Return true if days to service inspection is supported.
@@ -775,6 +780,11 @@ class Vehicle:
     def service_inspection_distance(self):
         """Return time left for service inspection."""
         return -int(self.attrs.get("StoredVehicleDataResponseParsed")["0x0203010003"].get("value", 0))
+
+    @property
+    def service_inspection_distance_last_updated(self):
+        """Return time left for service inspection last updated."""
+        return self.attrs.get("StoredVehicleDataResponseParsed")["0x0203010003"].get("tsTssReceivedUtc")
 
     @property
     def is_service_inspection_distance_supported(self):
@@ -792,6 +802,11 @@ class Vehicle:
     def oil_inspection(self):
         """Return time left for service inspection."""
         return -int(self.attrs.get("StoredVehicleDataResponseParsed", {}).get("0x0203010002", {}).get("value", 0))
+
+    @property
+    def oil_inspection_last_updated(self):
+        """Return time left for service inspection last updated."""
+        return self.attrs.get("StoredVehicleDataResponseParsed")["0x0203010002"].get("tsTssReceivedUtc")
 
     @property
     def is_oil_inspection_supported(self):
@@ -812,6 +827,11 @@ class Vehicle:
         return -int(self.attrs.get("StoredVehicleDataResponseParsed", {}).get("0x0203010001", {}).get("value", 0))
 
     @property
+    def oil_inspection_distance_last_updated(self):
+        """Return time left for service inspection last updated."""
+        return self.attrs.get("StoredVehicleDataResponseParsed")["0x0203010001"].get("tsTssReceivedUtc")
+
+    @property
     def is_oil_inspection_distance_supported(self):
         """
         Return true if oil inspection distance is supported.
@@ -828,6 +848,11 @@ class Vehicle:
     def adblue_level(self):
         """Return adblue level."""
         return int(self.attrs.get("StoredVehicleDataResponseParsed", {}).get("0x02040C0001", {}).get("value", 0))
+
+    @property
+    def adblue_level_last_updated(self):
+        """Return time left for service inspection last updated."""
+        return self.attrs.get("StoredVehicleDataResponseParsed")["0x02040C0001"].get("tsTssReceivedUtc")
 
     @property
     def is_adblue_level_supported(self):
@@ -851,6 +876,11 @@ class Vehicle:
             .get("content", "")
         )
         return 1 if cstate == "charging" else 0
+
+    @property
+    def charging_last_updated(self):
+        """Return time left for service inspection last updated."""
+        return self.attrs.get("StoredVehicleDataResponseParsed")["0x02040C0001"].get("tsTssReceivedUtc")
 
     @property
     def is_charging_supported(self):
@@ -2061,6 +2091,11 @@ class Vehicle:
         return self.is_request_in_progress_supported
 
     @property
+    def requests_results_last_updated(self):
+        return None
+
+
+    @property
     def requests_remaining(self):
         """Get remaining requests before throttled."""
         if self.attrs.get("rate_limit_remaining", False):
@@ -2080,6 +2115,10 @@ class Vehicle:
         :return:
         """
         return True if self._requests.get("remaining", False) else False
+
+    @property
+    def requests_remaining_last_updated(self):
+        return None
 
     # Helper functions #
     def __str__(self):

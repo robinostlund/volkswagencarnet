@@ -2,6 +2,7 @@
 # Thanks to molobrakos
 
 import logging
+from datetime import datetime
 from typing import Union, Optional, Any
 
 from .vw_const import TEMP_CELSIUS, VWDeviceClass, VWStateClass
@@ -103,6 +104,12 @@ class Instrument:
             return getattr(self.vehicle, supported)
         else:
             return False
+
+    @property
+    def last_refresh(self) -> Optional[datetime]:
+        if hasattr(self.vehicle, self.attr + "_last_updated"):
+            return getattr(self.vehicle, self.attr + "_last_updated")
+        raise NotImplementedError(f"Implement in subclasses. {self.__class__}:{self.attr}_last_updated")
 
 
 class Sensor(Instrument):
