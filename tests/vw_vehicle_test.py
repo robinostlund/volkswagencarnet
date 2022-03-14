@@ -1,8 +1,9 @@
 """Vehicle class tests."""
-import sys
 from datetime import datetime
 
 import pytest
+import sys
+from dateutil.tz import UTC
 
 from volkswagencarnet.vw_timer import TimerData
 from volkswagencarnet.vw_utilities import json_loads
@@ -216,6 +217,18 @@ class VehiclePropertyTest(IsolatedAsyncioTestCase):
             self.assertFalse(vehicle.is_schedule_supported(42))
             self.assertIsNone(vehicle.schedule(42))
 
+    async def test_get_schedule_last_updated(self):
+        """Test that not found schedule is unsupported."""
+        vehicle = Vehicle(conn=TimersConnection(None), url=MOCK_VIN)
+        vehicle._discovered = True
+
+        with patch.dict(vehicle._services, {"timerprogramming_v1": {"active": True}}):
+            await vehicle.get_timerprogramming()
+            dt = datetime.fromisoformat("2022-02-22T20:00:22+00:00").astimezone(UTC)
+            self.assertEqual(dt, vehicle.schedule_heater_source_last_updated)
+            self.assertEqual(dt, vehicle.schedule_min_charge_level_last_updated)
+            self.assertEqual(dt, vehicle.departure_timer3_last_updated)
+
     async def test_last_connected(self):
         """
         Test that parsing last connected works.
@@ -253,6 +266,13 @@ class VehiclePropertyTest(IsolatedAsyncioTestCase):
                 self.assertEqual(99, vehicle.requests_remaining)
                 # attribute should be removed once read
                 self.assertNotIn("rate_limit_remaining", vehicle.attrs)
+
+    @freeze_time("2022-02-02 02:02:02", tz_offset=0)
+    def test_requests_remaining_last_updated(self):
+        """Test requests remaining logic."""
+        vehicle = Vehicle(conn=None, url="")
+        vehicle.requests_remaining = 4
+        self.assertEqual(datetime.fromisoformat("2022-02-02T02:02:02"), vehicle.requests_remaining_last_updated)
 
     async def test_json(self):
         """Test JSON serialization of dict containing datetime."""

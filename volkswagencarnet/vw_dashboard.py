@@ -109,7 +109,10 @@ class Instrument:
     def last_refresh(self) -> Optional[datetime]:
         if hasattr(self.vehicle, self.attr + "_last_updated"):
             return getattr(self.vehicle, self.attr + "_last_updated")
-        raise NotImplementedError(f"Implement in subclasses. {self.__class__}:{self.attr}_last_updated")
+        _LOGGER.warning(f"Implement in subclasses. {self.__class__}:{self.attr}_last_updated")
+        if self.state_class is not None:
+            raise NotImplementedError(f"Implement in subclasses. {self.__class__}:{self.attr}_last_updated")
+        return None
 
 
 class Sensor(Instrument):

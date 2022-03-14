@@ -10,6 +10,8 @@ from typing import Optional, Union, Any, Dict
 from volkswagencarnet.vw_timer import TimerData, Timer, BasicSettings
 from .vw_utilities import find_path, is_valid_path
 
+BACKEND_RECEIVED_TIMESTAMP = "BACKEND_RECEIVED_TIMESTAMP"
+
 LOCKED_STATE = 2
 
 CLOSED_STATE = 3
@@ -236,6 +238,7 @@ class Vehicle:
                             if old_time is None or new_time > old_time:
                                 _LOGGER.debug(f"Detected new parking time: {new_time}")
                                 self.requests_remaining = 15
+                                self.requests_remaining_last_updated = datetime.utcnow()
                         except Exception as e:
                             _LOGGER.warning(f"Failed to parse parking time: {e}")
                     self._states.update(data)
@@ -714,6 +717,11 @@ class Vehicle:
         return response != 2
 
     @property
+    def parking_light_last_updated(self) -> datetime:
+        """Return attribute last updated timestamp."""
+        return self.attrs.get("StoredVehicleDataResponseParsed")["0x0301010001"].get(BACKEND_RECEIVED_TIMESTAMP)
+
+    @property
     def is_parking_light_supported(self) -> bool:
         """Return true if parking light is supported."""
         return self.attrs.get("StoredVehicleDataResponseParsed", False) and "0x0301010001" in self.attrs.get(
@@ -735,6 +743,17 @@ class Vehicle:
         return last_connected.strftime("%Y-%m-%d %H:%M:%S")
 
     @property
+    def last_connected_last_updated(self) -> datetime:
+        """Return attribute last updated timestamp."""
+        return (
+            self.attrs.get("StoredVehicleDataResponse")
+            .get("vehicleData")
+            .get("data")[0]
+            .get("field")[0]
+            .get("BACKEND_RECEIVED_TIMESTAMP")
+        )
+
+    @property
     def is_last_connected_supported(self) -> bool:
         """Return if when vehicle was last connected to connect servers is supported."""
         return is_valid_path(self.attrs, "StoredVehicleDataResponse.vehicleData.data.0.field.0.tsCarSentUtc")
@@ -749,6 +768,11 @@ class Vehicle:
         return None
 
     @property
+    def distance_last_updated(self) -> datetime:
+        """Return last updated timestamp."""
+        return self.attrs.get("StoredVehicleDataResponseParsed")["0x0101010002"].get("BACKEND_RECEIVED_TIMESTAMP")
+
+    @property
     def is_distance_supported(self) -> bool:
         """Return true if odometer is supported."""
         return self.attrs.get("StoredVehicleDataResponseParsed", False) and "0x0101010002" in self.attrs.get(
@@ -761,9 +785,9 @@ class Vehicle:
         return -int(self.attrs.get("StoredVehicleDataResponseParsed")["0x0203010004"].get("value"))
 
     @property
-    def service_inspection_last_updated(self):
-        """Return time left for service inspection last updated."""
-        return self.attrs.get("StoredVehicleDataResponseParsed")["0x0203010004"].get("tsTssReceivedUtc")
+    def service_inspection_last_updated(self) -> datetime:
+        """Return attribute last updated timestamp."""
+        return self.attrs.get("StoredVehicleDataResponseParsed")["0x0203010004"].get(BACKEND_RECEIVED_TIMESTAMP)
 
     @property
     def is_service_inspection_supported(self) -> bool:
@@ -782,12 +806,12 @@ class Vehicle:
         return -int(self.attrs.get("StoredVehicleDataResponseParsed")["0x0203010003"].get("value", 0))
 
     @property
-    def service_inspection_distance_last_updated(self):
-        """Return time left for service inspection last updated."""
-        return self.attrs.get("StoredVehicleDataResponseParsed")["0x0203010003"].get("tsTssReceivedUtc")
+    def service_inspection_distance_last_updated(self) -> datetime:
+        """Return attribute last updated timestamp."""
+        return self.attrs.get("StoredVehicleDataResponseParsed")["0x0203010003"].get(BACKEND_RECEIVED_TIMESTAMP)
 
     @property
-    def is_service_inspection_distance_supported(self):
+    def is_service_inspection_distance_supported(self) -> bool:
         """
         Return true if distance to oil inspection is supported.
 
@@ -804,12 +828,12 @@ class Vehicle:
         return -int(self.attrs.get("StoredVehicleDataResponseParsed", {}).get("0x0203010002", {}).get("value", 0))
 
     @property
-    def oil_inspection_last_updated(self):
-        """Return time left for service inspection last updated."""
-        return self.attrs.get("StoredVehicleDataResponseParsed")["0x0203010002"].get("tsTssReceivedUtc")
+    def oil_inspection_last_updated(self) -> datetime:
+        """Return attribute last updated timestamp."""
+        return self.attrs.get("StoredVehicleDataResponseParsed")["0x0203010002"].get(BACKEND_RECEIVED_TIMESTAMP)
 
     @property
-    def is_oil_inspection_supported(self):
+    def is_oil_inspection_supported(self) -> bool:
         """
         Return true if days to oil inspection is supported.
 
@@ -827,12 +851,12 @@ class Vehicle:
         return -int(self.attrs.get("StoredVehicleDataResponseParsed", {}).get("0x0203010001", {}).get("value", 0))
 
     @property
-    def oil_inspection_distance_last_updated(self):
-        """Return time left for service inspection last updated."""
-        return self.attrs.get("StoredVehicleDataResponseParsed")["0x0203010001"].get("tsTssReceivedUtc")
+    def oil_inspection_distance_last_updated(self) -> datetime:
+        """Return attribute last updated timestamp."""
+        return self.attrs.get("StoredVehicleDataResponseParsed")["0x0203010001"].get(BACKEND_RECEIVED_TIMESTAMP)
 
     @property
-    def is_oil_inspection_distance_supported(self):
+    def is_oil_inspection_distance_supported(self) -> bool:
         """
         Return true if oil inspection distance is supported.
 
@@ -845,17 +869,17 @@ class Vehicle:
         return False
 
     @property
-    def adblue_level(self):
+    def adblue_level(self) -> int:
         """Return adblue level."""
         return int(self.attrs.get("StoredVehicleDataResponseParsed", {}).get("0x02040C0001", {}).get("value", 0))
 
     @property
-    def adblue_level_last_updated(self):
-        """Return time left for service inspection last updated."""
-        return self.attrs.get("StoredVehicleDataResponseParsed")["0x02040C0001"].get("tsTssReceivedUtc")
+    def adblue_level_last_updated(self) -> datetime:
+        """Return attribute last updated timestamp."""
+        return self.attrs.get("StoredVehicleDataResponseParsed")["0x02040C0001"].get(BACKEND_RECEIVED_TIMESTAMP)
 
     @property
-    def is_adblue_level_supported(self):
+    def is_adblue_level_supported(self) -> bool:
         """Return true if adblue level is supported."""
         if self.attrs.get("StoredVehicleDataResponseParsed", False):
             if "0x02040C0001" in self.attrs.get("StoredVehicleDataResponseParsed"):
@@ -866,7 +890,7 @@ class Vehicle:
 
     # Charger related states for EV and PHEV
     @property
-    def charging(self):
+    def charging(self) -> int:
         """Return charging state."""
         cstate = (
             self.attrs.get("charger", {})
@@ -878,12 +902,18 @@ class Vehicle:
         return 1 if cstate == "charging" else 0
 
     @property
-    def charging_last_updated(self):
-        """Return time left for service inspection last updated."""
-        return self.attrs.get("StoredVehicleDataResponseParsed")["0x02040C0001"].get("tsTssReceivedUtc")
+    def charging_last_updated(self) -> datetime:
+        """Return attribute last updated timestamp."""
+        return (
+            self.attrs.get("charger", {})
+            .get("status", {})
+            .get("chargingStatusData", {})
+            .get("chargingState", {})
+            .get("timstamp")
+        )
 
     @property
-    def is_charging_supported(self):
+    def is_charging_supported(self) -> bool:
         """Return true if charging is supported."""
         if self.attrs.get("charger", False):
             if "status" in self.attrs.get("charger", {}):
@@ -893,14 +923,19 @@ class Vehicle:
         return False
 
     @property
-    def battery_level(self):
+    def battery_level(self) -> int:
         """Return battery level."""
         return int(
             self.attrs.get("charger").get("status").get("batteryStatusData").get("stateOfCharge").get("content", 0)
         )
 
     @property
-    def is_battery_level_supported(self):
+    def battery_level_last_updated(self) -> datetime:
+        """Return attribute last updated timestamp."""
+        return self.attrs.get("charger").get("status").get("batteryStatusData").get("stateOfCharge").get("timestamp")
+
+    @property
+    def is_battery_level_supported(self) -> bool:
         """Return true if battery level is supported."""
         if self.attrs.get("charger", False):
             if "status" in self.attrs.get("charger"):
@@ -910,7 +945,7 @@ class Vehicle:
         return False
 
     @property
-    def charge_max_ampere(self):
+    def charge_max_ampere(self) -> Union[str, int]:
         """Return charger max ampere setting."""
         value = int(self.attrs.get("charger").get("settings").get("maxChargeCurrent").get("content"))
         if value == 254:
@@ -921,6 +956,11 @@ class Vehicle:
             return "Unknown"
         else:
             return value
+
+    @property
+    def charge_max_ampere_last_updated(self) -> datetime:
+        """Return charger max ampere last updated."""
+        return self.attrs.get("charger").get("settings").get("maxChargeCurrent").get("timestamp")
 
     @property
     def is_charge_max_ampere_supported(self) -> bool:
@@ -938,7 +978,12 @@ class Vehicle:
         return response == "locked"
 
     @property
-    def is_charging_cable_locked_supported(self):
+    def charging_cable_locked_last_updated(self) -> datetime:
+        """Return plug locked state."""
+        return self.attrs.get("charger")["status"]["plugStatusData"]["lockState"].get("timestamp")
+
+    @property
+    def is_charging_cable_locked_supported(self) -> bool:
         """Return true if plug locked state is supported."""
         if self.attrs.get("charger", False):
             if "status" in self.attrs.get("charger", {}):
@@ -954,7 +999,12 @@ class Vehicle:
         return response == "connected"
 
     @property
-    def is_charging_cable_connected_supported(self):
+    def charging_cable_connected_last_updated(self) -> datetime:
+        """Return plug connected state last updated."""
+        return self.attrs.get("charger")["status"]["plugStatusData"]["plugState"].get("timestamp")
+
+    @property
+    def is_charging_cable_connected_supported(self) -> bool:
         """Return true if charging cable connected is supported."""
         if self.attrs.get("charger", False):
             if "status" in self.attrs.get("charger", {}):
@@ -986,12 +1036,23 @@ class Vehicle:
         return 0
 
     @property
+    def charging_time_left_last_updated(self) -> datetime:
+        """Return minutes to charging complete last updated."""
+        return (
+            self.attrs.get("charger", {})
+            .get("status", {})
+            .get("batteryStatusData", {})
+            .get("remainingChargingTime", {})
+            .get("timestamp")
+        )
+
+    @property
     def is_charging_time_left_supported(self) -> bool:
         """Return true if charging is supported."""
         return self.is_charging_supported
 
     @property
-    def external_power(self):
+    def external_power(self) -> bool:
         """Return true if external power is connected."""
         check = (
             self.attrs.get("charger", {})
@@ -1001,6 +1062,17 @@ class Vehicle:
             .get("content", "")
         )
         return check in ["stationConnected", "available"]
+
+    @property
+    def external_power_last_updated(self) -> datetime:
+        """Return external power last updated."""
+        return (
+            self.attrs.get("charger", {})
+            .get("status", {})
+            .get("chargingStatusData", {})
+            .get("externalPowerSupplyState", {})
+            .get("timestamp")
+        )
 
     @property
     def is_external_power_supported(self) -> bool:
@@ -1023,6 +1095,17 @@ class Vehicle:
             .get("content", "off")
         )
         return check == "on"
+
+    @property
+    def energy_flow_last_updated(self) -> datetime:
+        """Return energy flow last updated."""
+        return (
+            self.attrs.get("charger", {})
+            .get("status", {})
+            .get("chargingStatusData", {})
+            .get("energyFlow", {})
+            .get("timestamp")
+        )
 
     @property
     def is_energy_flow_supported(self) -> bool:
@@ -1051,6 +1134,11 @@ class Vehicle:
         return output
 
     @property
+    def position_last_updated(self) -> datetime:
+        """Return  position last updated."""
+        return self.attrs.get("findCarResponse", {}).get("Position", {}).get("timestampTssReceived")
+
+    @property
     def is_position_supported(self) -> bool:
         """Return true if carfinder_v1 service is active."""
         return self._services.get("carfinder_v1", {}).get("active", False) or self.attrs.get("isMoving", False)
@@ -1059,6 +1147,11 @@ class Vehicle:
     def vehicle_moving(self) -> bool:
         """Return true if vehicle is moving."""
         return self.attrs.get("isMoving", False)
+
+    @property
+    def vehicle_moving_last_updated(self) -> datetime:
+        """Return attribute last updated timestamp."""
+        return self.attrs.get("findCarResponse", {}).get("Position", {}).get("timestampTssReceived")
 
     @property
     def is_vehicle_moving_supported(self) -> bool:
@@ -1071,6 +1164,11 @@ class Vehicle:
         park_time_utc: datetime = self.attrs.get("findCarResponse", {}).get("parkingTimeUTC", "Unknown")
         park_time = park_time_utc.replace(tzinfo=timezone.utc).astimezone(tz=None)
         return park_time.strftime("%Y-%m-%d %H:%M:%S")
+
+    @property
+    def parking_time_last_updated(self) -> datetime:
+        """Return attribute last updated timestamp."""
+        return self.attrs.get("findCarResponse", {}).get("Position", {}).get(BACKEND_RECEIVED_TIMESTAMP)
 
     @property
     def is_parking_time_supported(self) -> bool:
@@ -1100,6 +1198,25 @@ class Vehicle:
         ):
             value = self.attrs.get("StoredVehicleDataResponseParsed")[SECONDARY_RANGE].get("value", UNSUPPORTED)
         return int(value)
+
+    @property
+    def electric_range_last_updated(self) -> datetime:
+        """Return electric range last updated."""
+        value = None
+        if (
+            PRIMARY_RANGE in self.attrs.get("StoredVehicleDataResponseParsed")
+            and self.attrs.get("StoredVehicleDataResponseParsed")[PRIMARY_DRIVE].get("value", UNSUPPORTED)
+            == ENGINE_TYPE_ELECTRIC
+        ):
+            return self.attrs.get("StoredVehicleDataResponseParsed")[PRIMARY_RANGE].get(BACKEND_RECEIVED_TIMESTAMP)
+
+        elif (
+            SECONDARY_RANGE in self.attrs.get("StoredVehicleDataResponseParsed")
+            and self.attrs.get("StoredVehicleDataResponseParsed")[SECONDARY_DRIVE].get("value", UNSUPPORTED)
+            == ENGINE_TYPE_ELECTRIC
+        ):
+            return self.attrs.get("StoredVehicleDataResponseParsed")[SECONDARY_RANGE].get(BACKEND_RECEIVED_TIMESTAMP)
+        raise ValueError()
 
     @property
     def is_electric_range_supported(self) -> bool:
@@ -1149,6 +1266,25 @@ class Vehicle:
         return int(value)
 
     @property
+    def combustion_range_last_updated(self) -> Optional[datetime]:
+        """Return combustion engine range last updated."""
+        value = None
+        if (
+            PRIMARY_RANGE in self.attrs.get("StoredVehicleDataResponseParsed")
+            and self.attrs.get("StoredVehicleDataResponseParsed")[PRIMARY_DRIVE].get("value", UNSUPPORTED)
+            in ENGINE_TYPE_COMBUSTION
+        ):
+            value = self.attrs.get("StoredVehicleDataResponseParsed")[PRIMARY_RANGE].get(BACKEND_RECEIVED_TIMESTAMP)
+
+        elif (
+            SECONDARY_RANGE in self.attrs.get("StoredVehicleDataResponseParsed")
+            and self.attrs.get("StoredVehicleDataResponseParsed")[SECONDARY_DRIVE].get("value", UNSUPPORTED)
+            in ENGINE_TYPE_COMBUSTION
+        ):
+            value = self.attrs.get("StoredVehicleDataResponseParsed")[SECONDARY_RANGE].get(BACKEND_RECEIVED_TIMESTAMP)
+        return value
+
+    @property
     def is_combustion_range_supported(self) -> bool:
         """
         Return true if combustion range is supported, i.e. false for EVs.
@@ -1185,6 +1321,14 @@ class Vehicle:
         return int(value)
 
     @property
+    def combined_range_last_updated(self) -> Optional[datetime]:
+        """Return combined range last updated."""
+        value = None
+        if COMBINED_RANGE in self.attrs.get("StoredVehicleDataResponseParsed"):
+            value = self.attrs.get("StoredVehicleDataResponseParsed")[COMBINED_RANGE].get(BACKEND_RECEIVED_TIMESTAMP)
+        return value
+
+    @property
     def is_combined_range_supported(self) -> bool:
         """
         Return true if combined range is supported.
@@ -1208,6 +1352,15 @@ class Vehicle:
             if "value" in self.attrs.get("StoredVehicleDataResponseParsed")[FUEL_LEVEL]:
                 value = self.attrs.get("StoredVehicleDataResponseParsed")[FUEL_LEVEL].get("value", 0)
         return int(value)
+
+    @property
+    def fuel_level_last_updated(self) -> datetime:
+        """Return fuel level last updated."""
+        value = datetime.now()
+        if FUEL_LEVEL in self.attrs.get("StoredVehicleDataResponseParsed"):
+            if "value" in self.attrs.get("StoredVehicleDataResponseParsed")[FUEL_LEVEL]:
+                value = self.attrs.get("StoredVehicleDataResponseParsed")[FUEL_LEVEL].get(BACKEND_RECEIVED_TIMESTAMP)
+        return value
 
     @property
     def is_fuel_level_supported(self) -> bool:
@@ -1234,6 +1387,11 @@ class Vehicle:
             return None
 
     @property
+    def climatisation_target_temperature_last_updated(self) -> datetime:
+        """Return the target temperature from climater last updated."""
+        return self.attrs.get("climater").get("settings").get("targetTemperature").get(BACKEND_RECEIVED_TIMESTAMP)
+
+    @property
     def is_climatisation_target_temperature_supported(self) -> bool:
         """Return true if climatisation target temperature is supported."""
         if self.attrs.get("climater", False):
@@ -1248,7 +1406,12 @@ class Vehicle:
         return self.attrs.get("climater").get("settings").get("climatisationWithoutHVpower").get("content", False)
 
     @property
-    def is_climatisation_without_external_power_supported(self):
+    def climatisation_without_external_power_last_updated(self) -> datetime:
+        """Return state of climatisation from battery power last updated."""
+        return self.attrs.get("climater").get("settings").get("climatisationWithoutHVpower").get("timestamp")
+
+    @property
+    def is_climatisation_without_external_power_supported(self) -> bool:
         """Return true if climatisation on battery power is supported."""
         if self.attrs.get("climater", False):
             if "settings" in self.attrs.get("climater", {}):
@@ -1264,6 +1427,11 @@ class Vehicle:
             return round(float((response / 10) - 273.15), 1)
         else:
             return False
+
+    @property
+    def outside_temperature_last_updated(self) -> datetime:
+        """Return outside temperature last updated."""
+        return self.attrs.get("StoredVehicleDataResponseParsed")["0x0301020001"].get(BACKEND_RECEIVED_TIMESTAMP)
 
     @property
     def is_outside_temperature_supported(self) -> bool:
@@ -1291,6 +1459,17 @@ class Vehicle:
         return status in ["heating", "on"] and climatisation_type == "electric"
 
     @property
+    def electric_climatisation_last_updated(self) -> datetime:
+        """Return status of climatisation last updated."""
+        return (
+            self.attrs.get("climater", {})
+            .get("status", {})
+            .get("climatisationStatusData", {})
+            .get("climatisationState", {})
+            .get(BACKEND_RECEIVED_TIMESTAMP)
+        )
+
+    @property
     def is_electric_climatisation_supported(self) -> bool:
         """Return true if vehicle has climater."""
         return self.is_climatisation_supported
@@ -1316,6 +1495,17 @@ class Vehicle:
             return False
 
     @property
+    def auxiliary_climatisation_last_updated(self) -> datetime:
+        """Return status of auxiliary climatisation last updated."""
+        return (
+            self.attrs.get("climater", {})
+            .get("status", {})
+            .get("climatisationStatusData", {})
+            .get("climatisationState", {})
+            .get(BACKEND_RECEIVED_TIMESTAMP)
+        )
+
+    @property
     def is_auxiliary_climatisation_supported(self) -> bool:
         """Return true if vehicle has auxiliary climatisation."""
         if self._services.get("rclima_v1", False):
@@ -1335,6 +1525,17 @@ class Vehicle:
             .get("content", "")
         )
         return response != ""
+
+    @property
+    def is_climatisation_supported_last_updated(self) -> datetime:
+        """Return attribute last updated timestamp."""
+        return (
+            self.attrs.get("climater", {})
+            .get("status", {})
+            .get("climatisationStatusData", {})
+            .get("climatisationState", {})
+            .get(BACKEND_RECEIVED_TIMESTAMP)
+        )
 
     @property
     def window_heater(self) -> bool:
@@ -1360,6 +1561,27 @@ class Vehicle:
         if status_rear == "on":
             ret = True
         return ret
+
+    @property
+    def window_heater_last_updated(self) -> datetime:
+        """Return window heater last updated."""
+        front = (
+            self.attrs.get("climater", {})
+            .get("status", {})
+            .get("windowHeatingStatusData", {})
+            .get("windowHeatingStateFront", {})
+            .get(BACKEND_RECEIVED_TIMESTAMP)
+        )
+        if front is not None:
+            return front
+
+        return (
+            self.attrs.get("climater", {})
+            .get("status", {})
+            .get("windowHeatingStatusData", {})
+            .get("windowHeatingStateRear", {})
+            .get(BACKEND_RECEIVED_TIMESTAMP)
+        )
 
     @property
     def is_window_heater_supported(self) -> bool:
@@ -1402,7 +1624,15 @@ class Vehicle:
         return self.is_pheater_heating_supported
 
     @property
-    def pheater_ventilation(self):
+    def pheater_ventilation(self) -> bool:
+        """Return status of combustion climatisation."""
+        return (
+            self.attrs.get("heating", {}).get("climatisationStateReport", {}).get("climatisationState", False)
+            == "ventilation"
+        )
+
+    @property
+    def pheater_ventilation_last_updated(self) -> datetime:
         """Return status of combustion climatisation."""
         return (
             self.attrs.get("heating", {}).get("climatisationStateReport", {}).get("climatisationState", False)
@@ -1423,6 +1653,11 @@ class Vehicle:
         )
 
     @property
+    def pheater_heating_last_updated(self) -> datetime:
+        """Return attribute last updated timestamp."""
+        return self.attrs.get("heating", {}).get("climatisationStateReport", {}).get("FIXME")
+
+    @property
     def is_pheater_heating_supported(self) -> bool:
         """Return true if vehicle has combustion engine heating."""
         return self.attrs.get("heating", {}).get("climatisationStateReport", {}).get("climatisationState", False)
@@ -1431,6 +1666,11 @@ class Vehicle:
     def pheater_status(self) -> str:
         """Return status of combustion engine heating/ventilation."""
         return self.attrs.get("heating", {}).get("climatisationStateReport", {}).get("climatisationState", "Unknown")
+
+    @property
+    def pheater_status_last_updated(self) -> datetime:
+        """Return attribute last updated timestamp."""
+        return self.attrs.get("heating", {}).get("climatisationStateReport", {}).get("FIXME")
 
     @property
     def is_pheater_status_supported(self) -> bool:
@@ -1453,6 +1693,16 @@ class Vehicle:
         )
 
     @property
+    def windows_closed_last_updated(self) -> datetime:
+        """Return timestamp for windows state last updated."""
+        return (
+            self.attrs.get("StoredVehicleDataResponseParsed", {})
+            .get("StoredVehicleDataResponseParsed", {})
+            .get("0x0301050001", {})
+            .get("BACKEND_RECEIVED_TIMESTAMP")
+        )
+
+    @property
     def is_windows_closed_supported(self) -> bool:
         """Return true if window state is supported."""
         if self.attrs.get("StoredVehicleDataResponseParsed", False):
@@ -1471,6 +1721,16 @@ class Vehicle:
         return response == CLOSED_STATE
 
     @property
+    def window_closed_left_front_last_updated(self) -> datetime:
+        """Return attribute last updated timestamp."""
+        return (
+            self.attrs.get("StoredVehicleDataResponseParsed", {})
+            .get("StoredVehicleDataResponseParsed", {})
+            .get("0x0301050001", {})
+            .get("BACKEND_RECEIVED_TIMESTAMP")
+        )
+
+    @property
     def is_window_closed_left_front_supported(self) -> bool:
         """Return true if window state is supported."""
         if self.attrs.get("StoredVehicleDataResponseParsed", False):
@@ -1486,6 +1746,16 @@ class Vehicle:
         """
         response = int(self.attrs.get("StoredVehicleDataResponseParsed")["0x0301050005"].get("value", 0))
         return response == CLOSED_STATE
+
+    @property
+    def window_closed_right_front_last_updated(self) -> datetime:
+        """Return attribute last updated timestamp."""
+        return (
+            self.attrs.get("StoredVehicleDataResponseParsed", {})
+            .get("StoredVehicleDataResponseParsed", {})
+            .get("0x0301050005", {})
+            .get("BACKEND_RECEIVED_TIMESTAMP")
+        )
 
     @property
     def is_window_closed_right_front_supported(self) -> bool:
@@ -1506,6 +1776,16 @@ class Vehicle:
         return response == CLOSED_STATE
 
     @property
+    def window_closed_left_back_last_updated(self) -> datetime:
+        """Return attribute last updated timestamp."""
+        return (
+            self.attrs.get("StoredVehicleDataResponseParsed", {})
+            .get("StoredVehicleDataResponseParsed", {})
+            .get("0x0301050003", {})
+            .get("BACKEND_RECEIVED_TIMESTAMP")
+        )
+
+    @property
     def is_window_closed_left_back_supported(self) -> bool:
         """Return true if window state is supported."""
         if self.attrs.get("StoredVehicleDataResponseParsed", False):
@@ -1524,6 +1804,16 @@ class Vehicle:
         return response == CLOSED_STATE
 
     @property
+    def window_closed_right_back_last_updated(self) -> datetime:
+        """Return attribute last updated timestamp."""
+        return (
+            self.attrs.get("StoredVehicleDataResponseParsed", {})
+            .get("StoredVehicleDataResponseParsed", {})
+            .get("0x0301050007", {})
+            .get("BACKEND_RECEIVED_TIMESTAMP")
+        )
+
+    @property
     def is_window_closed_right_back_supported(self) -> bool:
         """Return true if window state is supported."""
         if self.attrs.get("StoredVehicleDataResponseParsed", False):
@@ -1540,6 +1830,16 @@ class Vehicle:
         """
         response = int(self.attrs.get("StoredVehicleDataResponseParsed")["0x030105000B"].get("value", 0))
         return response == CLOSED_STATE
+
+    @property
+    def sunroof_closed_last_updated(self) -> datetime:
+        """Return attribute last updated timestamp."""
+        return (
+            self.attrs.get("StoredVehicleDataResponseParsed", {})
+            .get("StoredVehicleDataResponseParsed", {})
+            .get("0x030105000B", {})
+            .get("BACKEND_RECEIVED_TIMESTAMP")
+        )
 
     @property
     def is_sunroof_closed_supported(self) -> bool:
@@ -1580,6 +1880,11 @@ class Vehicle:
         return True
 
     @property
+    def door_locked_last_updated(self) -> datetime:
+        """Return door lock last updated."""
+        return self.attrs.get("StoredVehicleDataResponseParsed")["0x0301040001"].get("BACKEND_RECEIVED_TIMESTAMP")
+
+    @property
     def is_door_locked_supported(self) -> bool:
         """
         Return true if supported.
@@ -1602,6 +1907,11 @@ class Vehicle:
         return response == LOCKED_STATE
 
     @property
+    def trunk_locked_last_updated(self) -> datetime:
+        """Return attribute last updated timestamp."""
+        return self.attrs.get("StoredVehicleDataResponseParsed")["0x030104000D"].get("BACKEND_RECEIVED_TIMESTAMP")
+
+    @property
     def is_trunk_locked_supported(self) -> bool:
         """
         Return true if supported.
@@ -1619,6 +1929,11 @@ class Vehicle:
         """Return true if hood is closed."""
         response = int(self.attrs.get("StoredVehicleDataResponseParsed")["0x0301040011"].get("value", 0))
         return response == CLOSED_STATE
+
+    @property
+    def hood_closed_last_updated(self) -> datetime:
+        """Return hood closed last updated."""
+        return self.attrs.get("StoredVehicleDataResponseParsed")["0x0301040011"].get("BACKEND_RECEIVED_TIMESTAMP")
 
     @property
     def is_hood_closed_supported(self) -> bool:
@@ -1639,6 +1954,11 @@ class Vehicle:
         return response == CLOSED_STATE
 
     @property
+    def door_closed_left_front_last_updated(self) -> datetime:
+        """Return attribute last updated timestamp."""
+        return self.attrs.get("StoredVehicleDataResponseParsed")["0x0301040002"].get("BACKEND_RECEIVED_TIMESTAMP")
+
+    @property
     def is_door_closed_left_front_supported(self) -> bool:
         """Return true if supported."""
         if self.attrs.get("StoredVehicleDataResponseParsed", False):
@@ -1655,6 +1975,11 @@ class Vehicle:
         """
         response = int(self.attrs.get("StoredVehicleDataResponseParsed")["0x0301040008"].get("value", 0))
         return response == CLOSED_STATE
+
+    @property
+    def door_closed_right_front_last_updated(self) -> datetime:
+        """Return attribute last updated timestamp."""
+        return self.attrs.get("StoredVehicleDataResponseParsed")["0x0301040008"].get("BACKEND_RECEIVED_TIMESTAMP")
 
     @property
     def is_door_closed_right_front_supported(self) -> bool:
@@ -1675,6 +2000,11 @@ class Vehicle:
         return response == CLOSED_STATE
 
     @property
+    def door_closed_left_back_last_updated(self) -> datetime:
+        """Return attribute last updated timestamp."""
+        return self.attrs.get("StoredVehicleDataResponseParsed")["0x0301040005"].get("BACKEND_RECEIVED_TIMESTAMP")
+
+    @property
     def is_door_closed_left_back_supported(self) -> bool:
         """Return true if supported."""
         if self.attrs.get("StoredVehicleDataResponseParsed", False):
@@ -1693,6 +2023,11 @@ class Vehicle:
         return response == CLOSED_STATE
 
     @property
+    def door_closed_right_back_last_updated(self) -> datetime:
+        """Return attribute last updated timestamp."""
+        return self.attrs.get("StoredVehicleDataResponseParsed")["0x030104000B"].get("BACKEND_RECEIVED_TIMESTAMP")
+
+    @property
     def is_door_closed_right_back_supported(self) -> bool:
         """Return true if supported."""
         if self.attrs.get("StoredVehicleDataResponseParsed", False):
@@ -1709,6 +2044,11 @@ class Vehicle:
         """
         response = int(self.attrs.get("StoredVehicleDataResponseParsed")["0x030104000E"].get("value", 0))
         return response == CLOSED_STATE
+
+    @property
+    def trunk_closed_last_updated(self) -> datetime:
+        """Return trunk closed last updated."""
+        return self.attrs.get("StoredVehicleDataResponseParsed")["0x030104000E"].get("BACKEND_RECEIVED_TIMESTAMP")
 
     @property
     def is_trunk_closed_supported(self) -> bool:
@@ -1746,7 +2086,22 @@ class Vehicle:
         """
         return self.schedule(3)
 
-    def schedule(self, schedule_id: Union[str, int]) -> Optional[Timer]:
+    @property
+    def departure_timer1_last_updated(self) -> datetime:
+        """Return last updated timestamp."""
+        return self.schedule(1).timestamp
+
+    @property
+    def departure_timer2_last_updated(self) -> datetime:
+        """Return last updated timestamp."""
+        return self.schedule(2).timestamp
+
+    @property
+    def departure_timer3_last_updated(self) -> datetime:
+        """Return last updated timestamp."""
+        return self.schedule(3).timestamp
+
+    def schedule(self, schedule_id: Union[str, int]) -> Timer:
         """
         Return schedule #1.
 
@@ -1762,6 +2117,12 @@ class Vehicle:
         return timer.timersAndProfiles.timerBasicSetting.chargeMinLimit
 
     @property
+    def schedule_min_charge_level_last_updated(self) -> datetime:
+        """Return attribute last updated timestamp."""
+        timer: TimerData = self.attrs.get("timer")
+        return timer.timersAndProfiles.timerBasicSetting.timestamp
+
+    @property
     def is_schedule_min_charge_level_supported(self) -> bool:
         """Check if charge minimum level is supported."""
         timer: TimerData = self.attrs.get("timer", None)
@@ -1772,6 +2133,12 @@ class Vehicle:
         """Get departure schedule heater source."""
         timer: TimerData = self.attrs.get("timer")
         return timer.timersAndProfiles.timerBasicSetting.heaterSource
+
+    @property
+    def schedule_heater_source_last_updated(self) -> datetime:
+        """Return attribute last updated timestamp."""
+        timer: TimerData = self.attrs.get("timer")
+        return timer.timersAndProfiles.timerBasicSetting.timestamp
 
     @property
     def is_schedule_heater_source_supported(self) -> bool:
@@ -1835,6 +2202,11 @@ class Vehicle:
         return self.trip_last_entry.get("averageSpeed")
 
     @property
+    def trip_last_average_speed_last_updated(self) -> datetime:
+        """Return last updated timestamp."""
+        return self.trip_last_entry.get("timestamp")
+
+    @property
     def is_trip_last_average_speed_supported(self) -> bool:
         """
         Return true if supported.
@@ -1853,6 +2225,11 @@ class Vehicle:
         """
         value = self.trip_last_entry.get("averageElectricEngineConsumption")
         return float(value / 10)
+
+    @property
+    def trip_last_average_electric_engine_consumption_last_updated(self) -> datetime:
+        """Return last updated timestamp."""
+        return self.trip_last_entry.get("timestamp")
 
     @property
     def is_trip_last_average_electric_engine_consumption_supported(self) -> bool:
@@ -1874,6 +2251,11 @@ class Vehicle:
         return int(self.trip_last_entry.get("averageFuelConsumption")) / 10
 
     @property
+    def trip_last_average_fuel_consumption_last_updated(self) -> datetime:
+        """Return last updated timestamp."""
+        return self.trip_last_entry.get("timestamp")
+
+    @property
     def is_trip_last_average_fuel_consumption_supported(self) -> bool:
         """
         Return true if supported.
@@ -1891,6 +2273,11 @@ class Vehicle:
         :return:
         """
         return self.trip_last_entry.get("averageAuxiliaryConsumption")
+
+    @property
+    def trip_last_average_auxillary_consumption_last_updated(self) -> datetime:
+        """Return last updated timestamp."""
+        return self.trip_last_entry.get("timestamp")
 
     @property
     def is_trip_last_average_auxillary_consumption_supported(self) -> bool:
@@ -1915,6 +2302,11 @@ class Vehicle:
         return float(value / 10)
 
     @property
+    def trip_last_average_aux_consumer_consumption_last_updated(self) -> datetime:
+        """Return last updated timestamp."""
+        return self.trip_last_entry.get("timestamp")
+
+    @property
     def is_trip_last_average_aux_consumer_consumption_supported(self) -> bool:
         """
         Return true if supported.
@@ -1932,6 +2324,11 @@ class Vehicle:
         :return:
         """
         return self.trip_last_entry.get("traveltime")
+
+    @property
+    def trip_last_duration_last_updated(self) -> datetime:
+        """Return last updated timestamp."""
+        return self.trip_last_entry.get("timestamp")
 
     @property
     def is_trip_last_duration_supported(self) -> bool:
@@ -1953,6 +2350,11 @@ class Vehicle:
         return self.trip_last_entry.get("mileage")
 
     @property
+    def trip_last_length_last_updated(self) -> datetime:
+        """Return last updated timestamp."""
+        return self.trip_last_entry.get("timestamp")
+
+    @property
     def is_trip_last_length_supported(self) -> bool:
         """
         Return true if supported.
@@ -1971,6 +2373,11 @@ class Vehicle:
         """
         # Not implemented
         return self.trip_last_entry.get("recuperation")
+
+    @property
+    def trip_last_recuperation_last_updated(self) -> datetime:
+        """Return last updated timestamp."""
+        return self.trip_last_entry.get("timestamp")
 
     @property
     def is_trip_last_recuperation_supported(self) -> bool:
@@ -1994,6 +2401,11 @@ class Vehicle:
         return float(value / 10)
 
     @property
+    def trip_last_average_recuperation_last_updated(self) -> datetime:
+        """Return last updated timestamp."""
+        return self.trip_last_entry.get("timestamp")
+
+    @property
     def is_trip_last_average_recuperation_supported(self) -> bool:
         """
         Return true if supported.
@@ -2012,6 +2424,11 @@ class Vehicle:
         """
         # Not implemented
         return self.trip_last_entry.get("totalElectricConsumption")
+
+    @property
+    def trip_last_total_electric_consumption_last_updated(self) -> datetime:
+        """Return last updated timestamp."""
+        return self.trip_last_entry.get("timestamp")
 
     @property
     def is_trip_last_total_electric_consumption_supported(self) -> bool:
@@ -2057,6 +2474,11 @@ class Vehicle:
         return self._requests.get("refresh", {}).get("id", False)
 
     @property
+    def refresh_data_last_updated(self) -> datetime:
+        """Return attribute last updated timestamp."""
+        return self._requests.get("refresh", {}).get("timestamp")
+
+    @property
     def is_refresh_data_supported(self) -> bool:
         """Return true, as data refresh is always supported."""
         return True
@@ -2072,18 +2494,40 @@ class Vehicle:
         return False
 
     @property
+    def request_in_progress_last_updated(self) -> datetime:
+        """Return attribute last updated timestamp."""
+        try:
+            for section in self._requests:
+                return self._requests[section].get("timestamp")
+        except Exception as e:
+            _LOGGER.warning(e)
+        return datetime.now()
+
+    @property
     def is_request_in_progress_supported(self):
         """Request in progress is always supported."""
         return True
 
     @property
-    def request_results(self):
+    def request_results(self) -> dict:
         """Get last request result."""
         data = {"latest": self._requests.get("latest", None), "state": self._requests.get("state", None)}
         for section in self._requests:
             if section in ["departuretimer", "batterycharge", "climatisation", "refresh", "lock", "preheater"]:
                 data[section] = self._requests[section].get("status", "Unknown")
         return data
+
+    @property
+    def request_results_last_updated(self) -> Optional[datetime]:
+        """Get last updated time."""
+        if self._requests.get("latest", "") != "":
+            return self._requests.get(str(self._requests.get("latest")), {}).get("timestamp")
+        # all requests should have more or less the same timestamp anyway, so
+        # just return the first one
+        for section in ["departuretimer", "batterycharge", "climatisation", "refresh", "lock", "preheater"]:
+            if section in self._requests:
+                return self._requests[section].get("timestamp")
+        return None
 
     @property
     def is_request_results_supported(self):
@@ -2093,7 +2537,6 @@ class Vehicle:
     @property
     def requests_results_last_updated(self):
         return None
-
 
     @property
     def requests_remaining(self):
@@ -2106,6 +2549,16 @@ class Vehicle:
     @requests_remaining.setter
     def requests_remaining(self, value):
         self._requests["remaining"] = value
+        self.requests_remaining_last_updated = datetime.utcnow()
+
+    @property
+    def requests_remaining_last_updated(self) -> datetime:
+        """Get last updated timestamp."""
+        return self._requests["remaining_updated"] if "remaining_updated" in self._requests else None
+
+    @requests_remaining_last_updated.setter
+    def requests_remaining_last_updated(self, value):
+        self._requests["remaining_updated"] = value
 
     @property
     def is_requests_remaining_supported(self):
@@ -2115,10 +2568,6 @@ class Vehicle:
         :return:
         """
         return True if self._requests.get("remaining", False) else False
-
-    @property
-    def requests_remaining_last_updated(self):
-        return None
 
     # Helper functions #
     def __str__(self):
