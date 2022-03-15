@@ -1,7 +1,8 @@
 """Depature timer tests."""
+import datetime
 from unittest import TestCase
 
-from volkswagencarnet.vw_timer import TimerData, TimerProfile
+from volkswagencarnet.vw_timer import TimerData, TimerProfile, parse_vw_datetime
 
 
 class TimerTest(TestCase):
@@ -13,7 +14,7 @@ class TimerTest(TestCase):
                 "timerProfileList": {
                     "timerProfile": [
                         {
-                            "timestamp": "2022-02-22T20:00:22Z",
+                            "timestamp": "2022-02-22T20:00:22+0000",
                             "profileName": "Profile 1",
                             "profileID": "1",
                             "operationCharging": True,
@@ -30,7 +31,7 @@ class TimerTest(TestCase):
                 "timerList": {
                     "timer": [
                         {
-                            "timestamp": "2022-02-22T20:00:22Z",
+                            "timestamp": "2022-02-22T20:00:22+0000",  # actual data probably has "Z", but either works
                             "timerID": "3",
                             "profileID": "3",
                             "timerProgrammedStatus": "notProgrammed",
@@ -42,7 +43,7 @@ class TimerTest(TestCase):
                     ]
                 },
                 "timerBasicSetting": {
-                    "timestamp": "2022-02-22T20:00:22Z",
+                    "timestamp": "2022-02-22T20:00:22+0000",
                     "chargeMinLimit": 20,
                     "targetTemperature": 2955,
                     "heaterSource": None,
@@ -97,6 +98,7 @@ class TimerTest(TestCase):
         """Test de- and serialization of timers."""
         timer = TimerData(**self.data["timer"])
         self.assertEqual(self.data, timer.json)
+        self.assertTrue(timer.valid)
         self.assertNotEqual(timer.json, timer.json_updated)
 
     def test_update_serialization(self):
@@ -133,3 +135,26 @@ class TimerTest(TestCase):
 
         profile.profileID = 42
         self.assertRaises(Exception, timer.update_profile(profile))
+
+    def test_parse_datetime(self):
+        """Test that we can parse datetimes."""
+        self.assertEqual(parse_vw_datetime("2021-03-04 05:06:07Z"), None)
+        self.assertEqual(parse_vw_datetime("2021-03-04T05:06:07"), None)
+        self.assertEqual(
+            parse_vw_datetime("2021-03-04T05:06:07Z"),
+            datetime.datetime(
+                year=2021, month=3, day=4, hour=5, minute=6, second=7, microsecond=0, tzinfo=datetime.timezone.utc
+            ),
+        )
+        self.assertEqual(
+            parse_vw_datetime("2021-03-04T05:06:07+0000"),
+            datetime.datetime(
+                year=2021, month=3, day=4, hour=5, minute=6, second=7, microsecond=0, tzinfo=datetime.timezone.utc
+            ),
+        )
+        self.assertEqual(
+            parse_vw_datetime("2021-03-04T05:06:07+00:00"),
+            datetime.datetime(
+                year=2021, month=3, day=4, hour=5, minute=6, second=7, microsecond=0, tzinfo=datetime.timezone.utc
+            ),
+        )

@@ -61,8 +61,18 @@ class DepartureTimerClass:
         }
         for k, v in res.items():
             if isinstance(v, datetime):
-                res["k"] = v.strftime("%Y-%m-%dT%H:%M:%S%z")
+                res[k] = v.strftime("%Y-%m-%dT%H:%M:%S%z")
         return res
+
+
+def parse_vw_datetime(timestamp: str):
+    """Parse a VW backend datetime string to datetime."""
+    try:
+        return datetime.strptime(timestamp, "%Y-%m-%dT%H:%M:%S%z")
+    except (TypeError, ValueError):
+        """The value was not a date."""
+        _LOGGER.warning(f"Failed to parse {timestamp} as datetime")
+    return None
 
 
 # noinspection PyPep8Naming
@@ -81,7 +91,7 @@ class BasicSettings(DepartureTimerClass):
         heaterSource: Optional[str] = None,
     ):
         """Init."""
-        self.timestamp: datetime = timestamp if isinstance(timestamp, datetime) else datetime.fromisoformat(timestamp)
+        self.timestamp: datetime = timestamp if isinstance(timestamp, datetime) else parse_vw_datetime(timestamp)
         self.chargeMinLimit: Optional[int] = int(chargeMinLimit) if chargeMinLimit is not None else None
         self.targetTemperature: Optional[int] = int(targetTemperature) if targetTemperature is not None else None
         self.heaterSource: Optional[str] = heaterSource
@@ -145,7 +155,7 @@ class Timer(DepartureTimerClass):
         **kw,
     ):
         """Init."""
-        self.timestamp: datetime = timestamp if isinstance(timestamp, datetime) else datetime.fromisoformat(timestamp)
+        self.timestamp: datetime = timestamp if isinstance(timestamp, datetime) else parse_vw_datetime(timestamp)
         self.timerID = timerID
         self.profileID = profileID
         self.timerProgrammedStatus = timerProgrammedStatus

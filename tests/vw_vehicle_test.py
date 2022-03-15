@@ -1,9 +1,8 @@
 """Vehicle class tests."""
-from datetime import datetime
+from datetime import datetime, timezone
 
 import pytest
 import sys
-from dateutil.tz import UTC
 
 from volkswagencarnet.vw_timer import TimerData
 from volkswagencarnet.vw_utilities import json_loads
@@ -195,7 +194,8 @@ class VehiclePropertyTest(IsolatedAsyncioTestCase):
         with patch.dict(vehicle._services, {"timerprogramming_v1": {"active": True}}):
             await vehicle.get_timerprogramming()
             self.assertFalse(vehicle.is_departure_timer2_supported)
-            self.assertIsNone(vehicle.departure_timer2)
+            with self.assertRaises(ValueError):
+                self.assertIsNone(vehicle.departure_timer2)
 
     async def test_get_schedule1(self):
         """Test that schedule 1 support works."""
@@ -205,7 +205,8 @@ class VehiclePropertyTest(IsolatedAsyncioTestCase):
         with patch.dict(vehicle._services, {"timerprogramming_v1": {"active": True}}):
             await vehicle.get_timerprogramming()
             self.assertFalse(vehicle.is_departure_timer1_supported)
-            self.assertIsNone(vehicle.departure_timer1)
+            with self.assertRaises(ValueError):
+                self.assertIsNone(vehicle.departure_timer1)
 
     async def test_get_schedule_not_supported(self):
         """Test that not found schedule is unsupported."""
@@ -215,7 +216,8 @@ class VehiclePropertyTest(IsolatedAsyncioTestCase):
         with patch.dict(vehicle._services, {"timerprogramming_v1": {"active": True}}):
             await vehicle.get_timerprogramming()
             self.assertFalse(vehicle.is_schedule_supported(42))
-            self.assertIsNone(vehicle.schedule(42))
+            with self.assertRaises(ValueError):
+                self.assertIsNone(vehicle.schedule(42))
 
     async def test_get_schedule_last_updated(self):
         """Test that not found schedule is unsupported."""
@@ -224,7 +226,7 @@ class VehiclePropertyTest(IsolatedAsyncioTestCase):
 
         with patch.dict(vehicle._services, {"timerprogramming_v1": {"active": True}}):
             await vehicle.get_timerprogramming()
-            dt = datetime.fromisoformat("2022-02-22T20:00:22+00:00").astimezone(UTC)
+            dt = datetime.fromisoformat("2022-02-22T20:00:22+00:00").astimezone(timezone.utc)
             self.assertEqual(dt, vehicle.schedule_heater_source_last_updated)
             self.assertEqual(dt, vehicle.schedule_min_charge_level_last_updated)
             self.assertEqual(dt, vehicle.departure_timer3_last_updated)
