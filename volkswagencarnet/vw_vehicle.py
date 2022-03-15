@@ -237,7 +237,7 @@ class Vehicle:
                             old_time = self.attrs.get("findCarResponse", {}).get("parkingTimeUTC", None)
                             if old_time is None or new_time > old_time:
                                 _LOGGER.debug(f"Detected new parking time: {new_time}")
-                                self.requests_remaining = 15
+                                self.requests_remaining = -1 if old_time is None else 15
                                 self.requests_remaining_last_updated = datetime.utcnow()
                         except Exception as e:
                             _LOGGER.warning(f"Failed to parse parking time: {e}")
@@ -890,7 +890,7 @@ class Vehicle:
 
     # Charger related states for EV and PHEV
     @property
-    def charging(self) -> int:
+    def charging(self) -> bool:
         """Return charging state."""
         cstate = (
             self.attrs.get("charger", {})
@@ -899,7 +899,7 @@ class Vehicle:
             .get("chargingState", {})
             .get("content", "")
         )
-        return 1 if cstate == "charging" else 0
+        return cstate == "charging"
 
     @property
     def charging_last_updated(self) -> datetime:
@@ -1202,7 +1202,6 @@ class Vehicle:
     @property
     def electric_range_last_updated(self) -> datetime:
         """Return electric range last updated."""
-        value = None
         if (
             PRIMARY_RANGE in self.attrs.get("StoredVehicleDataResponseParsed")
             and self.attrs.get("StoredVehicleDataResponseParsed")[PRIMARY_DRIVE].get("value", UNSUPPORTED)
@@ -2536,6 +2535,7 @@ class Vehicle:
 
     @property
     def requests_results_last_updated(self):
+        """Return last updated timestamp for attribute."""
         return None
 
     @property
