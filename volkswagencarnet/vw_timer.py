@@ -61,8 +61,18 @@ class DepartureTimerClass:
         }
         for k, v in res.items():
             if isinstance(v, datetime):
-                res["k"] = v.strftime("%Y-%m-%dT%H:%M:%S%z")
+                res[k] = v.strftime("%Y-%m-%dT%H:%M:%S%z")
         return res
+
+
+def parse_vw_datetime(timestamp: str):
+    """Parse a VW backend datetime string to datetime."""
+    try:
+        return datetime.strptime(timestamp, "%Y-%m-%dT%H:%M:%S%z")
+    except (TypeError, ValueError):
+        """The value was not a date."""
+        _LOGGER.warning(f"Failed to parse {timestamp} as datetime")
+    return None
 
 
 # noinspection PyPep8Naming
@@ -75,13 +85,13 @@ class BasicSettings(DepartureTimerClass):
 
     def __init__(
         self,
-        timestamp: str,
+        timestamp: Union[str, datetime],
         chargeMinLimit: Union[str, int] = None,
         targetTemperature: Optional[Union[str, int]] = None,
         heaterSource: Optional[str] = None,
     ):
         """Init."""
-        self.timestamp = timestamp
+        self.timestamp: datetime = timestamp if isinstance(timestamp, datetime) else parse_vw_datetime(timestamp)
         self.chargeMinLimit: Optional[int] = int(chargeMinLimit) if chargeMinLimit is not None else None
         self.targetTemperature: Optional[int] = int(targetTemperature) if targetTemperature is not None else None
         self.heaterSource: Optional[str] = heaterSource
@@ -134,7 +144,7 @@ class Timer(DepartureTimerClass):
 
     def __init__(
         self,
-        timestamp: str,
+        timestamp: Union[str, datetime],
         timerID: str,
         profileID: str,
         timerProgrammedStatus: str,
@@ -145,7 +155,7 @@ class Timer(DepartureTimerClass):
         **kw,
     ):
         """Init."""
-        self.timestamp = timestamp
+        self.timestamp: datetime = timestamp if isinstance(timestamp, datetime) else parse_vw_datetime(timestamp)
         self.timerID = timerID
         self.profileID = profileID
         self.timerProgrammedStatus = timerProgrammedStatus
@@ -277,9 +287,12 @@ class TimerData(DepartureTimerClass):
         """Check if timer exists by id."""
         return self._valid and any(p.timerID == str(schedule_id) for p in self.timersAndProfiles.timerList.timer)
 
-    def get_schedule(self, id: Union[str, int]):
+    def get_schedule(self, id: Union[str, int]) -> Timer:
         """Find timer by id."""
-        return next(filter(lambda p: p.timerID == str(id), self.timersAndProfiles.timerList.timer), None)
+        ret = next(filter(lambda p: p.timerID == str(id), self.timersAndProfiles.timerList.timer), None)
+        if ret is None:
+            raise ValueError(f"Timer schedule {id} not found.")
+        return ret
 
     def get_profile(self, id: Union[str, int]):
         """Find profile by id."""

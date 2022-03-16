@@ -2,10 +2,13 @@
 # Thanks to molobrakos
 
 import logging
-from typing import Union
+from datetime import datetime
+from typing import Union, Optional, Any
 
-from volkswagencarnet.vw_timer import Timer, TimerData
+from .vw_const import TEMP_CELSIUS, VWDeviceClass, VWStateClass
+from .vw_timer import Timer, TimerData
 from .vw_utilities import camel2slug
+from .vw_vehicle import Vehicle
 
 CLIMA_DEFAULT_DURATION = 30
 
@@ -15,25 +18,41 @@ _LOGGER = logging.getLogger(__name__)
 class Instrument:
     """Base class for all components."""
 
-    def __init__(self, component, attr, name, icon=None):
+    vehicle: Vehicle
+
+    def __init__(
+        self,
+        component,
+        attr: str,
+        name: str,
+        icon: Optional[str] = None,
+        device_class: Optional[str] = None,
+        state_class: Optional[str] = None,
+    ):
+        """Init."""
         self.attr = attr
         self.component = component
         self.name = name
-        self.vehicle = None
         self.icon = icon
+        self.device_class = device_class
+        self.state_class = state_class
         self.callback = None
 
-    def __repr__(self):
+    def __repr__(self) -> str:
+        """Return string representation of class."""
         return self.full_name
 
     def configurate(self, **args):
+        """Override in subclasses."""
         pass
 
     @property
-    def slug_attr(self):
+    def slug_attr(self) -> str:
+        """Return slugified attribute name."""
         return camel2slug(self.attr.replace(".", "_"))
 
-    def setup(self, vehicle, **config):
+    def setup(self, vehicle: Vehicle, **config) -> bool:
+        """Set up entity if supported."""
         self.vehicle = vehicle
         if not self.is_supported:
             _LOGGER.debug("%s (%s:%s) is not supported", self, type(self).__name__, self.attr)
@@ -44,23 +63,28 @@ class Instrument:
         return True
 
     @property
-    def vehicle_name(self):
+    def vehicle_name(self) -> str:
+        """Return vehicle name."""
         return self.vehicle.vin
 
     @property
-    def full_name(self):
+    def full_name(self) -> str:
+        """Return full device name."""
         return f"{self.vehicle_name} {self.name}"
 
     @property
-    def is_mutable(self):
+    def is_mutable(self) -> bool:
+        """Override in subclasses."""
         raise NotImplementedError("Must be set")
 
     @property
-    def str_state(self):
+    def str_state(self) -> str:
+        """Return current state as string."""
         return self.state
 
     @property
-    def state(self):
+    def state(self) -> Any:
+        """Return current state."""
         if hasattr(self.vehicle, self.attr):
             return getattr(self.vehicle, self.attr)
         else:
@@ -68,21 +92,45 @@ class Instrument:
         return self.vehicle.get_attr(self.attr)
 
     @property
-    def attributes(self):
+    def attributes(self) -> dict:
+        """Override in subclasses."""
         return {}
 
     @property
-    def is_supported(self):
+    def is_supported(self) -> bool:
+        """Check entity support."""
         supported = "is_" + self.attr + "_supported"
         if hasattr(self.vehicle, supported):
             return getattr(self.vehicle, supported)
         else:
             return False
 
+    @property
+    def last_refresh(self) -> Optional[datetime]:
+        if hasattr(self.vehicle, self.attr + "_last_updated"):
+            return getattr(self.vehicle, self.attr + "_last_updated")
+        _LOGGER.warning(f"Implement in subclasses. {self.__class__}:{self.attr}_last_updated")
+        if self.state_class is not None:
+            raise NotImplementedError(f"Implement in subclasses. {self.__class__}:{self.attr}_last_updated")
+        return None
+
 
 class Sensor(Instrument):
-    def __init__(self, attr, name, icon, unit):
-        super().__init__(component="sensor", attr=attr, name=name, icon=icon)
+    """Base class for sensor type entities."""
+
+    def __init__(
+        self,
+        attr: str,
+        name: str,
+        icon: Optional[str],
+        unit: Optional[str],
+        device_class: Optional[str] = None,
+        state_class: Optional[str] = None,
+    ):
+        """Init."""
+        super().__init__(
+            component="sensor", attr=attr, name=name, icon=icon, device_class=device_class, state_class=state_class
+        )
         self.unit = unit
         self.convert = False
 
@@ -159,13 +207,13 @@ class BinarySensor(Instrument):
 
     @property
     def str_state(self):
-        if self.device_class in ["door", "window"]:
+        if self.device_class in [VWDeviceClass.DOOR, VWDeviceClass.WINDOW]:
             return "Open" if self.state else "Closed"
-        if self.device_class == "lock":
+        if self.device_class == VWDeviceClass.LOCK:
             return "Unlocked" if self.state else "Locked"
         if self.device_class == "safety":
             return "Warning!" if self.state else "OK"
-        if self.device_class == "plug":
+        if self.device_class == VWDeviceClass.PLUG:
             return "Charging" if self.state else "Plug removed"
         if self.state is None:
             _LOGGER.error("Can not encode state %s:%s", self.attr, self.state)
@@ -194,6 +242,8 @@ class BinarySensor(Instrument):
 
 
 class Switch(Instrument):
+    """Switch instrument."""
+
     def __init__(self, attr, name, icon):
         super().__init__(component="switch", attr=attr, name=name, icon=icon)
 
@@ -215,11 +265,14 @@ class Switch(Instrument):
         pass
 
     @property
-    def assumed_state(self):
+    def assumed_state(self) -> bool:
+        """Assume state."""
         return True
 
 
 class Climate(Instrument):
+    """Climate instrument."""
+
     def __init__(self, attr, name, icon):
         super().__init__(component="climate", attr=attr, name=name, icon=icon)
         self.spin = ""
@@ -326,7 +379,7 @@ class Position(Instrument):
 
 class DoorLock(Instrument):
     def __init__(self):
-        super().__init__(component="lock", attr="door_locked", name="Door locked")
+        super().__init__(component=VWDeviceClass.LOCK, attr="door_locked", name="Door locked")
         self.spin = ""
 
     def configurate(self, **config):
@@ -350,7 +403,7 @@ class DoorLock(Instrument):
 
     async def lock(self):
         try:
-            response = await self.vehicle.set_lock("lock", self.spin)
+            response = await self.vehicle.set_lock(VWDeviceClass.LOCK, self.spin)
             await self.vehicle.update()
             if self.callback is not None:
                 self.callback()
@@ -371,13 +424,14 @@ class DoorLock(Instrument):
             return False
 
     @property
-    def attributes(self):
+    def attributes(self) -> dict:
+        """Return attributes."""
         return dict(last_result=self.vehicle.lock_action_status)
 
 
 class TrunkLock(Instrument):
     def __init__(self):
-        super().__init__(component="lock", attr="trunk_locked", name="Trunk locked")
+        super().__init__(component=VWDeviceClass.LOCK, attr="trunk_locked", name="Trunk locked")
 
     @property
     def is_mutable(self):
@@ -423,11 +477,13 @@ class RequestUpdate(Switch):
         pass
 
     @property
-    def assumed_state(self):
+    def assumed_state(self) -> bool:
+        """Don't assume state."""
         return False
 
     @property
-    def attributes(self):
+    def attributes(self) -> dict:
+        """Return attributes."""
         return dict(last_result=self.vehicle.refresh_action_status)
 
 
@@ -448,11 +504,13 @@ class ElectricClimatisation(Switch):
         await self.vehicle.update()
 
     @property
-    def assumed_state(self):
+    def assumed_state(self) -> bool:
+        """Don't assume state."""
         return False
 
     @property
-    def attributes(self):
+    def attributes(self) -> dict:
+        """Return attributes."""
         return dict(last_result=self.vehicle.climater_action_status)
 
 
@@ -477,11 +535,13 @@ class AuxiliaryClimatisation(Switch):
         await self.vehicle.update()
 
     @property
-    def assumed_state(self):
+    def assumed_state(self) -> bool:
+        """Don't assume state."""
         return False
 
     @property
-    def attributes(self):
+    def attributes(self) -> dict:
+        """Return attributes."""
         return dict(last_result=self.vehicle.climater_action_status)
 
 
@@ -502,11 +562,13 @@ class Charging(Switch):
         await self.vehicle.update()
 
     @property
-    def assumed_state(self):
+    def assumed_state(self) -> bool:
+        """Don't assume state."""
         return False
 
     @property
-    def attributes(self):
+    def attributes(self) -> dict:
+        """Return attributes."""
         return dict(last_result=self.vehicle.charger_action_status)
 
 
@@ -574,11 +636,13 @@ class WindowHeater(Switch):
         await self.vehicle.update()
 
     @property
-    def assumed_state(self):
+    def assumed_state(self) -> bool:
+        """Don't assume state."""
         return False
 
     @property
-    def attributes(self):
+    def attributes(self) -> dict:
+        """Return attributes."""
         return dict(last_result=self.vehicle.climater_action_status)
 
 
@@ -601,11 +665,13 @@ class BatteryClimatisation(Switch):
         await self.vehicle.update()
 
     @property
-    def assumed_state(self):
+    def assumed_state(self) -> bool:
+        """Don't assume state."""
         return False
 
     @property
-    def attributes(self):
+    def attributes(self) -> dict:
+        """Return attributes."""
         return dict(last_result=self.vehicle.climater_action_status)
 
 
@@ -630,11 +696,13 @@ class PHeaterHeating(Switch):
         await self.vehicle.update()
 
     @property
-    def assumed_state(self):
+    def assumed_state(self) -> bool:
+        """Don't assume state."""
         return False
 
     @property
-    def attributes(self):
+    def attributes(self) -> dict:
+        """Return attributes."""
         return dict(last_result=self.vehicle.pheater_action_status)
 
 
@@ -661,34 +729,43 @@ class PHeaterVentilation(Switch):
         await self.vehicle.update()
 
     @property
-    def assumed_state(self):
+    def assumed_state(self) -> bool:
+        """Don't assume state."""
         return False
 
     @property
-    def attributes(self):
+    def attributes(self) -> dict:
+        """Return attributes."""
         return dict(last_result=self.vehicle.pheater_action_status)
 
 
 class RequestResults(Sensor):
+    """Request results sensor class."""
+
     def __init__(self):
+        """Init."""
         super().__init__(attr="request_results", name="Request results", icon="mdi:chat-alert", unit="")
 
     @property
-    def state(self):
+    def state(self) -> Any:
+        """Return current state."""
         if self.vehicle.request_results.get("state", False):
             return self.vehicle.request_results.get("state")
         return "Unknown"
 
     @property
-    def assumed_state(self):
+    def assumed_state(self) -> bool:
+        """Don't assume state."""
         return False
 
     @property
-    def attributes(self):
+    def attributes(self) -> dict:
+        """Return attributes."""
         return dict(self.vehicle.request_results)
 
 
 def create_instruments():
+    """Return list of all entities."""
     return [
         Position(),
         DoorLock(),
@@ -724,12 +801,15 @@ def create_instruments():
             name="Odometer",
             icon="mdi:speedometer",
             unit="km",
+            state_class=VWStateClass.TOTAL_INCREASING,
         ),
         Sensor(
             attr="battery_level",
             name="Battery level",
             icon="mdi:battery",
             unit="%",
+            device_class=VWDeviceClass.BATTERY,
+            state_class=VWStateClass.MEASUREMENT,
         ),
         Sensor(
             attr="adblue_level",
@@ -813,67 +893,79 @@ def create_instruments():
             attr="climatisation_target_temperature",
             name="Climatisation target temperature",
             icon="mdi:thermometer",
-            unit="°C",
+            unit=TEMP_CELSIUS,
+            device_class=VWDeviceClass.TEMPERATURE,
+            state_class=VWStateClass.MEASUREMENT,
         ),
         Sensor(
             attr="trip_last_average_speed",
             name="Last trip average speed",
             icon="mdi:speedometer",
             unit="km/h",
+            state_class=VWStateClass.MEASUREMENT,
         ),
         Sensor(
             attr="trip_last_average_electric_engine_consumption",
             name="Last trip average electric engine consumption",
             icon="mdi:car-battery",
             unit="kWh/100 km",
+            state_class=VWStateClass.MEASUREMENT,
         ),
         Sensor(
             attr="trip_last_average_fuel_consumption",
             name="Last trip average fuel consumption",
             icon="mdi:fuel",
             unit="l/100 km",
+            state_class=VWStateClass.MEASUREMENT,
         ),
         Sensor(
             attr="trip_last_duration",
             name="Last trip duration",
             icon="mdi:clock",
             unit="min",
+            state_class=VWStateClass.MEASUREMENT,
         ),
         Sensor(
             attr="trip_last_length",
             name="Last trip length",
             icon="mdi:map-marker-distance",
             unit="km",
+            state_class=VWStateClass.MEASUREMENT,
         ),
         Sensor(
             attr="trip_last_recuperation",
             name="Last trip recuperation",
             icon="mdi:battery-plus",
             unit="kWh/100 km",
+            state_class=VWStateClass.MEASUREMENT,
         ),
         Sensor(
             attr="trip_last_average_recuperation",
             name="Last trip average recuperation",
             icon="mdi:battery-plus",
             unit="kWh/100 km",
+            state_class=VWStateClass.MEASUREMENT,
         ),
         Sensor(
             attr="trip_last_average_auxillary_consumption",
             name="Last trip average auxillary consumption",
             icon="mdi:flash",
             unit="kWh/100 km",
+            state_class=VWStateClass.MEASUREMENT,
         ),
         Sensor(
             attr="trip_last_average_aux_consumer_consumption",
             name="Last trip average auxillary consumer consumption",
             icon="mdi:flash",
             unit="kWh/100 km",
+            state_class=VWStateClass.MEASUREMENT,
         ),
         Sensor(
             attr="trip_last_total_electric_consumption",
             name="Last trip total electric consumption",
             icon="mdi:car-battery",
             unit="kWh/100 km",
+            state_class=VWStateClass.MEASUREMENT,
         ),
         Sensor(
             attr="pheater_status",
@@ -891,7 +983,9 @@ def create_instruments():
             attr="outside_temperature",
             name="Outside temperature",
             icon="mdi:thermometer",
-            unit="°C",
+            unit=TEMP_CELSIUS,
+            state_class=VWStateClass.MEASUREMENT,
+            device_class=VWDeviceClass.TEMPERATURE,
         ),
         Sensor(
             attr="requests_remaining",
@@ -899,66 +993,87 @@ def create_instruments():
             icon="mdi:chat-alert",
             unit="",
         ),
-        BinarySensor(attr="external_power", name="External power", device_class="power"),
-        BinarySensor(attr="energy_flow", name="Energy flow", device_class="power"),
-        BinarySensor(attr="parking_light", name="Parking light", device_class="light", icon="mdi:car-parking-lights"),
-        BinarySensor(attr="door_locked", name="Doors locked", device_class="lock", reverse_state=True),
+        BinarySensor(attr="external_power", name="External power", device_class=VWDeviceClass.POWER),
+        BinarySensor(attr="energy_flow", name="Energy flow", device_class=VWDeviceClass.POWER),
+        BinarySensor(
+            attr="parking_light", name="Parking light", device_class=VWDeviceClass.LIGHT, icon="mdi:car-parking-lights"
+        ),
+        BinarySensor(attr="door_locked", name="Doors locked", device_class=VWDeviceClass.LOCK, reverse_state=True),
         BinarySensor(
             attr="door_closed_left_front",
             name="Door closed left front",
-            device_class="door",
+            device_class=VWDeviceClass.DOOR,
             reverse_state=True,
             icon="mdi:car-door",
         ),
         BinarySensor(
             attr="door_closed_right_front",
             name="Door closed right front",
-            device_class="door",
+            device_class=VWDeviceClass.DOOR,
             reverse_state=True,
             icon="mdi:car-door",
         ),
         BinarySensor(
             attr="door_closed_left_back",
             name="Door closed left back",
-            device_class="door",
+            device_class=VWDeviceClass.DOOR,
             reverse_state=True,
             icon="mdi:car-door",
         ),
         BinarySensor(
             attr="door_closed_right_back",
             name="Door closed right back",
-            device_class="door",
+            device_class=VWDeviceClass.DOOR,
             reverse_state=True,
             icon="mdi:car-door",
         ),
-        BinarySensor(attr="trunk_locked", name="Trunk locked", device_class="lock", reverse_state=True),
-        BinarySensor(attr="trunk_closed", name="Trunk closed", device_class="door", reverse_state=True),
-        BinarySensor(attr="hood_closed", name="Hood closed", device_class="door", reverse_state=True),
+        BinarySensor(attr="trunk_locked", name="Trunk locked", device_class=VWDeviceClass.LOCK, reverse_state=True),
+        BinarySensor(attr="trunk_closed", name="Trunk closed", device_class=VWDeviceClass.DOOR, reverse_state=True),
+        BinarySensor(attr="hood_closed", name="Hood closed", device_class=VWDeviceClass.DOOR, reverse_state=True),
         BinarySensor(
-            attr="charging_cable_connected", name="Charging cable connected", device_class="plug", reverse_state=False
+            attr="charging_cable_connected",
+            name="Charging cable connected",
+            device_class=VWDeviceClass.PLUG,
+            reverse_state=False,
         ),
         BinarySensor(
-            attr="charging_cable_locked", name="Charging cable locked", device_class="lock", reverse_state=True
-        ),
-        BinarySensor(attr="sunroof_closed", name="Sunroof closed", device_class="window", reverse_state=True),
-        BinarySensor(attr="windows_closed", name="Windows closed", device_class="window", reverse_state=True),
-        BinarySensor(
-            attr="window_closed_left_front", name="Window closed left front", device_class="window", reverse_state=True
+            attr="charging_cable_locked",
+            name="Charging cable locked",
+            device_class=VWDeviceClass.LOCK,
+            reverse_state=True,
         ),
         BinarySensor(
-            attr="window_closed_left_back", name="Window closed left back", device_class="window", reverse_state=True
+            attr="sunroof_closed", name="Sunroof closed", device_class=VWDeviceClass.WINDOW, reverse_state=True
+        ),
+        BinarySensor(
+            attr="windows_closed", name="Windows closed", device_class=VWDeviceClass.WINDOW, reverse_state=True
+        ),
+        BinarySensor(
+            attr="window_closed_left_front",
+            name="Window closed left front",
+            device_class=VWDeviceClass.WINDOW,
+            reverse_state=True,
+        ),
+        BinarySensor(
+            attr="window_closed_left_back",
+            name="Window closed left back",
+            device_class=VWDeviceClass.WINDOW,
+            reverse_state=True,
         ),
         BinarySensor(
             attr="window_closed_right_front",
             name="Window closed right front",
-            device_class="window",
+            device_class=VWDeviceClass.WINDOW,
             reverse_state=True,
         ),
         BinarySensor(
-            attr="window_closed_right_back", name="Window closed right back", device_class="window", reverse_state=True
+            attr="window_closed_right_back",
+            name="Window closed right back",
+            device_class=VWDeviceClass.WINDOW,
+            reverse_state=True,
         ),
-        BinarySensor(attr="vehicle_moving", name="Vehicle Moving", device_class="moving"),
-        BinarySensor(attr="request_in_progress", name="Request in progress", device_class="connectivity"),
+        BinarySensor(attr="vehicle_moving", name="Vehicle Moving", device_class=VWDeviceClass.MOVING),
+        BinarySensor(attr="request_in_progress", name="Request in progress", device_class=VWDeviceClass.CONNECTIVITY),
     ]
 
 
