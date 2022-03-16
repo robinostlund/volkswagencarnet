@@ -838,7 +838,7 @@ class Connection:
             elif sectionId == "departuretimer":
                 url = f"fs-car/bs/$sectionId/v1/{BRAND}/{self._session_country}/vehicles/$vin/timer/actions/$requestId"
             elif sectionId in ["vsr", "refresh"]:
-                url = f"fs-car/bs/$sectionId/v1/{BRAND}/{self._session_country}/vehicles/$vin/requests/$requestId/jobstatus"
+                url = f"fs-car/bs/vsr/v1/{BRAND}/{self._session_country}/vehicles/$vin/requests/$requestId/jobstatus"
             else:
                 url = (
                     f"fs-car/bs/$sectionId/v1/{BRAND}/{self._session_country}/vehicles/$vin/requests/$requestId/status"
