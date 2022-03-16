@@ -5,20 +5,20 @@ import hashlib
 import logging
 import re
 import secrets
-import sys
-import time
 from base64 import b64encode, urlsafe_b64encode
 from datetime import timedelta, datetime
 from json import dumps as to_json
 from random import random
-from sys import version_info
 from typing import Optional
 from urllib.parse import urljoin, parse_qs, urlparse
 
 import jwt
+import sys
+import time
 from aiohttp import ClientSession, ClientTimeout, client_exceptions
 from aiohttp.hdrs import METH_GET, METH_POST
 from bs4 import BeautifulSoup
+from sys import version_info
 
 from volkswagencarnet.vw_exceptions import AuthenticationException
 from volkswagencarnet.vw_timer import TimerData, TimersAndProfiles
@@ -837,7 +837,7 @@ class Connection:
                 )
             elif sectionId == "departuretimer":
                 url = f"fs-car/bs/$sectionId/v1/{BRAND}/{self._session_country}/vehicles/$vin/timer/actions/$requestId"
-            elif sectionId == "vsr":
+            elif sectionId in ["vsr", "refresh"]:
                 url = f"fs-car/bs/$sectionId/v1/{BRAND}/{self._session_country}/vehicles/$vin/requests/$requestId/jobstatus"
             else:
                 url = (

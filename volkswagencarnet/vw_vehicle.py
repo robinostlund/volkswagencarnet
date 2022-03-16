@@ -90,7 +90,7 @@ class Vehicle:
     async def _handle_response(self, response, topic: str, error_msg: Optional[str] = None) -> bool:
         """Handle errors in response and get requests remaining."""
         if not response:
-            self._requests[topic] = {"status": "Failed"}
+            self._requests[topic] = {"status": "Failed", "timestamp": datetime.now()}
             _LOGGER.error(error_msg if error_msg is not None else "Failed to perform {topic} action")
             raise Exception(error_msg if error_msg is not None else "Failed to perform {topic} action")
         else:
@@ -108,7 +108,7 @@ class Vehicle:
                 _LOGGER.warning(f"Request throttled ({topic}")
             else:
                 status = await self.wait_for_request(topic, response.get("id", 0))
-            self._requests[topic] = {"status": status}
+            self._requests[topic] = {"status": status, "timestamp": datetime.now()}
         return True
 
     # API get and set functions #
@@ -328,7 +328,7 @@ class Vehicle:
                     )
                 except Exception as error:
                     _LOGGER.warning(f"Failed to set minimum charge level - {error}")
-                    self._requests["departuretimer"] = {"status": "Exception"}
+                    self._requests["departuretimer"] = {"status": "Exception", "timestamp": datetime.now()}
                     raise Exception(f"Failed to set minimum charge level - {error}")
             else:
                 raise Exception("Level must be 0, 10, ..., 100")
@@ -375,7 +375,7 @@ class Vehicle:
             )
         except Exception as error:
             _LOGGER.warning(f"Failed to {action} charging - {error}")
-            self._requests["batterycharge"] = {"status": "Exception"}
+            self._requests["batterycharge"] = {"status": "Exception", "timestamp": datetime.now()}
             raise Exception(f"Failed to {action} charging - {error}")
 
     # Climatisation electric/auxiliary/windows (CLIMATISATION)
@@ -462,7 +462,7 @@ class Vehicle:
             )
         except Exception as error:
             _LOGGER.warning(f"Failed to execute climatisation request - {error}")
-            self._requests["climatisation"] = {"status": "Exception"}
+            self._requests["climatisation"] = {"status": "Exception", "timestamp": datetime.now()}
         raise Exception("Climatisation action failed")
 
     # Parking heater heating/ventilation (RS)
@@ -492,7 +492,7 @@ class Vehicle:
             )
         except Exception as error:
             _LOGGER.warning(f"Failed to set parking heater mode to {mode} - {error}")
-            self._requests["preheater"] = {"status": "Exception"}
+            self._requests["preheater"] = {"status": "Exception", "timestamp": datetime.now()}
         raise Exception("Pre-heater action failed")
 
     # Lock (RLU)
@@ -514,7 +514,7 @@ class Vehicle:
             return await self._handle_response(response=response, topic="lock", error_msg=f"Failed to {action} vehicle")
         except Exception as error:
             _LOGGER.warning(f"Failed to {action} vehicle - {error}")
-            self._requests["lock"] = {"status": "Exception"}
+            self._requests["lock"] = {"status": "Exception", "timestamp": datetime.now()}
         raise Exception("Lock action failed")
 
     # Refresh vehicle data (VSR)
@@ -533,7 +533,7 @@ class Vehicle:
             )
         except Exception as error:
             _LOGGER.warning(f"Failed to execute data refresh - {error}")
-            self._requests["refresh"] = {"status": "Exception"}
+            self._requests["refresh"] = {"status": "Exception", "timestamp": datetime.now()}
         raise Exception("Data refresh failed")
 
     async def set_schedule(self, data: TimerData) -> bool:
@@ -551,7 +551,7 @@ class Vehicle:
             )
         except Exception as error:
             _LOGGER.warning(f"Failed to execute timer request - {error}")
-            self._requests["timer"] = {"status": "Exception"}
+            self._requests["departuretimer"] = {"status": "Exception", "timestamp": datetime.now()}
         raise Exception("Timer action failed")
 
     # Vehicle class helpers #
