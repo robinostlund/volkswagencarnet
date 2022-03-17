@@ -977,7 +977,7 @@ class Connection:
         except:
             raise
 
-    async def setCharger(self, vin, data):
+    async def setCharger(self, vin, data) -> dict:
         """Start/Stop charger."""
         try:
             await self.set_token("vwg")

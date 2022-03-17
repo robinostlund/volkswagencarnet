@@ -301,7 +301,7 @@ class Vehicle:
 
     # Data set functions
     # Charging (BATTERYCHARGE)
-    async def set_charger_current(self, value):
+    async def set_charger_current(self, value) -> bool:
         """Set charger current."""
         if self.is_charging_supported:
             if 1 <= int(value) <= 255:
@@ -353,7 +353,7 @@ class Vehicle:
     #             self._requests["departuretimer"] = {"status": "Exception"}
     #             raise Exception(f"Failed to set heater source - {error}")
 
-    async def set_charger(self, action):
+    async def set_charger(self, action) -> bool:
         """Charging actions."""
         if not self._services.get("rbatterycharge_v1", False):
             _LOGGER.info("Remote start/stop of charger is not supported.")
