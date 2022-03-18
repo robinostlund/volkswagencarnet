@@ -342,9 +342,15 @@ class Connection:
                 url=token_url, headers=self._session_auth_headers, data=token_body, allow_redirects=False
             )
             if req.status != 200:
-                raise Exception("Token exchange failed")
-            # Save tokens as "identity", these are tokens representing the user
-            self._session_tokens[client] = await req.json()
+                error_content = await req.text()
+                _LOGGER.warning(
+                    f"Failed to get a refresh token, trying to continue without... {req.status} {error_content}"
+                )
+                # raise Exception(f"Token exchange failed: {req.status} {error_content}")
+                self._session_tokens[client] = token_body
+            else:
+                # Save tokens as "identity", these are tokens representing the user
+                self._session_tokens[client] = await req.json()
             if "error" in self._session_tokens[client]:
                 error_msg = self._session_tokens[client].get("error", "")
                 if "error_description" in self._session_tokens[client]:
@@ -971,7 +977,7 @@ class Connection:
         except:
             raise
 
-    async def setCharger(self, vin, data):
+    async def setCharger(self, vin, data) -> dict:
         """Start/Stop charger."""
         try:
             await self.set_token("vwg")
