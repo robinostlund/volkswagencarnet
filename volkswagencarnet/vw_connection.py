@@ -18,6 +18,7 @@ import time
 from aiohttp import ClientSession, ClientTimeout, client_exceptions
 from aiohttp.hdrs import METH_GET, METH_POST
 from bs4 import BeautifulSoup
+from pyrate_limiter import Duration, Limiter, RequestRate, BucketFullException
 from sys import version_info
 
 from volkswagencarnet.vw_exceptions import AuthenticationException
@@ -39,6 +40,9 @@ from .vw_const import (
 from .vw_utilities import json_loads, read_config
 from .vw_vehicle import Vehicle
 
+RATELIMIT_MAX_DELAY = 90
+ALLOW_RATE_LIMIT_DELAY = True
+
 version_info >= (3, 0) or exit("Python 3 required")
 
 _LOGGER = logging.getLogger(__name__)
@@ -50,6 +54,8 @@ JWT_ALGORITHMS = ["RS256"]
 # noinspection PyPep8Naming
 class Connection:
     """Connection to VW-Group Connect services."""
+
+    limiter = Limiter(RequestRate(10, Duration.MINUTE))
 
     # Init connection class
     def __init__(self, session, username, password, fulldebug=False, country=COUNTRY, interval=timedelta(minutes=5)):
@@ -397,7 +403,7 @@ class Connection:
                 _LOGGER.debug("API token request failed.")
                 raise Exception(f"API token request returned with status code {req.status}")
             else:
-                # Save tokens as "vwg", use theese for get/posts to VW Group API
+                # Save tokens as "vwg", use these for get/posts to VW Group API
                 self._session_tokens["vwg"] = await req.json()
                 if "error" in self._session_tokens["vwg"]:
                     error = self._session_tokens["vwg"].get("error", "")
@@ -501,11 +507,15 @@ class Connection:
                 _LOGGER.debug(f'Request for "{url}" returned with status code [{response.status}]')
             return res
 
+    @limiter.ratelimit("vw", delay=ALLOW_RATE_LIMIT_DELAY, max_delay=RATELIMIT_MAX_DELAY)
     async def get(self, url, vin=""):
         """Perform a get query."""
         try:
             response = await self._request(METH_GET, self._make_url(url, vin))
             return response
+        except BucketFullException as ex:
+            _LOGGER.error(f"Bucket full: Refusing to send more requests to backend. {ex}")
+            return {"status_code": 429, "status_message": "Own rate limit exceeded."}
         except client_exceptions.ClientResponseError as error:
             if error.status == 401:
                 _LOGGER.warning(f'Received "unauthorized" error while fetching data: {error}')
