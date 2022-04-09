@@ -1000,6 +1000,9 @@ def create_instruments():
         ),
         BinarySensor(attr="door_locked", name="Doors locked", device_class=VWDeviceClass.LOCK, reverse_state=True),
         BinarySensor(
+            attr="door_locked_sensor", name="Doors locked", device_class=VWDeviceClass.LOCK, reverse_state=True
+        ),
+        BinarySensor(
             attr="door_closed_left_front",
             name="Door closed left front",
             device_class=VWDeviceClass.DOOR,
@@ -1028,6 +1031,9 @@ def create_instruments():
             icon="mdi:car-door",
         ),
         BinarySensor(attr="trunk_locked", name="Trunk locked", device_class=VWDeviceClass.LOCK, reverse_state=True),
+        BinarySensor(
+            attr="trunk_locked_sensor", name="Trunk locked", device_class=VWDeviceClass.LOCK, reverse_state=True
+        ),
         BinarySensor(attr="trunk_closed", name="Trunk closed", device_class=VWDeviceClass.DOOR, reverse_state=True),
         BinarySensor(attr="hood_closed", name="Hood closed", device_class=VWDeviceClass.DOOR, reverse_state=True),
         BinarySensor(
