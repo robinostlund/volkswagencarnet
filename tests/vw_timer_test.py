@@ -101,6 +101,15 @@ class TimerTest(TestCase):
         self.assertTrue(timer.valid)
         self.assertNotEqual(timer.json, timer.json_updated)
 
+    def test_timer_serialization_without_basic_settings(self):
+        """Test de- and serialization of timers."""
+        newdata = self.data["timer"]
+        newdata["timersAndProfiles"]["timerBasicSetting"] = None
+        timer = TimerData(**newdata)
+        self.assertEqual({"timer": newdata}, timer.json)
+        self.assertTrue(timer.valid)
+        self.assertNotEqual(timer.json, timer.json_updated)
+
     def test_update_serialization(self):
         """Check that updating a timer sets correct attributes."""
         timer = TimerData(**self.data["timer"])
