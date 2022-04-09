@@ -64,6 +64,7 @@ TEMP_FAHRENHEIT: str = "°F"
 
 class VWStateClass:
     """Supported state classes."""
+
     MEASUREMENT = "measurement"
     TOTAL = "total"
     TOTAL_INCREASING = "total_increasing"
@@ -71,6 +72,7 @@ class VWStateClass:
 
 class VWDeviceClass:
     """Supported sensor entity device classes."""
+
     BATTERY = "battery"
     CONNECTIVITY = "connectivity"
     DOOR = "door"
