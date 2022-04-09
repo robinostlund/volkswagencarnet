@@ -982,7 +982,7 @@ class Connection:
         except:
             raise
 
-    async def setCharger(self, vin, data) -> dict[str, str | int]:
+    async def setCharger(self, vin, data) -> dict[str, str | int | None]:
         """Start/Stop charger."""
         try:
             await self.set_token("vwg")
@@ -1084,7 +1084,7 @@ class Connection:
     async def setChargeMinLevel(self, vin: str, limit: int):
         """Set schedules."""
         data: TimerData | None = await self.getTimers(vin)
-        if data is None:
+        if data is None or data.timersAndProfiles is None or data.timersAndProfiles.timerBasicSetting is None:
             raise Exception("No existing timer data?")
         data.timersAndProfiles.timerBasicSetting.set_charge_min_limit(limit)
         return await self._setDepartureTimer(vin, data.timersAndProfiles, "setChargeMinLimit")

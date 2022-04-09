@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 """Vehicle class for We Connect."""
+from __future__ import annotations
+
 import asyncio
 import logging
 from collections import OrderedDict
 from datetime import datetime, timedelta, timezone
 from json import dumps as to_json
-from typing import Optional, Union, Any, Dict
+from typing import Any
 
 from volkswagencarnet.vw_timer import TimerData, Timer, BasicSettings
 from .vw_utilities import find_path, is_valid_path
@@ -44,7 +46,7 @@ class Vehicle:
         self._homeregion = "https://msg.volkswagen.de"
         self._discovered = False
         self._states = {}
-        self._requests: Dict[str, Any] = {
+        self._requests: dict[str, Any] = {
             "departuretimer": {"status": "", "timestamp": datetime.now()},
             "batterycharge": {"status": "", "timestamp": datetime.now()},
             "climatisation": {"status": "", "timestamp": datetime.now()},
@@ -56,10 +58,10 @@ class Vehicle:
             "state": "",
         }
         self._climate_duration: int = 30
-        self._climatisation_target_temperature: Optional[float] = None
+        self._climatisation_target_temperature: float | None = None
 
         # API Endpoints that might be enabled for car (that we support)
-        self._services: Dict[str, Dict[str, Any]] = {
+        self._services: dict[str, dict[str, Any]] = {
             "rheating_v1": {"active": False},
             "rclima_v1": {"active": False},
             "rlu_v1": {"active": False},
@@ -87,7 +89,7 @@ class Vehicle:
                 return True
         return False
 
-    async def _handle_response(self, response, topic: str, error_msg: Optional[str] = None) -> bool:
+    async def _handle_response(self, response, topic: str, error_msg: str | None = None) -> bool:
         """Handle errors in response and get requests remaining."""
         if not response:
             self._requests[topic] = {"status": "Failed", "timestamp": datetime.now()}
@@ -638,7 +640,7 @@ class Vehicle:
     # Information from vehicle states #
     # Car information
     @property
-    def nickname(self) -> Optional[str]:
+    def nickname(self) -> str | None:
         """
         Return nickname of the vehicle.
 
@@ -656,7 +658,7 @@ class Vehicle:
         return self.attrs.get("carData", {}).get("nickname", False) is not False
 
     @property
-    def deactivated(self) -> Optional[bool]:
+    def deactivated(self) -> bool | None:
         """
         Return true if service is deactivated.
 
@@ -674,7 +676,7 @@ class Vehicle:
         return self.attrs.get("carData", {}).get("deactivated", False) is True
 
     @property
-    def model(self) -> Optional[str]:
+    def model(self) -> str | None:
         """Return model."""
         return self.attrs.get("carportData", {}).get("modelName", None)
 
@@ -684,7 +686,7 @@ class Vehicle:
         return self.attrs.get("carportData", {}).get("modelName", False) is not False
 
     @property
-    def model_year(self) -> Optional[bool]:
+    def model_year(self) -> bool | None:
         """Return model year."""
         return self.attrs.get("carportData", {}).get("modelYear", None)
 
@@ -760,7 +762,7 @@ class Vehicle:
 
     # Service information
     @property
-    def distance(self) -> Optional[int]:
+    def distance(self) -> int | None:
         """Return vehicle odometer."""
         value = self.attrs.get("StoredVehicleDataResponseParsed")["0x0101010002"].get("value", 0)
         if value:
@@ -949,7 +951,7 @@ class Vehicle:
         return False
 
     @property
-    def charge_max_ampere(self) -> Union[str, int]:
+    def charge_max_ampere(self) -> str | int:
         """Return charger max ampere setting."""
         value = int(self.attrs.get("charger").get("settings").get("maxChargeCurrent").get("content"))
         if value == 254:
@@ -1018,7 +1020,7 @@ class Vehicle:
         return False
 
     @property
-    def charging_time_left(self) -> Union[int, str]:  # FIXME, should probably be either one
+    def charging_time_left(self) -> int | str:  # FIXME, should probably be either one
         """Return minutes to charging complete."""
         if self.external_power:
             minutes = (
@@ -1118,9 +1120,9 @@ class Vehicle:
 
     # Vehicle location states
     @property
-    def position(self) -> Dict[str, Union[str, float, None]]:
+    def position(self) -> dict[str, str | float | None]:
         """Return  position."""
-        output: Dict[str, Union[str, float, None]]
+        output: dict[str, str | float | None]
         try:
             if self.vehicle_moving:
                 output = {"lat": None, "lng": None, "timestamp": None}
@@ -1237,7 +1239,7 @@ class Vehicle:
         return int(value)
 
     @property
-    def combustion_range_last_updated(self) -> Optional[datetime]:
+    def combustion_range_last_updated(self) -> datetime | None:
         """Return combustion engine range last updated."""
         value = None
         if self.is_primary_drive_combustion():
@@ -1274,7 +1276,7 @@ class Vehicle:
         return int(value)
 
     @property
-    def combined_range_last_updated(self) -> Optional[datetime]:
+    def combined_range_last_updated(self) -> datetime | None:
         """Return combined range last updated."""
         value = None
         if COMBINED_RANGE in self.attrs.get("StoredVehicleDataResponseParsed"):
@@ -1329,7 +1331,7 @@ class Vehicle:
 
     # Climatisation settings
     @property
-    def climatisation_target_temperature(self) -> Optional[float]:
+    def climatisation_target_temperature(self) -> float | None:
         """Return the target temperature from climater."""
         value = self.attrs.get("climater").get("settings").get("targetTemperature").get("content")
         if value:
@@ -1373,7 +1375,7 @@ class Vehicle:
         return False
 
     @property
-    def outside_temperature(self) -> Union[float, bool]:  # FIXME should probably be Optional[float] instead
+    def outside_temperature(self) -> float | bool:  # FIXME should probably be Optional[float] instead
         """Return outside temperature."""
         response = int(self.attrs.get("StoredVehicleDataResponseParsed")["0x0301020001"].get("value", None))
         if response is not None:
@@ -2113,7 +2115,7 @@ class Vehicle:
         """Return last updated timestamp."""
         return self.schedule(3).timestamp
 
-    def schedule(self, schedule_id: Union[str, int]) -> Timer:
+    def schedule(self, schedule_id: str | int) -> Timer:
         """
         Return schedule #1.
 
@@ -2123,43 +2125,62 @@ class Vehicle:
         return timer.get_schedule(schedule_id)
 
     @property
-    def schedule_min_charge_level(self) -> Optional[int]:
+    def schedule_min_charge_level(self) -> int | None:
         """Get charge minimum level."""
         timer: TimerData = self.attrs.get("timer")
-        return timer.timersAndProfiles.timerBasicSetting.chargeMinLimit
+        return (
+            timer.timersAndProfiles.timerBasicSetting.chargeMinLimit
+            if timer.timersAndProfiles.timerBasicSetting
+            else None
+        )
 
     @property
-    def schedule_min_charge_level_last_updated(self) -> datetime:
+    def schedule_min_charge_level_last_updated(self) -> datetime | None:
         """Return attribute last updated timestamp."""
         timer: TimerData = self.attrs.get("timer")
-        return timer.timersAndProfiles.timerBasicSetting.timestamp
+        return (
+            timer.timersAndProfiles.timerBasicSetting.timestamp if timer.timersAndProfiles.timerBasicSetting else None
+        )
 
     @property
     def is_schedule_min_charge_level_supported(self) -> bool:
         """Check if charge minimum level is supported."""
         timer: TimerData = self.attrs.get("timer", None)
-        return timer.timersAndProfiles.timerBasicSetting.chargeMinLimit is not None
+        return (
+            timer.timersAndProfiles.timerBasicSetting is not None
+            and timer.timersAndProfiles.timerBasicSetting.chargeMinLimit is not None
+        )
 
     @property
-    def schedule_heater_source(self) -> Optional[str]:
+    def schedule_heater_source(self) -> str | None:
         """Get departure schedule heater source."""
         timer: TimerData = self.attrs.get("timer")
-        return timer.timersAndProfiles.timerBasicSetting.heaterSource
+        return (
+            timer.timersAndProfiles.timerBasicSetting.heaterSource
+            if timer.timersAndProfiles.timerBasicSetting
+            else None
+        )
 
     @property
-    def schedule_heater_source_last_updated(self) -> datetime:
+    def schedule_heater_source_last_updated(self) -> datetime | None:
         """Return attribute last updated timestamp."""
         timer: TimerData = self.attrs.get("timer")
-        return timer.timersAndProfiles.timerBasicSetting.timestamp
+        return (
+            timer.timersAndProfiles.timerBasicSetting.timestamp if timer.timersAndProfiles.timerBasicSetting else None
+        )
 
     @property
     def is_schedule_heater_source_supported(self) -> bool:
         """Check if departure timers heater source is supported."""
         timer: TimerData = self.attrs.get("timer", None)
-        return timer.timersAndProfiles.timerBasicSetting.heaterSource is not None
+        return (
+            (timer.timersAndProfiles.timerBasicSetting.heaterSource is not None)
+            if timer.timersAndProfiles.timerBasicSetting
+            else False
+        )
 
     @property
-    def timer_basic_settings(self) -> BasicSettings:
+    def timer_basic_settings(self) -> BasicSettings | None:
         """Check if timer basic settings are supported."""
         timer: TimerData = self.attrs.get("timer")
         return timer.timersAndProfiles.timerBasicSetting
@@ -2168,7 +2189,11 @@ class Vehicle:
     def is_timer_basic_settings_supported(self) -> bool:
         """Check if timer basic settings are supported."""
         timer: TimerData = self.attrs.get("timer", None)
-        return timer.timersAndProfiles.timerBasicSetting is not None
+        return (
+            timer is not None
+            and timer.timersAndProfiles is not None
+            and timer.timersAndProfiles.timerBasicSetting is not None
+        )
 
     @property
     def is_departure_timer1_supported(self) -> bool:
@@ -2185,7 +2210,7 @@ class Vehicle:
         """Check if timer 3 is supported."""
         return self.is_schedule_supported(3)
 
-    def is_schedule_supported(self, id: Union[str, int]) -> bool:
+    def is_schedule_supported(self, id: str | int) -> bool:
         """
         Return true if schedule is supported.
 
@@ -2536,7 +2561,7 @@ class Vehicle:
         return data
 
     @property
-    def request_results_last_updated(self) -> Optional[datetime]:
+    def request_results_last_updated(self) -> datetime | None:
         """Get last updated time."""
         if self._requests.get("latest", "") != "":
             return self._requests.get(str(self._requests.get("latest")), {}).get("timestamp")
