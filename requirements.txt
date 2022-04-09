@@ -2,3 +2,4 @@ aiohttp
 beautifulsoup4
 lxml
 pyjwt
+pyrate_limiter>=2.6.0

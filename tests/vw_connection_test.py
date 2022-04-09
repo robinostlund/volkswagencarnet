@@ -1,7 +1,10 @@
 """Tests for main connection class."""
+
 import sys
+from pyrate_limiter import BucketFullException, Duration, Limiter, RequestRate
 
 from volkswagencarnet import vw_connection
+from volkswagencarnet.vw_connection import Connection
 
 if sys.version_info >= (3, 8):
     # This won't work on python versions less than 3.8
@@ -16,9 +19,37 @@ else:
 
 
 from io import StringIO
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock, AsyncMock
 
 import pytest
+
+
+class TwoVehiclesConnection(Connection):
+    """Connection that return two vehicles."""
+
+    _session_headers = []
+    _jarCookie = MagicMock()
+
+    # noinspection PyUnusedLocal
+    # noinspection PyMissingConstructor
+    def __init__(self, sess, **kwargs):
+        """Init."""
+        self._session = sess
+
+    async def doLogin(self, tries=1):
+        """No-op update."""
+        return True
+
+    async def update(self):
+        """No-op update."""
+        return True
+
+    @property
+    def vehicles(self):
+        """Return the vehicles."""
+        vehicle1 = vw_connection.Vehicle(None, "vin1")
+        vehicle2 = vw_connection.Vehicle(None, "vin2")
+        return [vehicle1, vehicle2]
 
 
 @pytest.mark.skipif(condition=sys.version_info < (3, 8), reason="Test incompatible with Python < 3.8")
@@ -35,35 +66,15 @@ class CmdLineTest(IsolatedAsyncioTestCase):
     class FailingLoginConnection:
         """This connection always fails login."""
 
+        # noinspection PyUnusedLocal
         def __init__(self, sess, **kwargs):
             """Init."""
             self._session = sess
 
+        # noinspection PyPep8Naming,PyMethodMayBeStatic
         async def doLogin(self):
             """Failed login attempt."""
             return False
-
-    class TwoVehiclesConnection:
-        """Connection that return two vehicles."""
-
-        def __init__(self, sess, **kwargs):
-            """Init."""
-            self._session = sess
-
-        async def doLogin(self):
-            """No-op update."""
-            return True
-
-        async def update(self):
-            """No-op update."""
-            return True
-
-        @property
-        def vehicles(self):
-            """Return the vehicles."""
-            vehicle1 = vw_connection.Vehicle(None, "vin1")
-            vehicle2 = vw_connection.Vehicle(None, "vin2")
-            return [vehicle1, vehicle2]
 
     @pytest.mark.asyncio
     @patch.object(vw_connection.logging, "basicConfig")
@@ -129,3 +140,55 @@ class SendCommandsTest(IsolatedAsyncioTestCase):
     async def test_set_schedule(self):
         """Test set schedule."""
         pass
+
+
+class RateLimitTest(IsolatedAsyncioTestCase):
+    """Test that rate limiting towards VW works."""
+
+    rate = RequestRate(1, 5 * Duration.SECOND)
+    limiter = Limiter(
+        rate,
+    )
+
+    async def rateLimitedFunction(self, url, vin=""):
+        """Limit calls test function."""
+        async with self.limiter.ratelimit(f"{url}_{vin}"):
+            return ""
+
+    @pytest.mark.asyncio
+    @pytest.mark.skipif(condition=sys.version_info < (3, 8), reason="Test incompatible with Python < 3.8")
+    @patch("volkswagencarnet.vw_connection.Connection", spec_set=vw_connection.Connection, new=TwoVehiclesConnection)
+    async def test_rate_limit(self):
+        """Test rate limiting functionality."""
+
+        sess = AsyncMock()
+
+        vw_connection.ALLOW_RATE_LIMIT_DELAY = False
+        # noinspection PyArgumentList
+        conn = vw_connection.Connection(sess)
+
+        with (patch.object(conn, "get", self.rateLimitedFunction), pytest.raises(BucketFullException)):
+
+            for _ in range(2):
+                res = await conn.get("foo")
+            assert res == {"status_code": 429, "status_message": "Own rate limit exceeded."}
+
+    @pytest.mark.asyncio
+    @pytest.mark.skipif(condition=sys.version_info < (3, 8), reason="Test incompatible with Python < 3.8")
+    @patch("volkswagencarnet.vw_connection.Connection", spec_set=vw_connection.Connection, new=TwoVehiclesConnection)
+    async def test_rate_limited_get(self):
+        """Test that rate limiting returns expected response."""
+
+        sess = AsyncMock()
+
+        vw_connection.ALLOW_RATE_LIMIT_DELAY = False
+        # noinspection PyArgumentList
+        conn = vw_connection.Connection(sess)
+
+        rate_limited_error = MagicMock(side_effect=BucketFullException)
+
+        with (patch.object(conn, "_make_url", rate_limited_error), pytest.raises(BucketFullException)):
+
+            for _ in range(2):
+                res = await conn.get("foo")
+            assert res == {"status_code": 429, "status_message": "Own rate limit exceeded."}
