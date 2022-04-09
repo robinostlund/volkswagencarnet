@@ -3,6 +3,7 @@ import datetime
 from unittest import TestCase
 
 from volkswagencarnet.vw_timer import TimerData, TimerProfile, parse_vw_datetime
+from volkswagencarnet.vw_vehicle import Vehicle
 
 
 class TimerTest(TestCase):
@@ -109,6 +110,13 @@ class TimerTest(TestCase):
         self.assertEqual({"timer": newdata}, timer.json)
         self.assertTrue(timer.valid)
         self.assertNotEqual(timer.json, timer.json_updated)
+
+        vehicle = Vehicle(None, "")
+        vehicle.attrs["timer"] = timer
+        self.assertFalse(vehicle.is_schedule_min_charge_level_supported)
+        self.assertFalse(vehicle.is_timer_basic_settings_supported)
+        self.assertFalse(vehicle.is_departure_timer2_supported)
+        self.assertTrue(vehicle.is_departure_timer3_supported)
 
     def test_update_serialization(self):
         """Check that updating a timer sets correct attributes."""
