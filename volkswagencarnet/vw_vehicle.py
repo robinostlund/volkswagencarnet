@@ -498,7 +498,7 @@ class Vehicle:
     # Lock (RLU)
     async def set_lock(self, action, spin):
         """Remote lock and unlock actions."""
-        if not self._services.get("rlu_v1", False):
+        if not self._services.get("rlu_v1", {}).get("active", False):
             _LOGGER.info("Remote lock/unlock is not supported.")
             raise Exception("Remote lock/unlock is not supported.")
         if self._in_progress("lock", unknown_offset=-5):
