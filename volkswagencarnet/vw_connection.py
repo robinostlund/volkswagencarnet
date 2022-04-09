@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 """Communicate with We Connect services."""
+from __future__ import annotations
+
 import asyncio
 import hashlib
 import logging
@@ -9,7 +11,6 @@ from base64 import b64encode, urlsafe_b64encode
 from datetime import timedelta, datetime
 from json import dumps as to_json
 from random import random
-from typing import Optional
 from urllib.parse import urljoin, parse_qs, urlparse
 
 import jwt
@@ -746,7 +747,7 @@ class Connection:
             _LOGGER.warning(f"Could not fetch position, error: {error}")
         return False
 
-    async def getTimers(self, vin) -> Optional[TimerData]:
+    async def getTimers(self, vin) -> TimerData | None:
         """Get departure timers."""
         if not await self.validate_tokens:
             return None
@@ -981,7 +982,7 @@ class Connection:
         except:
             raise
 
-    async def setCharger(self, vin, data) -> dict:
+    async def setCharger(self, vin, data) -> dict[str, str | int]:
         """Start/Stop charger."""
         try:
             await self.set_token("vwg")
@@ -1082,7 +1083,7 @@ class Connection:
 
     async def setChargeMinLevel(self, vin: str, limit: int):
         """Set schedules."""
-        data: Optional[TimerData] = await self.getTimers(vin)
+        data: TimerData | None = await self.getTimers(vin)
         if data is None:
             raise Exception("No existing timer data?")
         data.timersAndProfiles.timerBasicSetting.set_charge_min_limit(limit)

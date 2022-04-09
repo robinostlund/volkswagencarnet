@@ -168,9 +168,11 @@ class RateLimitTest(IsolatedAsyncioTestCase):
         conn = vw_connection.Connection(sess)
 
         with (patch.object(conn, "get", self.rateLimitedFunction), pytest.raises(BucketFullException)):
-
+            count = 0
             for _ in range(2):
+                count += 1
                 res = await conn.get("foo")
+            assert count == 2
             assert res == {"status_code": 429, "status_message": "Own rate limit exceeded."}
 
     @pytest.mark.asyncio
@@ -185,10 +187,8 @@ class RateLimitTest(IsolatedAsyncioTestCase):
         # noinspection PyArgumentList
         conn = vw_connection.Connection(sess)
 
-        rate_limited_error = MagicMock(side_effect=BucketFullException)
+        rate_limited_error = MagicMock(side_effect=BucketFullException("dummy", 1, 1))
 
-        with (patch.object(conn, "_make_url", rate_limited_error), pytest.raises(BucketFullException)):
-
-            for _ in range(2):
-                res = await conn.get("foo")
+        with (patch.object(conn, "_make_url", rate_limited_error)):
+            res = await conn.get("foo")
             assert res == {"status_code": 429, "status_message": "Own rate limit exceeded."}
