@@ -43,7 +43,7 @@ from .vw_vehicle import Vehicle
 RATELIMIT_MAX_DELAY = 90
 ALLOW_RATE_LIMIT_DELAY = True
 
-version_info >= (3, 0) or exit("Python 3 required")
+version_info >= (3, 7) or exit("Python 3.7+ required")
 
 _LOGGER = logging.getLogger(__name__)
 
