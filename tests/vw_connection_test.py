@@ -27,14 +27,12 @@ import pytest
 class TwoVehiclesConnection(Connection):
     """Connection that return two vehicles."""
 
-    _session_headers = []
-    _jarCookie = MagicMock()
-
     # noinspection PyUnusedLocal
     # noinspection PyMissingConstructor
-    def __init__(self, sess, **kwargs):
+    def __init__(self, sess, username="", password="", **kwargs):
         """Init."""
-        self._session = sess
+        super().__init__(session=sess, username=username, password=password)
+        self._jarCookie = MagicMock()
 
     async def doLogin(self, tries=1):
         """No-op update."""
@@ -167,7 +165,7 @@ class RateLimitTest(IsolatedAsyncioTestCase):
 
         vw_connection.ALLOW_RATE_LIMIT_DELAY = False
         # noinspection PyArgumentList
-        conn = vw_connection.Connection(sess)
+        conn = vw_connection.Connection(sess, "", "")
 
         with (patch.object(conn, "get", self.rateLimitedFunction), pytest.raises(BucketFullException)):
             count = 0
@@ -189,7 +187,7 @@ class RateLimitTest(IsolatedAsyncioTestCase):
 
         vw_connection.ALLOW_RATE_LIMIT_DELAY = False
         # noinspection PyArgumentList
-        conn = vw_connection.Connection(sess)
+        conn = vw_connection.Connection(sess, "", "")
 
         rate_limited_error = MagicMock(side_effect=BucketFullException("dummy", 1, 1))
 
