@@ -19,7 +19,7 @@ else:
 
 
 from io import StringIO
-from unittest.mock import patch, MagicMock, AsyncMock
+from unittest.mock import patch, MagicMock
 
 import pytest
 
@@ -161,6 +161,8 @@ class RateLimitTest(IsolatedAsyncioTestCase):
     async def test_rate_limit(self):
         """Test rate limiting functionality."""
 
+        from unittest.mock import AsyncMock
+
         sess = AsyncMock()
 
         vw_connection.ALLOW_RATE_LIMIT_DELAY = False
@@ -180,6 +182,8 @@ class RateLimitTest(IsolatedAsyncioTestCase):
     @patch("volkswagencarnet.vw_connection.Connection", spec_set=vw_connection.Connection, new=TwoVehiclesConnection)
     async def test_rate_limited_get(self):
         """Test that rate limiting returns expected response."""
+
+        from unittest.mock import AsyncMock
 
         sess = AsyncMock()
 
