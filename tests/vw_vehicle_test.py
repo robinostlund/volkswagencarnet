@@ -26,7 +26,14 @@ from unittest.mock import MagicMock, patch
 from aiohttp import ClientSession
 from freezegun import freeze_time
 
-from volkswagencarnet.vw_vehicle import Vehicle
+from volkswagencarnet.vw_vehicle import (
+    Vehicle,
+    PRIMARY_DRIVE,
+    ENGINE_TYPE_ELECTRIC,
+    SECONDARY_DRIVE,
+    ENGINE_TYPE_DIESEL,
+    ENGINE_TYPE_GASOLINE,
+)
 
 
 class VehicleTest(IsolatedAsyncioTestCase):
@@ -323,3 +330,50 @@ class VehiclePropertyTest(IsolatedAsyncioTestCase):
         self.assertFalse(vehicle._in_progress("not-defined"))
         self.assertTrue(vehicle._in_progress("unknown", 2))
         self.assertFalse(vehicle._in_progress("unknown", 4))
+
+    async def test_is_primary_engine_electric(self):
+        """Test primary electric engine."""
+        vehicle = Vehicle(conn=None, url="dummy34")
+        vehicle._states["StoredVehicleDataResponseParsed"] = {PRIMARY_DRIVE: {"value": ENGINE_TYPE_ELECTRIC}}
+        self.assertTrue(vehicle.is_primary_drive_electric())
+        self.assertFalse(vehicle.is_primary_drive_combustion())
+
+    async def test_is_primary_engine_combustion(self):
+        """Test primary ICE."""
+        vehicle = Vehicle(conn=None, url="dummy34")
+        vehicle._states["StoredVehicleDataResponseParsed"] = {
+            PRIMARY_DRIVE: {"value": ENGINE_TYPE_DIESEL},
+            SECONDARY_DRIVE: {"value": ENGINE_TYPE_ELECTRIC},
+        }
+        self.assertTrue(vehicle.is_primary_drive_combustion())
+        self.assertFalse(vehicle.is_primary_drive_electric())
+        self.assertFalse(vehicle.is_secondary_drive_combustion())
+        self.assertTrue(vehicle.is_secondary_drive_electric())
+
+        # No secondary engine
+        vehicle._states["StoredVehicleDataResponseParsed"] = {PRIMARY_DRIVE: {"value": ENGINE_TYPE_GASOLINE}}
+        self.assertTrue(vehicle.is_primary_drive_combustion())
+        self.assertFalse(vehicle.is_secondary_drive_electric())
+
+    async def test_has_combustion_engine(self):
+        """Test check for ICE."""
+        vehicle = Vehicle(conn=None, url="dummy34")
+        vehicle._states["StoredVehicleDataResponseParsed"] = {
+            PRIMARY_DRIVE: {"value": ENGINE_TYPE_DIESEL},
+            SECONDARY_DRIVE: {"value": ENGINE_TYPE_ELECTRIC},
+        }
+        self.assertTrue(vehicle.has_combustion_engine())
+
+        # not sure if this exists, but :shrug:
+        vehicle._states["StoredVehicleDataResponseParsed"] = {
+            PRIMARY_DRIVE: {"value": ENGINE_TYPE_ELECTRIC},
+            SECONDARY_DRIVE: {"value": ENGINE_TYPE_GASOLINE},
+        }
+        self.assertTrue(vehicle.has_combustion_engine())
+
+        # not sure if this exists, but :shrug:
+        vehicle._states["StoredVehicleDataResponseParsed"] = {
+            PRIMARY_DRIVE: {"value": ENGINE_TYPE_ELECTRIC},
+            SECONDARY_DRIVE: {"value": ENGINE_TYPE_ELECTRIC},
+        }
+        self.assertFalse(vehicle.has_combustion_engine())

@@ -839,6 +839,8 @@ class Vehicle:
 
         :return:
         """
+        if not self.has_combustion_engine():
+            return False
         if self.attrs.get("StoredVehicleDataResponseParsed", False):
             if "0x0203010002" in self.attrs.get("StoredVehicleDataResponseParsed"):
                 if self.attrs.get("StoredVehicleDataResponseParsed").get("0x0203010002").get("value", None) is not None:
@@ -862,6 +864,8 @@ class Vehicle:
 
         :return:
         """
+        if not self.has_combustion_engine():
+            return False
         if self.attrs.get("StoredVehicleDataResponseParsed", False):
             if "0x0203010001" in self.attrs.get("StoredVehicleDataResponseParsed"):
                 if self.attrs.get("StoredVehicleDataResponseParsed").get("0x0203010001").get("value", None) is not None:
@@ -1184,36 +1188,20 @@ class Vehicle:
         :return:
         """
         value = NO_VALUE
-        if (
-            PRIMARY_RANGE in self.attrs.get("StoredVehicleDataResponseParsed")
-            and self.attrs.get("StoredVehicleDataResponseParsed")[PRIMARY_DRIVE].get("value", UNSUPPORTED)
-            == ENGINE_TYPE_ELECTRIC
-        ):
+        if self.is_primary_drive_electric():
             value = self.attrs.get("StoredVehicleDataResponseParsed")[PRIMARY_RANGE].get("value", UNSUPPORTED)
 
-        elif (
-            SECONDARY_RANGE in self.attrs.get("StoredVehicleDataResponseParsed")
-            and self.attrs.get("StoredVehicleDataResponseParsed")[SECONDARY_DRIVE].get("value", UNSUPPORTED)
-            == ENGINE_TYPE_ELECTRIC
-        ):
+        elif self.is_secondary_drive_electric():
             value = self.attrs.get("StoredVehicleDataResponseParsed")[SECONDARY_RANGE].get("value", UNSUPPORTED)
         return int(value)
 
     @property
     def electric_range_last_updated(self) -> datetime:
         """Return electric range last updated."""
-        if (
-            PRIMARY_RANGE in self.attrs.get("StoredVehicleDataResponseParsed")
-            and self.attrs.get("StoredVehicleDataResponseParsed")[PRIMARY_DRIVE].get("value", UNSUPPORTED)
-            == ENGINE_TYPE_ELECTRIC
-        ):
+        if self.is_primary_drive_electric():
             return self.attrs.get("StoredVehicleDataResponseParsed")[PRIMARY_RANGE].get(BACKEND_RECEIVED_TIMESTAMP)
 
-        elif (
-            SECONDARY_RANGE in self.attrs.get("StoredVehicleDataResponseParsed")
-            and self.attrs.get("StoredVehicleDataResponseParsed")[SECONDARY_DRIVE].get("value", UNSUPPORTED)
-            == ENGINE_TYPE_ELECTRIC
-        ):
+        elif self.is_secondary_drive_electric():
             return self.attrs.get("StoredVehicleDataResponseParsed")[SECONDARY_RANGE].get(BACKEND_RECEIVED_TIMESTAMP)
         raise ValueError()
 
@@ -1226,18 +1214,10 @@ class Vehicle:
         """
         supported = False
         if self.attrs.get("StoredVehicleDataResponseParsed", False):
-            if (
-                PRIMARY_RANGE in self.attrs.get("StoredVehicleDataResponseParsed")
-                and self.attrs.get("StoredVehicleDataResponseParsed")[PRIMARY_DRIVE].get("value", UNSUPPORTED)
-                == ENGINE_TYPE_ELECTRIC
-            ):
+            if self.is_primary_drive_electric():
                 supported = True
 
-            elif (
-                SECONDARY_RANGE in self.attrs.get("StoredVehicleDataResponseParsed")
-                and self.attrs.get("StoredVehicleDataResponseParsed")[SECONDARY_DRIVE].get("value", UNSUPPORTED)
-                == ENGINE_TYPE_ELECTRIC
-            ):
+            elif self.is_secondary_drive_electric():
                 supported = True
         return supported
 
@@ -1249,18 +1229,10 @@ class Vehicle:
         :return:
         """
         value = NO_VALUE
-        if (
-            PRIMARY_RANGE in self.attrs.get("StoredVehicleDataResponseParsed")
-            and self.attrs.get("StoredVehicleDataResponseParsed")[PRIMARY_DRIVE].get("value", UNSUPPORTED)
-            in ENGINE_TYPE_COMBUSTION
-        ):
+        if self.is_primary_drive_combustion():
             value = self.attrs.get("StoredVehicleDataResponseParsed")[PRIMARY_RANGE].get("value", NO_VALUE)
 
-        elif (
-            SECONDARY_RANGE in self.attrs.get("StoredVehicleDataResponseParsed")
-            and self.attrs.get("StoredVehicleDataResponseParsed")[SECONDARY_DRIVE].get("value", UNSUPPORTED)
-            in ENGINE_TYPE_COMBUSTION
-        ):
+        elif self.is_secondary_drive_combustion():
             value = self.attrs.get("StoredVehicleDataResponseParsed")[SECONDARY_RANGE].get("value", NO_VALUE)
         return int(value)
 
@@ -1268,18 +1240,9 @@ class Vehicle:
     def combustion_range_last_updated(self) -> Optional[datetime]:
         """Return combustion engine range last updated."""
         value = None
-        if (
-            PRIMARY_RANGE in self.attrs.get("StoredVehicleDataResponseParsed")
-            and self.attrs.get("StoredVehicleDataResponseParsed")[PRIMARY_DRIVE].get("value", UNSUPPORTED)
-            in ENGINE_TYPE_COMBUSTION
-        ):
+        if self.is_primary_drive_combustion():
             value = self.attrs.get("StoredVehicleDataResponseParsed")[PRIMARY_RANGE].get(BACKEND_RECEIVED_TIMESTAMP)
-
-        elif (
-            SECONDARY_RANGE in self.attrs.get("StoredVehicleDataResponseParsed")
-            and self.attrs.get("StoredVehicleDataResponseParsed")[SECONDARY_DRIVE].get("value", UNSUPPORTED)
-            in ENGINE_TYPE_COMBUSTION
-        ):
+        elif self.is_secondary_drive_combustion():
             value = self.attrs.get("StoredVehicleDataResponseParsed")[SECONDARY_RANGE].get(BACKEND_RECEIVED_TIMESTAMP)
         return value
 
@@ -1292,18 +1255,9 @@ class Vehicle:
         """
         supported = False
         if self.attrs.get("StoredVehicleDataResponseParsed", False):
-            if (
-                PRIMARY_RANGE in self.attrs.get("StoredVehicleDataResponseParsed")
-                and self.attrs.get("StoredVehicleDataResponseParsed")[PRIMARY_DRIVE].get("value", UNSUPPORTED)
-                in ENGINE_TYPE_COMBUSTION
-            ):
+            if self.is_primary_drive_combustion():
                 supported = True
-
-            elif (
-                SECONDARY_RANGE in self.attrs.get("StoredVehicleDataResponseParsed")
-                and self.attrs.get("StoredVehicleDataResponseParsed")[PRIMARY_DRIVE].get("value", UNSUPPORTED)
-                in ENGINE_TYPE_COMBUSTION
-            ):
+            elif self.is_secondary_drive_combustion():
                 supported = True
         return supported
 
@@ -2321,7 +2275,11 @@ class Vehicle:
         :return:
         """
         response = self.trip_last_entry
-        return response and type(response.get("averageFuelConsumption", None)) in (float, int)
+        return (
+            self.has_combustion_engine()
+            and response
+            and type(response.get("averageFuelConsumption", None)) in (float, int)
+        )
 
     @property
     def trip_last_average_auxillary_consumption(self):
@@ -2372,6 +2330,8 @@ class Vehicle:
         :return:
         """
         response = self.trip_last_entry
+        if response.trip_last_entry.get("averageAuxConsumerConsumption", 65535) == 65535:
+            return False
         return response and type(response.get("averageAuxConsumerConsumption", None)) in (float, int)
 
     @property
@@ -2651,3 +2611,39 @@ class Vehicle:
             return obj.isoformat() if isinstance(obj, datetime) else obj
 
         return to_json(OrderedDict(sorted(self.attrs.items())), indent=4, default=serialize)
+
+    def is_primary_drive_electric(self):
+        """Check if primary engine is electric."""
+        return (
+            PRIMARY_DRIVE in self.attrs.get("StoredVehicleDataResponseParsed", {})
+            and self.attrs.get("StoredVehicleDataResponseParsed")[PRIMARY_DRIVE].get("value", UNSUPPORTED)
+            == ENGINE_TYPE_ELECTRIC
+        )
+
+    def is_secondary_drive_electric(self):
+        """Check if secondary engine is electric."""
+        return (
+            SECONDARY_DRIVE in self.attrs.get("StoredVehicleDataResponseParsed", {})
+            and self.attrs.get("StoredVehicleDataResponseParsed")[SECONDARY_DRIVE].get("value", UNSUPPORTED)
+            == ENGINE_TYPE_ELECTRIC
+        )
+
+    def is_primary_drive_combustion(self):
+        """Check if primary engine is combustion."""
+        return (
+            PRIMARY_DRIVE in self.attrs.get("StoredVehicleDataResponseParsed", {})
+            and self.attrs.get("StoredVehicleDataResponseParsed")[PRIMARY_DRIVE].get("value", UNSUPPORTED)
+            in ENGINE_TYPE_COMBUSTION
+        )
+
+    def is_secondary_drive_combustion(self):
+        """Check if secondary engine is combustion."""
+        return (
+            SECONDARY_DRIVE in self.attrs.get("StoredVehicleDataResponseParsed", {})
+            and self.attrs.get("StoredVehicleDataResponseParsed")[SECONDARY_DRIVE].get("value", UNSUPPORTED)
+            in ENGINE_TYPE_COMBUSTION
+        )
+
+    def has_combustion_engine(self):
+        """Return true if car has a combustion engine."""
+        return self.is_primary_drive_combustion() or self.is_secondary_drive_combustion()
