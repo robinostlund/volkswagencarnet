@@ -156,7 +156,7 @@ class RateLimitTest(IsolatedAsyncioTestCase):
             return ""
 
     @pytest.mark.asyncio
-    @pytest.mark.skipif(condition=sys.version_info < (3, 8), reason="Test incompatible with Python < 3.8")
+    @pytest.mark.skipif(condition=sys.version_info < (3, 9), reason="Test incompatible with Python < 3.9")
     @patch("volkswagencarnet.vw_connection.Connection", spec_set=vw_connection.Connection, new=TwoVehiclesConnection)
     async def test_rate_limit(self):
         """Test rate limiting functionality."""
@@ -178,7 +178,7 @@ class RateLimitTest(IsolatedAsyncioTestCase):
             assert res == {"status_code": 429, "status_message": "Own rate limit exceeded."}
 
     @pytest.mark.asyncio
-    @pytest.mark.skipif(condition=sys.version_info < (3, 8), reason="Test incompatible with Python < 3.8")
+    @pytest.mark.skipif(condition=sys.version_info < (3, 9), reason="Test incompatible with Python < 3.9")
     @patch("volkswagencarnet.vw_connection.Connection", spec_set=vw_connection.Connection, new=TwoVehiclesConnection)
     async def test_rate_limited_get(self):
         """Test that rate limiting returns expected response."""
