@@ -248,7 +248,7 @@ class TimersAndProfiles(DepartureTimerClass):
         self,
         timerProfileList: Union[dict, TimerProfileList],
         timerList: Union[dict, TimerList],
-        timerBasicSetting: Union[dict, BasicSettings, None],
+        timerBasicSetting: Union[dict, BasicSettings, None] = None,
     ):
         """Init."""
         self.timerProfileList = (
@@ -258,7 +258,7 @@ class TimersAndProfiles(DepartureTimerClass):
         self.timerBasicSetting = (
             timerBasicSetting
             if isinstance(timerBasicSetting, BasicSettings)
-            else (None if timerBasicSetting is None else BasicSettings(**timerBasicSetting))
+            else (BasicSettings(**timerBasicSetting) if timerBasicSetting is not None else None)
         )
 
 

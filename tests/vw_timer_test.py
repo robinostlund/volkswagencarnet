@@ -1,4 +1,5 @@
 """Depature timer tests."""
+import copy
 import datetime
 from unittest import TestCase
 
@@ -104,7 +105,7 @@ class TimerTest(TestCase):
 
     def test_timer_serialization_without_basic_settings(self):
         """Test de- and serialization of timers."""
-        newdata = self.data["timer"]
+        newdata: dict = copy.deepcopy(self.data["timer"])
         newdata["timersAndProfiles"]["timerBasicSetting"] = None
         timer = TimerData(**newdata)
         self.assertEqual({"timer": newdata}, timer.json)
