@@ -41,8 +41,9 @@ from .vw_const import (
 from .vw_utilities import json_loads, read_config
 from .vw_vehicle import Vehicle
 
+RATE_LIMIT_DEFAULT_BUCKET = "vw"
+
 RATELIMIT_MAX_DELAY = 90
-ALLOW_RATE_LIMIT_DELAY = True
 
 version_info >= (3, 7) or exit("Python 3.7+ required")
 
@@ -56,10 +57,12 @@ JWT_ALGORITHMS = ["RS256"]
 class Connection:
     """Connection to VW-Group Connect services."""
 
+    ALLOW_RATE_LIMIT_DELAY = True
+
     # 5 / 10 seconds, 12 / minute, 30 / 5 minutes
-    limiter1 = Limiter(RequestRate(3, Duration.SECOND * 10))
-    limiter2 = Limiter(RequestRate(12, Duration.MINUTE))
-    limiter3 = Limiter(RequestRate(30, Duration.MINUTE * 5))
+    limiter = Limiter(
+        RequestRate(3, Duration.SECOND * 10), RequestRate(12, Duration.MINUTE), RequestRate(30, Duration.MINUTE * 5)
+    )
 
     # Init connection class
     def __init__(self, session, username, password, fulldebug=False, country=COUNTRY, interval=timedelta(minutes=5)):
@@ -467,7 +470,9 @@ class Connection:
     async def _request(self, method, url, **kwargs):
         """Perform a query to the VW-Group API."""
         _LOGGER.debug(f'HTTP {method} "{url}"')
-        async with self._session.request(
+        async with self.limiter.ratelimit(
+            RATE_LIMIT_DEFAULT_BUCKET, delay=self.ALLOW_RATE_LIMIT_DELAY, max_delay=RATELIMIT_MAX_DELAY
+        ), self._session.request(
             method,
             url,
             headers=self._session_headers,
@@ -505,9 +510,6 @@ class Connection:
                 _LOGGER.debug(f'Request for "{url}" returned with status code [{response.status}]')
             return res
 
-    @limiter1.ratelimit("vw", delay=ALLOW_RATE_LIMIT_DELAY, max_delay=RATELIMIT_MAX_DELAY)
-    @limiter2.ratelimit("vw", delay=ALLOW_RATE_LIMIT_DELAY, max_delay=RATELIMIT_MAX_DELAY)
-    @limiter3.ratelimit("vw", delay=ALLOW_RATE_LIMIT_DELAY, max_delay=RATELIMIT_MAX_DELAY)
     async def get(self, url, vin=""):
         """Perform a get query."""
         try:

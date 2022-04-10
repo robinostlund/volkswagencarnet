@@ -1,8 +1,9 @@
 """Tests for main connection class."""
-
 import sys
+from aiohttp import client
 from pyrate_limiter import BucketFullException, Duration, Limiter, RequestRate
 
+from fixtures.mock_server import get_free_port, start_mock_server
 from volkswagencarnet import vw_connection
 from volkswagencarnet.vw_connection import Connection
 
@@ -26,6 +27,8 @@ import pytest
 
 class TwoVehiclesConnection(Connection):
     """Connection that return two vehicles."""
+
+    ALLOW_RATE_LIMIT_DELAY = False
 
     # noinspection PyUnusedLocal
     # noinspection PyMissingConstructor
@@ -167,11 +170,11 @@ class RateLimitTest(IsolatedAsyncioTestCase):
         # noinspection PyArgumentList
         conn = vw_connection.Connection(sess, "", "")
 
-        with (patch.object(conn, "get", self.rateLimitedFunction), pytest.raises(BucketFullException)):
+        with (patch.object(conn, "_request", self.rateLimitedFunction), pytest.raises(BucketFullException)):
             count = 0
             for _ in range(2):
                 count += 1
-                res = await conn.get("foo")
+                res = await conn._request("GET", "foo")
             assert count == 2
             assert res == {"status_code": 429, "status_message": "Own rate limit exceeded."}
 
@@ -181,16 +184,19 @@ class RateLimitTest(IsolatedAsyncioTestCase):
     async def test_rate_limited_get(self):
         """Test that rate limiting returns expected response."""
 
-        from unittest.mock import AsyncMock
+        self.mock_server_port = get_free_port()
+        start_mock_server(self.mock_server_port)
 
-        sess = AsyncMock()
+        sess = client.ClientSession(headers={"Connection": "close"})
 
-        vw_connection.ALLOW_RATE_LIMIT_DELAY = False
         # noinspection PyArgumentList
         conn = vw_connection.Connection(sess, "", "")
 
-        rate_limited_error = MagicMock(side_effect=BucketFullException("dummy", 1, 1))
+        limiter = Limiter(RequestRate(1, Duration.MINUTE))
 
-        with (patch.object(conn, "_make_url", rate_limited_error)):
-            res = await conn.get("foo")
-            assert res == {"status_code": 429, "status_message": "Own rate limit exceeded."}
+        with patch.object(conn, "limiter", limiter), pytest.raises(BucketFullException):
+            self.assertEqual([], await conn._request("GET", f"http://localhost:{self.mock_server_port}/ok"))
+            await conn._request("GET", f"http://localhost:{self.mock_server_port}/ok")
+            pytest.fail("Should have thrown exception...")
+
+        await sess.close()
