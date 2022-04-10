@@ -1,5 +1,5 @@
 """Vehicle class tests."""
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 import pytest
 import sys
@@ -287,3 +287,39 @@ class VehiclePropertyTest(IsolatedAsyncioTestCase):
         with patch.dict(vehicle.attrs, {"a string": "yay", "some date": d}):
             res = f"{vehicle.json}"
             self.assertEqual('{\n    "a string": "yay",\n    "some date": "2022-02-22T02:22:20+02:00"\n}', res)
+
+    async def test_lock_not_supported(self):
+        """Test that remote locking throws exception if not supported."""
+        vehicle = Vehicle(conn=None, url="dummy34")
+        vehicle._discovered = True
+        vehicle._services["rlu_v1"] = {"active": False}
+        try:
+            await vehicle.set_lock("any", "")
+        except Exception as ex:
+            self.assertEqual("Remote lock/unlock is not supported.", ex.__str__())
+
+    async def test_lock_supported(self):
+        """Test that invalid locking action raises exception."""
+        vehicle = Vehicle(conn=None, url="dummy34")
+        vehicle._discovered = True
+        vehicle._services["rlu_v1"] = {"active": True}
+        try:
+            self.assertFalse(await vehicle.set_lock("any", ""))
+        except Exception as ex:
+            self.assertEqual(ex.__str__(), "Invalid lock action: any")
+
+        # simulate request in progress
+        vehicle._requests["lock"] = {"id": "Foo", "timestamp": datetime.now() - timedelta(seconds=20)}
+        self.assertFalse(await vehicle.set_lock("lock", ""))
+
+    async def test_in_progress(self):
+        """Test that _in_progress works as expected."""
+        vehicle = Vehicle(conn=None, url="dummy34")
+        vehicle._requests["timed_out"] = {"id": "1", "timestamp": datetime.now() - timedelta(minutes=20)}
+        vehicle._requests["in_progress"] = {"id": 2, "timestamp": datetime.now() - timedelta(seconds=20)}
+        vehicle._requests["unknown"] = {"id": "Foo"}
+        self.assertFalse(vehicle._in_progress("timed_out"))
+        self.assertTrue(vehicle._in_progress("in_progress"))
+        self.assertFalse(vehicle._in_progress("not-defined"))
+        self.assertTrue(vehicle._in_progress("unknown", 2))
+        self.assertFalse(vehicle._in_progress("unknown", 4))

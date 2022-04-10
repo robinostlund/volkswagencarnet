@@ -76,11 +76,11 @@ class Vehicle:
 
     def _in_progress(self, topic: str, unknown_offset: int = 0) -> bool:
         """Check if request is already in progress."""
-        if self._requests[topic].get("id", False):
+        if self._requests.get(topic, {}).get("id", False):
             timestamp = self._requests.get(topic, {}).get(
                 "timestamp", datetime.now() - timedelta(minutes=unknown_offset)
             )
-            if timestamp + timedelta(minutes=3) > datetime.now():
+            if timestamp + timedelta(minutes=3) < datetime.now():
                 self._requests.get(topic, {}).pop("id")
             else:
                 _LOGGER.info(f"Action ({topic}) already in progress")
@@ -498,7 +498,7 @@ class Vehicle:
     # Lock (RLU)
     async def set_lock(self, action, spin):
         """Remote lock and unlock actions."""
-        if not self._services.get("rlu_v1", False):
+        if not self._services.get("rlu_v1", {}).get("active", False):
             _LOGGER.info("Remote lock/unlock is not supported.")
             raise Exception("Remote lock/unlock is not supported.")
         if self._in_progress("lock", unknown_offset=-5):
@@ -1850,6 +1850,11 @@ class Vehicle:
 
     # Locks
     @property
+    def door_locked_sensor(self) -> bool:
+        """Return same state as lock entity, since they are mutually exclusive."""
+        return self.door_locked
+
+    @property
     def door_locked(self) -> bool:
         """
         Return true if all doors are locked.
@@ -1884,12 +1889,35 @@ class Vehicle:
         return self.attrs.get("StoredVehicleDataResponseParsed")["0x0301040001"].get("BACKEND_RECEIVED_TIMESTAMP")
 
     @property
+    def door_locked_sensor_last_updated(self) -> datetime:
+        """Return door lock last updated."""
+        return self.attrs.get("StoredVehicleDataResponseParsed")["0x0301040001"].get("BACKEND_RECEIVED_TIMESTAMP")
+
+    @property
     def is_door_locked_supported(self) -> bool:
         """
         Return true if supported.
 
         :return:
         """
+        # First check that the service is actually enabled
+        if not self._services.get("rlu_v1", {}).get("active", False):
+            return False
+        if self.attrs.get("StoredVehicleDataResponseParsed", False):
+            if "0x0301040001" in self.attrs.get("StoredVehicleDataResponseParsed"):
+                return True
+        return False
+
+    @property
+    def is_door_locked_sensor_supported(self) -> bool:
+        """
+        Return true if supported.
+
+        :return:
+        """
+        # Use real lock if the service is actually enabled
+        if self._services.get("rlu_v1", {}).get("active", False):
+            return False
         if self.attrs.get("StoredVehicleDataResponseParsed", False):
             if "0x0301040001" in self.attrs.get("StoredVehicleDataResponseParsed"):
                 return True
@@ -1917,6 +1945,37 @@ class Vehicle:
 
         :return:
         """
+        if not self._services.get("rlu_v1", {}).get("active", False):
+            return False
+        if self.attrs.get("StoredVehicleDataResponseParsed", False):
+            if "0x030104000D" in self.attrs.get("StoredVehicleDataResponseParsed"):
+                return True
+        return False
+
+    @property
+    def trunk_locked_sensor(self) -> bool:
+        """
+        Return trunk locked state.
+
+        :return:
+        """
+        response = int(self.attrs.get("StoredVehicleDataResponseParsed")["0x030104000D"].get("value", 0))
+        return response == LOCKED_STATE
+
+    @property
+    def trunk_locked_sensor_last_updated(self) -> datetime:
+        """Return attribute last updated timestamp."""
+        return self.attrs.get("StoredVehicleDataResponseParsed")["0x030104000D"].get("BACKEND_RECEIVED_TIMESTAMP")
+
+    @property
+    def is_trunk_locked_sensor_supported(self) -> bool:
+        """
+        Return true if supported.
+
+        :return:
+        """
+        if self._services.get("rlu_v1", {}).get("active", False):
+            return False
         if self.attrs.get("StoredVehicleDataResponseParsed", False):
             if "0x030104000D" in self.attrs.get("StoredVehicleDataResponseParsed"):
                 return True
