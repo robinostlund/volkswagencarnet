@@ -6,7 +6,7 @@ import sys
 
 from volkswagencarnet.vw_timer import TimerData
 from volkswagencarnet.vw_utilities import json_loads
-from .fixtures.connection import TimersConnection
+from .fixtures.connection import TimersConnection, TimersConnectionNoSettings
 from .fixtures.constants import status_report_json_file, MOCK_VIN
 
 if sys.version_info >= (3, 8):
@@ -218,6 +218,17 @@ class VehiclePropertyTest(IsolatedAsyncioTestCase):
     async def test_get_schedule_not_supported(self):
         """Test that not found schedule is unsupported."""
         vehicle = Vehicle(conn=TimersConnection(None), url=MOCK_VIN)
+        vehicle._discovered = True
+
+        with patch.dict(vehicle._services, {"timerprogramming_v1": {"active": True}}):
+            await vehicle.get_timerprogramming()
+            self.assertFalse(vehicle.is_schedule_supported(42))
+            with self.assertRaises(ValueError):
+                self.assertIsNone(vehicle.schedule(42))
+
+    async def test_get_schedule_no_basic_settings(self):
+        """Test that not found schedule is unsupported."""
+        vehicle = Vehicle(conn=TimersConnectionNoSettings(None), url=MOCK_VIN)
         vehicle._discovered = True
 
         with patch.dict(vehicle._services, {"timerprogramming_v1": {"active": True}}):

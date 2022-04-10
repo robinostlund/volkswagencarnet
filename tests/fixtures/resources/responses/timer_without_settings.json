@@ -1,0 +1,38 @@
+{
+  "timer": {
+    "timersAndProfiles": {
+      "timerProfileList": {
+        "timerProfile": [
+          {
+            "timestamp": "2022-02-22T20:00:22Z",
+            "profileName": "Profile 1",
+            "profileID": "1",
+            "operationCharging": true,
+            "operationClimatisation": false,
+            "targetChargeLevel": "75",
+            "nightRateActive": true,
+            "nightRateTimeStart": "21:00",
+            "nightRateTimeEnd": "05:00",
+            "chargeMaxCurrent": "10"
+          }
+        ]
+      },
+      "timerList": {
+        "timer": [
+          {
+            "timestamp": "2022-02-22T20:00:22Z",
+            "timerID": "3",
+            "profileID": "1",
+            "timerProgrammedStatus": "notProgrammed",
+            "timerFrequency": "cyclic",
+            "departureTimeOfDay": "07:55",
+            "departureWeekdayMask": "nnnnnyn"
+          }
+        ]
+      }
+    },
+    "status": {
+      "timer": []
+    }
+  }
+}

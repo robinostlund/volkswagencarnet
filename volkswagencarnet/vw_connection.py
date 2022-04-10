@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 """Communicate with We Connect services."""
+from __future__ import annotations
+
 import asyncio
 import hashlib
 import logging
@@ -9,7 +11,6 @@ from base64 import b64encode, urlsafe_b64encode
 from datetime import timedelta, datetime
 from json import dumps as to_json
 from random import random
-from typing import Optional
 from urllib.parse import urljoin, parse_qs, urlparse
 
 import jwt
@@ -18,6 +19,7 @@ import time
 from aiohttp import ClientSession, ClientTimeout, client_exceptions
 from aiohttp.hdrs import METH_GET, METH_POST
 from bs4 import BeautifulSoup
+from pyrate_limiter import Duration, Limiter, RequestRate, BucketFullException
 from sys import version_info
 
 from volkswagencarnet.vw_exceptions import AuthenticationException
@@ -39,7 +41,11 @@ from .vw_const import (
 from .vw_utilities import json_loads, read_config
 from .vw_vehicle import Vehicle
 
-version_info >= (3, 0) or exit("Python 3 required")
+RATE_LIMIT_DEFAULT_BUCKET = "vw"
+
+RATELIMIT_MAX_DELAY = 90
+
+version_info >= (3, 7) or exit("Python 3.7+ required")
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -50,6 +56,13 @@ JWT_ALGORITHMS = ["RS256"]
 # noinspection PyPep8Naming
 class Connection:
     """Connection to VW-Group Connect services."""
+
+    ALLOW_RATE_LIMIT_DELAY = True
+
+    # 5 / 10 seconds, 12 / minute, 30 / 5 minutes
+    limiter = Limiter(
+        RequestRate(3, Duration.SECOND * 10), RequestRate(12, Duration.MINUTE), RequestRate(30, Duration.MINUTE * 5)
+    )
 
     # Init connection class
     def __init__(self, session, username, password, fulldebug=False, country=COUNTRY, interval=timedelta(minutes=5)):
@@ -342,15 +355,9 @@ class Connection:
                 url=token_url, headers=self._session_auth_headers, data=token_body, allow_redirects=False
             )
             if req.status != 200:
-                error_content = await req.text()
-                _LOGGER.warning(
-                    f"Failed to get a refresh token, trying to continue without... {req.status} {error_content}"
-                )
-                # raise Exception(f"Token exchange failed: {req.status} {error_content}")
-                self._session_tokens[client] = token_body
-            else:
-                # Save tokens as "identity", these are tokens representing the user
-                self._session_tokens[client] = await req.json()
+                raise Exception("Token exchange failed")
+            # Save tokens as "identity", these are tokens representing the user
+            self._session_tokens[client] = await req.json()
             if "error" in self._session_tokens[client]:
                 error_msg = self._session_tokens[client].get("error", "")
                 if "error_description" in self._session_tokens[client]:
@@ -397,7 +404,7 @@ class Connection:
                 _LOGGER.debug("API token request failed.")
                 raise Exception(f"API token request returned with status code {req.status}")
             else:
-                # Save tokens as "vwg", use theese for get/posts to VW Group API
+                # Save tokens as "vwg", use these for get/posts to VW Group API
                 self._session_tokens["vwg"] = await req.json()
                 if "error" in self._session_tokens["vwg"]:
                     error = self._session_tokens["vwg"].get("error", "")
@@ -463,7 +470,9 @@ class Connection:
     async def _request(self, method, url, **kwargs):
         """Perform a query to the VW-Group API."""
         _LOGGER.debug(f'HTTP {method} "{url}"')
-        async with self._session.request(
+        async with self.limiter.ratelimit(
+            RATE_LIMIT_DEFAULT_BUCKET, delay=self.ALLOW_RATE_LIMIT_DELAY, max_delay=RATELIMIT_MAX_DELAY
+        ), self._session.request(
             method,
             url,
             headers=self._session_headers,
@@ -506,6 +515,9 @@ class Connection:
         try:
             response = await self._request(METH_GET, self._make_url(url, vin))
             return response
+        except BucketFullException as ex:
+            _LOGGER.error(f"Bucket full: Refusing to send more requests to backend. {ex}")
+            return {"status_code": 429, "status_message": "Own rate limit exceeded."}
         except client_exceptions.ClientResponseError as error:
             if error.status == 401:
                 _LOGGER.warning(f'Received "unauthorized" error while fetching data: {error}')
@@ -742,7 +754,7 @@ class Connection:
             _LOGGER.warning(f"Could not fetch position, error: {error}")
         return False
 
-    async def getTimers(self, vin) -> Optional[TimerData]:
+    async def getTimers(self, vin) -> TimerData | None:
         """Get departure timers."""
         if not await self.validate_tokens:
             return None
@@ -977,7 +989,7 @@ class Connection:
         except:
             raise
 
-    async def setCharger(self, vin, data) -> dict:
+    async def setCharger(self, vin, data) -> dict[str, str | int | None]:
         """Start/Stop charger."""
         try:
             await self.set_token("vwg")
@@ -1078,8 +1090,8 @@ class Connection:
 
     async def setChargeMinLevel(self, vin: str, limit: int):
         """Set schedules."""
-        data: Optional[TimerData] = await self.getTimers(vin)
-        if data is None:
+        data: TimerData | None = await self.getTimers(vin)
+        if data is None or data.timersAndProfiles is None or data.timersAndProfiles.timerBasicSetting is None:
             raise Exception("No existing timer data?")
         data.timersAndProfiles.timerBasicSetting.set_charge_min_limit(limit)
         return await self._setDepartureTimer(vin, data.timersAndProfiles, "setChargeMinLimit")
