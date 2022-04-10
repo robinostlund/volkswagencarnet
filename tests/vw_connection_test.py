@@ -3,9 +3,9 @@ import sys
 from aiohttp import client
 from pyrate_limiter import BucketFullException, Duration, Limiter, RequestRate
 
-from fixtures.mock_server import get_free_port, start_mock_server
 from volkswagencarnet import vw_connection
 from volkswagencarnet.vw_connection import Connection
+from .fixtures.mock_server import get_free_port, start_mock_server
 
 if sys.version_info >= (3, 8):
     # This won't work on python versions less than 3.8
