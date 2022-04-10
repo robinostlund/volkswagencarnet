@@ -76,11 +76,11 @@ class Vehicle:
 
     def _in_progress(self, topic: str, unknown_offset: int = 0) -> bool:
         """Check if request is already in progress."""
-        if self._requests[topic].get("id", False):
+        if self._requests.get(topic, {}).get("id", False):
             timestamp = self._requests.get(topic, {}).get(
                 "timestamp", datetime.now() - timedelta(minutes=unknown_offset)
             )
-            if timestamp + timedelta(minutes=3) > datetime.now():
+            if timestamp + timedelta(minutes=3) < datetime.now():
                 self._requests.get(topic, {}).pop("id")
             else:
                 _LOGGER.info(f"Action ({topic}) already in progress")
