@@ -526,7 +526,7 @@ class Connection:
                 _LOGGER.warning(f'Received "unauthorized" error while fetching data: {error}')
                 self._session_logged_in = False
             elif error.status == 429 and tries < 3:
-                delay = randint(5, 10 + tries * 5)
+                delay = randint(1, 3 + tries * 2)
                 _LOGGER.debug(f"Server side throttled. Waiting {delay}, try {tries + 1}")
                 await asyncio.sleep(delay)
                 return await self.get(url, vin, tries + 1)
