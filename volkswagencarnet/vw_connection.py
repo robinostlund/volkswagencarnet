@@ -527,7 +527,7 @@ class Connection:
                 self._session_logged_in = False
             elif error.status == 429 and tries < 3:
                 delay = randint(5, 10 + tries * 5)
-                _LOGGER.info(f"Server side throttled. Waiting {delay}, try {tries + 1}")
+                _LOGGER.debug(f"Server side throttled. Waiting {delay}, try {tries + 1}")
                 await asyncio.sleep(delay)
                 return await self.get(url, vin, tries + 1)
             elif error.status == 500:
