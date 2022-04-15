@@ -7,20 +7,20 @@ import hashlib
 import logging
 import re
 import secrets
+import sys
+import time
 from base64 import b64encode, urlsafe_b64encode
 from datetime import timedelta, datetime
 from json import dumps as to_json
-from random import random
+from random import random, randint
+from sys import version_info
 from urllib.parse import urljoin, parse_qs, urlparse
 
 import jwt
-import sys
-import time
 from aiohttp import ClientSession, ClientTimeout, client_exceptions
 from aiohttp.hdrs import METH_GET, METH_POST
 from bs4 import BeautifulSoup
 from pyrate_limiter import Duration, Limiter, RequestRate, BucketFullException
-from sys import version_info
 
 from volkswagencarnet.vw_exceptions import AuthenticationException
 from volkswagencarnet.vw_timer import TimerData, TimersAndProfiles
@@ -59,10 +59,8 @@ class Connection:
 
     ALLOW_RATE_LIMIT_DELAY = True
 
-    # 5 / 10 seconds, 12 / minute, 30 / 5 minutes
-    limiter = Limiter(
-        RequestRate(3, Duration.SECOND * 10), RequestRate(12, Duration.MINUTE), RequestRate(30, Duration.MINUTE * 5)
-    )
+    # 20 / minute, 50 / 5 minutes
+    limiter = Limiter(RequestRate(20, Duration.MINUTE), RequestRate(50, Duration.MINUTE * 5))
 
     # Init connection class
     def __init__(self, session, username, password, fulldebug=False, country=COUNTRY, interval=timedelta(minutes=5)):
@@ -510,7 +508,7 @@ class Connection:
                 _LOGGER.debug(f'Request for "{url}" returned with status code [{response.status}]')
             return res
 
-    async def get(self, url, vin=""):
+    async def get(self, url, vin="", tries=0):
         """Perform a get query."""
         try:
             response = await self._request(METH_GET, self._make_url(url, vin))
@@ -519,14 +517,19 @@ class Connection:
             _LOGGER.error(f"Bucket full: Refusing to send more requests to backend. {ex}")
             return {"status_code": 429, "status_message": "Own rate limit exceeded."}
         except client_exceptions.ClientResponseError as error:
-            if error.status == 401:
-                _LOGGER.warning(f'Received "unauthorized" error while fetching data: {error}')
-                self._session_logged_in = False
-            elif error.status == 400:
+            if error.status == 400:
                 _LOGGER.error(
                     'Got HTTP 400 "Bad Request" from server, this request might be malformed or not implemented'
                     " correctly for this vehicle"
                 )
+            elif error.status == 401:
+                _LOGGER.warning(f'Received "unauthorized" error while fetching data: {error}')
+                self._session_logged_in = False
+            elif error.status == 429 and tries < 3:
+                delay = randint(5, 10 + tries * 5)
+                _LOGGER.info(f"Server side throttled. Waiting {delay}, try {tries + 1}")
+                await asyncio.sleep(delay)
+                return await self.get(url, vin, tries + 1)
             elif error.status == 500:
                 _LOGGER.info("Got HTTP 500 from server, service might be temporarily unavailable")
             elif error.status == 502:
