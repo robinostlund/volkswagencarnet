@@ -1,9 +1,10 @@
 """Vehicle class tests."""
+import sys
 from datetime import datetime, timezone, timedelta
 
 import pytest
-import sys
 
+from volkswagencarnet.vw_const import VehicleStatusParameter as P
 from volkswagencarnet.vw_timer import TimerData
 from volkswagencarnet.vw_utilities import json_loads
 from .fixtures.connection import TimersConnection, TimersConnectionNoSettings
@@ -28,9 +29,7 @@ from freezegun import freeze_time
 
 from volkswagencarnet.vw_vehicle import (
     Vehicle,
-    PRIMARY_DRIVE,
     ENGINE_TYPE_ELECTRIC,
-    SECONDARY_DRIVE,
     ENGINE_TYPE_DIESEL,
     ENGINE_TYPE_GASOLINE,
 )
@@ -345,7 +344,7 @@ class VehiclePropertyTest(IsolatedAsyncioTestCase):
     async def test_is_primary_engine_electric(self):
         """Test primary electric engine."""
         vehicle = Vehicle(conn=None, url="dummy34")
-        vehicle._states["StoredVehicleDataResponseParsed"] = {PRIMARY_DRIVE: {"value": ENGINE_TYPE_ELECTRIC}}
+        vehicle._states["StoredVehicleDataResponseParsed"] = {P.PRIMARY_DRIVE: {"value": ENGINE_TYPE_ELECTRIC}}
         self.assertTrue(vehicle.is_primary_drive_electric())
         self.assertFalse(vehicle.is_primary_drive_combustion())
 
@@ -353,8 +352,8 @@ class VehiclePropertyTest(IsolatedAsyncioTestCase):
         """Test primary ICE."""
         vehicle = Vehicle(conn=None, url="dummy34")
         vehicle._states["StoredVehicleDataResponseParsed"] = {
-            PRIMARY_DRIVE: {"value": ENGINE_TYPE_DIESEL},
-            SECONDARY_DRIVE: {"value": ENGINE_TYPE_ELECTRIC},
+            P.PRIMARY_DRIVE: {"value": ENGINE_TYPE_DIESEL},
+            P.SECONDARY_DRIVE: {"value": ENGINE_TYPE_ELECTRIC},
         }
         self.assertTrue(vehicle.is_primary_drive_combustion())
         self.assertFalse(vehicle.is_primary_drive_electric())
@@ -362,7 +361,7 @@ class VehiclePropertyTest(IsolatedAsyncioTestCase):
         self.assertTrue(vehicle.is_secondary_drive_electric())
 
         # No secondary engine
-        vehicle._states["StoredVehicleDataResponseParsed"] = {PRIMARY_DRIVE: {"value": ENGINE_TYPE_GASOLINE}}
+        vehicle._states["StoredVehicleDataResponseParsed"] = {P.PRIMARY_DRIVE: {"value": ENGINE_TYPE_GASOLINE}}
         self.assertTrue(vehicle.is_primary_drive_combustion())
         self.assertFalse(vehicle.is_secondary_drive_electric())
 
@@ -370,21 +369,21 @@ class VehiclePropertyTest(IsolatedAsyncioTestCase):
         """Test check for ICE."""
         vehicle = Vehicle(conn=None, url="dummy34")
         vehicle._states["StoredVehicleDataResponseParsed"] = {
-            PRIMARY_DRIVE: {"value": ENGINE_TYPE_DIESEL},
-            SECONDARY_DRIVE: {"value": ENGINE_TYPE_ELECTRIC},
+            P.PRIMARY_DRIVE: {"value": ENGINE_TYPE_DIESEL},
+            P.SECONDARY_DRIVE: {"value": ENGINE_TYPE_ELECTRIC},
         }
         self.assertTrue(vehicle.has_combustion_engine())
 
         # not sure if this exists, but :shrug:
         vehicle._states["StoredVehicleDataResponseParsed"] = {
-            PRIMARY_DRIVE: {"value": ENGINE_TYPE_ELECTRIC},
-            SECONDARY_DRIVE: {"value": ENGINE_TYPE_GASOLINE},
+            P.PRIMARY_DRIVE: {"value": ENGINE_TYPE_ELECTRIC},
+            P.SECONDARY_DRIVE: {"value": ENGINE_TYPE_GASOLINE},
         }
         self.assertTrue(vehicle.has_combustion_engine())
 
         # not sure if this exists, but :shrug:
         vehicle._states["StoredVehicleDataResponseParsed"] = {
-            PRIMARY_DRIVE: {"value": ENGINE_TYPE_ELECTRIC},
-            SECONDARY_DRIVE: {"value": ENGINE_TYPE_ELECTRIC},
+            P.PRIMARY_DRIVE: {"value": ENGINE_TYPE_ELECTRIC},
+            P.SECONDARY_DRIVE: {"value": ENGINE_TYPE_ELECTRIC},
         }
         self.assertFalse(vehicle.has_combustion_engine())

@@ -83,3 +83,25 @@ class VWDeviceClass:
     POWER = "power"
     TEMPERATURE = "temperature"
     WINDOW = "window"
+
+
+class VehicleStatusParameter:
+    """Hex codes for vehicle status parameters."""
+
+    FRONT_LEFT_DOOR_LOCK = "0x0301040001"
+    FRONT_RIGHT_DOOR_LOCK = "0x0301040007"
+    REAR_LEFT_DOOR_LOCK = "0x0301040004"
+    READ_RIGHT_DOOR_LOCK = "0x030104000A"
+
+    HOOD_CLOSED = "0x0301040011"
+
+    TRUNK_LOCK = "0x030104000D"
+
+    PRIMARY_RANGE = "0x0301030006"
+    SECONDARY_RANGE = "0x0301030008"
+
+    PRIMARY_DRIVE = "0x0301030007"
+    SECONDARY_DRIVE = "0x0301030009"
+    COMBINED_RANGE = "0x0301030005"
+
+    FUEL_LEVEL = "0x030103000A"
