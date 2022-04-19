@@ -2,25 +2,24 @@
 """Communicate with We Connect services."""
 from __future__ import annotations
 
-import asyncio
 import hashlib
-import logging
 import re
 import secrets
 import sys
 import time
 from base64 import b64encode, urlsafe_b64encode
 from datetime import timedelta, datetime
-from json import dumps as to_json
 from random import random, randint
 from sys import version_info
-from urllib.parse import urljoin, parse_qs, urlparse
 
+import asyncio
 import jwt
+import logging
 from aiohttp import ClientSession, ClientTimeout, client_exceptions
 from aiohttp.hdrs import METH_GET, METH_POST
 from bs4 import BeautifulSoup
-from pyrate_limiter import Duration, Limiter, RequestRate, BucketFullException
+from json import dumps as to_json
+from urllib.parse import urljoin, parse_qs, urlparse
 
 from volkswagencarnet.vw_exceptions import AuthenticationException
 from volkswagencarnet.vw_timer import TimerData, TimersAndProfiles
@@ -41,9 +40,7 @@ from .vw_const import (
 from .vw_utilities import json_loads, read_config
 from .vw_vehicle import Vehicle
 
-RATE_LIMIT_DEFAULT_BUCKET = "vw"
-
-RATELIMIT_MAX_DELAY = 90
+MAX_RETRIES_ON_RATE_LIMIT = 3
 
 version_info >= (3, 7) or exit("Python 3.7+ required")
 
@@ -56,11 +53,6 @@ JWT_ALGORITHMS = ["RS256"]
 # noinspection PyPep8Naming
 class Connection:
     """Connection to VW-Group Connect services."""
-
-    ALLOW_RATE_LIMIT_DELAY = True
-
-    # 20 / minute, 50 / 5 minutes
-    limiter = Limiter(RequestRate(20, Duration.MINUTE), RequestRate(50, Duration.MINUTE * 5))
 
     # Init connection class
     def __init__(self, session, username, password, fulldebug=False, country=COUNTRY, interval=timedelta(minutes=5)):
@@ -468,9 +460,7 @@ class Connection:
     async def _request(self, method, url, **kwargs):
         """Perform a query to the VW-Group API."""
         _LOGGER.debug(f'HTTP {method} "{url}"')
-        async with self.limiter.ratelimit(
-            RATE_LIMIT_DEFAULT_BUCKET, delay=self.ALLOW_RATE_LIMIT_DELAY, max_delay=RATELIMIT_MAX_DELAY
-        ), self._session.request(
+        async with self._session.request(
             method,
             url,
             headers=self._session_headers,
@@ -513,9 +503,6 @@ class Connection:
         try:
             response = await self._request(METH_GET, self._make_url(url, vin))
             return response
-        except BucketFullException as ex:
-            _LOGGER.error(f"Bucket full: Refusing to send more requests to backend. {ex}")
-            return {"status_code": 429, "status_message": "Own rate limit exceeded."}
         except client_exceptions.ClientResponseError as error:
             if error.status == 400:
                 _LOGGER.error(
@@ -525,7 +512,7 @@ class Connection:
             elif error.status == 401:
                 _LOGGER.warning(f'Received "unauthorized" error while fetching data: {error}')
                 self._session_logged_in = False
-            elif error.status == 429 and tries < 3:
+            elif error.status == 429 and tries < MAX_RETRIES_ON_RATE_LIMIT:
                 delay = randint(1, 3 + tries * 2)
                 _LOGGER.debug(f"Server side throttled. Waiting {delay}, try {tries + 1}")
                 await asyncio.sleep(delay)
@@ -538,12 +525,19 @@ class Connection:
                 _LOGGER.error(f"Got unhandled error from server: {error.status}")
             return {"status_code": error.status}
 
-    async def post(self, url, vin="", **data):
+    async def post(self, url, vin="", tries=0, **data):
         """Perform a post query."""
-        if data:
-            return await self._request(METH_POST, self._make_url(url, vin), **data)
-        else:
-            return await self._request(METH_POST, self._make_url(url, vin))
+        try:
+            if data:
+                return await self._request(METH_POST, self._make_url(url, vin), **data)
+            else:
+                return await self._request(METH_POST, self._make_url(url, vin))
+        except client_exceptions.ClientResponseError as error:
+            if error.status == 429 and tries < MAX_RETRIES_ON_RATE_LIMIT:
+                delay = randint(1, 3 + tries * 2)
+                _LOGGER.debug(f"Server side throttled. Waiting {delay}, try {tries + 1}")
+                await asyncio.sleep(delay)
+                return await self.post(url, vin, tries + 1, **data)
 
     # Construct URL from request, home region and variables
     def _make_url(self, ref, vin=""):

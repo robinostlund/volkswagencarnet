@@ -1,11 +1,11 @@
 """Tests for main connection class."""
 import sys
-from aiohttp import client
-from pyrate_limiter import BucketFullException, Duration, Limiter, RequestRate
+
+import aiohttp
+from aiohttp import client_exceptions
 
 from volkswagencarnet import vw_connection
 from volkswagencarnet.vw_connection import Connection
-from .fixtures.mock_server import get_free_port, start_mock_server
 
 if sys.version_info >= (3, 8):
     # This won't work on python versions less than 3.8
@@ -146,19 +146,20 @@ class SendCommandsTest(IsolatedAsyncioTestCase):
 class RateLimitTest(IsolatedAsyncioTestCase):
     """Test that rate limiting towards VW works."""
 
-    rate = RequestRate(1, 5 * Duration.SECOND)
-    limiter = Limiter(
-        rate,
-    )
+    invocations = 0
 
     async def rateLimitedFunction(self, url, vin=""):
         """Limit calls test function."""
-        async with self.limiter.ratelimit(f"{url}_{vin}"):
-            return ""
+        ri = MagicMock(aiohttp.RequestInfo)
+        e = client_exceptions.ClientResponseError(request_info=ri, history=tuple([]))
+        e.status = 429
+        self.invocations = self.invocations + 1
+        raise e
 
     @pytest.mark.asyncio
     @pytest.mark.skipif(condition=sys.version_info < (3, 9), reason="Test incompatible with Python < 3.9")
     @patch("volkswagencarnet.vw_connection.Connection", spec_set=vw_connection.Connection, new=TwoVehiclesConnection)
+    @patch("volkswagencarnet.vw_connection.MAX_RETRIES_ON_RATE_LIMIT", 1)
     async def test_rate_limit(self):
         """Test rate limiting functionality."""
 
@@ -166,37 +167,11 @@ class RateLimitTest(IsolatedAsyncioTestCase):
 
         sess = AsyncMock()
 
-        vw_connection.ALLOW_RATE_LIMIT_DELAY = False
         # noinspection PyArgumentList
         conn = vw_connection.Connection(sess, "", "")
 
-        with (patch.object(conn, "_request", self.rateLimitedFunction), pytest.raises(BucketFullException)):
-            count = 0
-            for _ in range(2):
-                count += 1
-                res = await conn._request("GET", "foo")
-            assert count == 2
-            assert res == {"status_code": 429, "status_message": "Own rate limit exceeded."}
-
-    @pytest.mark.asyncio
-    @pytest.mark.skipif(condition=sys.version_info < (3, 9), reason="Test incompatible with Python < 3.9")
-    @patch("volkswagencarnet.vw_connection.Connection", spec_set=vw_connection.Connection, new=TwoVehiclesConnection)
-    async def test_rate_limited_get(self):
-        """Test that rate limiting returns expected response."""
-
-        self.mock_server_port = get_free_port()
-        start_mock_server(self.mock_server_port)
-
-        sess = client.ClientSession(headers={"Connection": "close"})
-
-        # noinspection PyArgumentList
-        conn = vw_connection.Connection(sess, "", "")
-
-        limiter = Limiter(RequestRate(1, Duration.MINUTE))
-
-        with patch.object(conn, "limiter", limiter), pytest.raises(BucketFullException):
-            self.assertEqual([], await conn._request("GET", f"http://localhost:{self.mock_server_port}/ok"))
-            await conn._request("GET", f"http://localhost:{self.mock_server_port}/ok")
-            pytest.fail("Should have thrown exception...")
-
-        await sess.close()
+        self.invocations = 0
+        with patch.object(conn, "_request", self.rateLimitedFunction):
+            res = await conn.get("foo")
+            assert res == {"status_code": 429}
+        assert self.invocations == vw_connection.MAX_RETRIES_ON_RATE_LIMIT + 1
