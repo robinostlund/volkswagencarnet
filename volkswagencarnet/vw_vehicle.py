@@ -2341,7 +2341,7 @@ class Vehicle:
         :return:
         """
         response = self.trip_last_entry
-        if response.trip_last_entry.get("averageAuxConsumerConsumption", 65535) == 65535:
+        if response.get("averageAuxConsumerConsumption", 65535) == 65535:
             return False
         return response and type(response.get("averageAuxConsumerConsumption", None)) in (float, int)
 
