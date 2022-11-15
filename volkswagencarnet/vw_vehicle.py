@@ -1630,15 +1630,15 @@ class Vehicle:
     @property
     def windows_closed(self) -> bool:
         """
-        Return true if all windows are closed.
+        Return true if all supported windows are closed.
 
         :return:
         """
         return (
-            self.window_closed_left_front
-            and self.window_closed_left_back
-            and self.window_closed_right_front
-            and self.window_closed_right_back
+            (not self.is_window_closed_left_front_supported or self.window_closed_left_front)
+            and (not self.is_window_closed_left_back_supported or self.window_closed_left_back)
+            and (not self.is_window_closed_right_front_supported or self.window_closed_right_front)
+            and (not self.is_window_closed_right_back_supported or self.window_closed_right_back)
         )
 
     @property
@@ -1654,10 +1654,12 @@ class Vehicle:
     @property
     def is_windows_closed_supported(self) -> bool:
         """Return true if window state is supported."""
-        if self.attrs.get("StoredVehicleDataResponseParsed", False):
-            if "0x0301050001" in self.attrs.get("StoredVehicleDataResponseParsed"):
-                return True
-        return False
+        return (
+            self.is_window_closed_left_front_supported
+            or self.is_window_closed_left_back_supported
+            or self.is_window_closed_right_front_supported
+            or self.is_window_closed_right_back_supported
+        )
 
     @property
     def window_closed_left_front(self) -> bool:
@@ -1683,7 +1685,8 @@ class Vehicle:
     def is_window_closed_left_front_supported(self) -> bool:
         """Return true if window state is supported."""
         if self.attrs.get("StoredVehicleDataResponseParsed", False):
-            return "0x0301050001" in self.attrs.get("StoredVehicleDataResponseParsed")
+            if "0x0301050001" in self.attrs.get("StoredVehicleDataResponseParsed"):
+                return int(self.attrs.get("StoredVehicleDataResponseParsed")["0x0301050001"].get("value", 0)) != 0
         return False
 
     @property
@@ -1711,7 +1714,7 @@ class Vehicle:
         """Return true if window state is supported."""
         if self.attrs.get("StoredVehicleDataResponseParsed", False):
             if "0x0301050005" in self.attrs.get("StoredVehicleDataResponseParsed"):
-                return True
+                return int(self.attrs.get("StoredVehicleDataResponseParsed")["0x0301050005"].get("value", 0)) != 0
         return False
 
     @property
@@ -1739,7 +1742,7 @@ class Vehicle:
         """Return true if window state is supported."""
         if self.attrs.get("StoredVehicleDataResponseParsed", False):
             if "0x0301050003" in self.attrs.get("StoredVehicleDataResponseParsed"):
-                return True
+                return int(self.attrs.get("StoredVehicleDataResponseParsed")["0x0301050003"].get("value", 0)) != 0
         return False
 
     @property
@@ -1767,7 +1770,7 @@ class Vehicle:
         """Return true if window state is supported."""
         if self.attrs.get("StoredVehicleDataResponseParsed", False):
             if "0x0301050007" in self.attrs.get("StoredVehicleDataResponseParsed"):
-                return True
+                return int(self.attrs.get("StoredVehicleDataResponseParsed")["0x0301050007"].get("value", 0)) != 0
         return False
 
     @property
