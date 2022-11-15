@@ -1,5 +1,5 @@
 name: "Snyk"
-on: [pull_request]
+on: push
 jobs:
   snyk:
     name: "Snyk"
