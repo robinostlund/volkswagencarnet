@@ -1706,7 +1706,10 @@ class Vehicle:
         """Return true if window state is supported."""
         if self.attrs.get("StoredVehicleDataResponseParsed", False):
             if P.FRONT_LEFT_WINDOW_CLOSED in self.attrs.get("StoredVehicleDataResponseParsed"):
-                return int(self.attrs.get("StoredVehicleDataResponseParsed")[P.FRONT_LEFT_WINDOW_CLOSED].get("value", 0)) != 0
+                return (
+                    int(self.attrs.get("StoredVehicleDataResponseParsed")[P.FRONT_LEFT_WINDOW_CLOSED].get("value", 0))
+                    != 0
+                )
         return False
 
     @property
@@ -1734,7 +1737,10 @@ class Vehicle:
         """Return true if window state is supported."""
         if self.attrs.get("StoredVehicleDataResponseParsed", False):
             if P.FRONT_RIGHT_WINDOW_CLOSED in self.attrs.get("StoredVehicleDataResponseParsed"):
-                return int(self.attrs.get("StoredVehicleDataResponseParsed")[P.FRONT_RIGHT_WINDOW_CLOSED].get("value", 0)) != 0
+                return (
+                    int(self.attrs.get("StoredVehicleDataResponseParsed")[P.FRONT_RIGHT_WINDOW_CLOSED].get("value", 0))
+                    != 0
+                )
         return False
 
     @property
@@ -1762,7 +1768,10 @@ class Vehicle:
         """Return true if window state is supported."""
         if self.attrs.get("StoredVehicleDataResponseParsed", False):
             if P.REAR_LEFT_WINDOW_CLOSED in self.attrs.get("StoredVehicleDataResponseParsed"):
-                return int(self.attrs.get("StoredVehicleDataResponseParsed")[P.REAR_LEFT_WINDOW_CLOSED].get("value", 0)) != 0
+                return (
+                    int(self.attrs.get("StoredVehicleDataResponseParsed")[P.REAR_LEFT_WINDOW_CLOSED].get("value", 0))
+                    != 0
+                )
         return False
 
     @property
@@ -1790,7 +1799,10 @@ class Vehicle:
         """Return true if window state is supported."""
         if self.attrs.get("StoredVehicleDataResponseParsed", False):
             if P.REAR_RIGHT_WINDOW_CLOSED in self.attrs.get("StoredVehicleDataResponseParsed"):
-                return int(self.attrs.get("StoredVehicleDataResponseParsed")[P.REAR_RIGHT_WINDOW_CLOSED].get("value", 0)) != 0
+                return (
+                    int(self.attrs.get("StoredVehicleDataResponseParsed")[P.REAR_RIGHT_WINDOW_CLOSED].get("value", 0))
+                    != 0
+                )
         return False
 
     @property
