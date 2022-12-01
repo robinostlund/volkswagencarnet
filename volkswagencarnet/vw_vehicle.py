@@ -709,18 +709,18 @@ class Vehicle:
     @property
     def parking_light(self) -> bool:
         """Return true if parking light is on."""
-        response = int(self.attrs.get("StoredVehicleDataResponseParsed")["0x0301010001"].get("value", 0))
+        response = int(self.attrs.get("StoredVehicleDataResponseParsed")[P.PARKING_LIGHT].get("value", 0))
         return response != 2
 
     @property
     def parking_light_last_updated(self) -> datetime:
         """Return attribute last updated timestamp."""
-        return self.attrs.get("StoredVehicleDataResponseParsed")["0x0301010001"].get(BACKEND_RECEIVED_TIMESTAMP)
+        return self.attrs.get("StoredVehicleDataResponseParsed")[P.PARKING_LIGHT].get(BACKEND_RECEIVED_TIMESTAMP)
 
     @property
     def is_parking_light_supported(self) -> bool:
         """Return true if parking light is supported."""
-        return self.attrs.get("StoredVehicleDataResponseParsed", False) and "0x0301010001" in self.attrs.get(
+        return self.attrs.get("StoredVehicleDataResponseParsed", False) and P.PARKING_LIGHT in self.attrs.get(
             "StoredVehicleDataResponseParsed"
         )
 
@@ -758,7 +758,7 @@ class Vehicle:
     @property
     def distance(self) -> int | None:
         """Return vehicle odometer."""
-        value = self.attrs.get("StoredVehicleDataResponseParsed")["0x0101010002"].get("value", 0)
+        value = self.attrs.get("StoredVehicleDataResponseParsed")[P.ODOMETER].get("value", 0)
         if value:
             return int(value)
         return None
@@ -766,24 +766,26 @@ class Vehicle:
     @property
     def distance_last_updated(self) -> datetime:
         """Return last updated timestamp."""
-        return self.attrs.get("StoredVehicleDataResponseParsed")["0x0101010002"].get("BACKEND_RECEIVED_TIMESTAMP")
+        return self.attrs.get("StoredVehicleDataResponseParsed")[P.ODOMETER].get("BACKEND_RECEIVED_TIMESTAMP")
 
     @property
     def is_distance_supported(self) -> bool:
         """Return true if odometer is supported."""
-        return self.attrs.get("StoredVehicleDataResponseParsed", False) and "0x0101010002" in self.attrs.get(
+        return self.attrs.get("StoredVehicleDataResponseParsed", False) and P.ODOMETER in self.attrs.get(
             "StoredVehicleDataResponseParsed"
         )
 
     @property
     def service_inspection(self):
         """Return time left for service inspection."""
-        return -int(self.attrs.get("StoredVehicleDataResponseParsed")["0x0203010004"].get("value"))
+        return -int(self.attrs.get("StoredVehicleDataResponseParsed")[P.DAYS_TO_SERVICE_INSPECTION].get("value"))
 
     @property
     def service_inspection_last_updated(self) -> datetime:
         """Return attribute last updated timestamp."""
-        return self.attrs.get("StoredVehicleDataResponseParsed")["0x0203010004"].get(BACKEND_RECEIVED_TIMESTAMP)
+        return self.attrs.get("StoredVehicleDataResponseParsed")[P.DAYS_TO_SERVICE_INSPECTION].get(
+            BACKEND_RECEIVED_TIMESTAMP
+        )
 
     @property
     def is_service_inspection_supported(self) -> bool:
@@ -792,41 +794,47 @@ class Vehicle:
 
         :return:
         """
-        return self.attrs.get("StoredVehicleDataResponseParsed", False) and "0x0203010004" in self.attrs.get(
-            "StoredVehicleDataResponseParsed"
-        )
+        return self.attrs.get(
+            "StoredVehicleDataResponseParsed", False
+        ) and P.DAYS_TO_SERVICE_INSPECTION in self.attrs.get("StoredVehicleDataResponseParsed")
 
     @property
     def service_inspection_distance(self):
-        """Return time left for service inspection."""
-        return -int(self.attrs.get("StoredVehicleDataResponseParsed")["0x0203010003"].get("value", 0))
+        """Return distance left for service inspection."""
+        return -int(self.attrs.get("StoredVehicleDataResponseParsed")[P.DISTANCE_TO_SERVICE_INSPECTION].get("value", 0))
 
     @property
     def service_inspection_distance_last_updated(self) -> datetime:
         """Return attribute last updated timestamp."""
-        return self.attrs.get("StoredVehicleDataResponseParsed")["0x0203010003"].get(BACKEND_RECEIVED_TIMESTAMP)
+        return self.attrs.get("StoredVehicleDataResponseParsed")[P.DISTANCE_TO_SERVICE_INSPECTION].get(
+            BACKEND_RECEIVED_TIMESTAMP
+        )
 
     @property
     def is_service_inspection_distance_supported(self) -> bool:
         """
-        Return true if distance to oil inspection is supported.
+        Return true if distance to service inspection is supported.
 
         :return:
         """
         if self.attrs.get("StoredVehicleDataResponseParsed", False):
-            if "0x0203010003" in self.attrs.get("StoredVehicleDataResponseParsed"):
+            if P.DISTANCE_TO_SERVICE_INSPECTION in self.attrs.get("StoredVehicleDataResponseParsed"):
                 return True
         return False
 
     @property
     def oil_inspection(self):
-        """Return time left for service inspection."""
-        return -int(self.attrs.get("StoredVehicleDataResponseParsed", {}).get("0x0203010002", {}).get("value", 0))
+        """Return time left for oil inspection."""
+        return -int(
+            self.attrs.get("StoredVehicleDataResponseParsed", {}).get(P.DAYS_TO_OIL_INSPECTION, {}).get("value", 0)
+        )
 
     @property
     def oil_inspection_last_updated(self) -> datetime:
         """Return attribute last updated timestamp."""
-        return self.attrs.get("StoredVehicleDataResponseParsed")["0x0203010002"].get(BACKEND_RECEIVED_TIMESTAMP)
+        return self.attrs.get("StoredVehicleDataResponseParsed")[P.DAYS_TO_OIL_INSPECTION].get(
+            BACKEND_RECEIVED_TIMESTAMP
+        )
 
     @property
     def is_oil_inspection_supported(self) -> bool:
@@ -838,20 +846,27 @@ class Vehicle:
         if not self.has_combustion_engine():
             return False
         if self.attrs.get("StoredVehicleDataResponseParsed", False):
-            if "0x0203010002" in self.attrs.get("StoredVehicleDataResponseParsed"):
-                if self.attrs.get("StoredVehicleDataResponseParsed").get("0x0203010002").get("value", None) is not None:
+            if P.DAYS_TO_OIL_INSPECTION in self.attrs.get("StoredVehicleDataResponseParsed"):
+                if (
+                    self.attrs.get("StoredVehicleDataResponseParsed").get(P.DAYS_TO_OIL_INSPECTION).get("value", None)
+                    is not None
+                ):
                     return True
         return False
 
     @property
     def oil_inspection_distance(self):
-        """Return time left for service inspection."""
-        return -int(self.attrs.get("StoredVehicleDataResponseParsed", {}).get("0x0203010001", {}).get("value", 0))
+        """Return distance left for oil inspection."""
+        return -int(
+            self.attrs.get("StoredVehicleDataResponseParsed", {}).get(P.DISTANCE_TO_OIL_INSPECTION, {}).get("value", 0)
+        )
 
     @property
     def oil_inspection_distance_last_updated(self) -> datetime:
         """Return attribute last updated timestamp."""
-        return self.attrs.get("StoredVehicleDataResponseParsed")["0x0203010001"].get(BACKEND_RECEIVED_TIMESTAMP)
+        return self.attrs.get("StoredVehicleDataResponseParsed")[P.DISTANCE_TO_OIL_INSPECTION].get(
+            BACKEND_RECEIVED_TIMESTAMP
+        )
 
     @property
     def is_oil_inspection_distance_supported(self) -> bool:
@@ -863,28 +878,33 @@ class Vehicle:
         if not self.has_combustion_engine():
             return False
         if self.attrs.get("StoredVehicleDataResponseParsed", False):
-            if "0x0203010001" in self.attrs.get("StoredVehicleDataResponseParsed"):
-                if self.attrs.get("StoredVehicleDataResponseParsed").get("0x0203010001").get("value", None) is not None:
+            if P.DISTANCE_TO_OIL_INSPECTION in self.attrs.get("StoredVehicleDataResponseParsed"):
+                if (
+                    self.attrs.get("StoredVehicleDataResponseParsed")
+                    .get(P.DISTANCE_TO_OIL_INSPECTION)
+                    .get("value", None)
+                    is not None
+                ):
                     return True
         return False
 
     @property
     def adblue_level(self) -> int:
         """Return adblue level."""
-        return int(self.attrs.get("StoredVehicleDataResponseParsed", {}).get("0x02040C0001", {}).get("value", 0))
+        return int(self.attrs.get("StoredVehicleDataResponseParsed", {}).get(P.ADBLUE_LEVEL, {}).get("value", 0))
 
     @property
     def adblue_level_last_updated(self) -> datetime:
         """Return attribute last updated timestamp."""
-        return self.attrs.get("StoredVehicleDataResponseParsed")["0x02040C0001"].get(BACKEND_RECEIVED_TIMESTAMP)
+        return self.attrs.get("StoredVehicleDataResponseParsed")[P.ADBLUE_LEVEL].get(BACKEND_RECEIVED_TIMESTAMP)
 
     @property
     def is_adblue_level_supported(self) -> bool:
         """Return true if adblue level is supported."""
         if self.attrs.get("StoredVehicleDataResponseParsed", False):
-            if "0x02040C0001" in self.attrs.get("StoredVehicleDataResponseParsed"):
-                if "value" in self.attrs.get("StoredVehicleDataResponseParsed")["0x02040C0001"]:
-                    if self.attrs.get("StoredVehicleDataResponseParsed")["0x02040C0001"].get("value", 0) is not None:
+            if P.ADBLUE_LEVEL in self.attrs.get("StoredVehicleDataResponseParsed"):
+                if "value" in self.attrs.get("StoredVehicleDataResponseParsed")[P.ADBLUE_LEVEL]:
+                    if self.attrs.get("StoredVehicleDataResponseParsed")[P.ADBLUE_LEVEL].get("value", 0) is not None:
                         return True
         return False
 
@@ -1371,7 +1391,7 @@ class Vehicle:
     @property
     def outside_temperature(self) -> float | bool:  # FIXME should probably be Optional[float] instead
         """Return outside temperature."""
-        response = int(self.attrs.get("StoredVehicleDataResponseParsed")["0x0301020001"].get("value", None))
+        response = int(self.attrs.get("StoredVehicleDataResponseParsed")[P.OUTSIDE_TEMPERATURE].get("value", None))
         if response is not None:
             return round(float((response / 10) - 273.15), 1)
         else:
@@ -1380,14 +1400,14 @@ class Vehicle:
     @property
     def outside_temperature_last_updated(self) -> datetime:
         """Return outside temperature last updated."""
-        return self.attrs.get("StoredVehicleDataResponseParsed")["0x0301020001"].get(BACKEND_RECEIVED_TIMESTAMP)
+        return self.attrs.get("StoredVehicleDataResponseParsed")[P.OUTSIDE_TEMPERATURE].get(BACKEND_RECEIVED_TIMESTAMP)
 
     @property
     def is_outside_temperature_supported(self) -> bool:
         """Return true if outside temp is supported."""
         if self.attrs.get("StoredVehicleDataResponseParsed", False):
-            if "0x0301020001" in self.attrs.get("StoredVehicleDataResponseParsed"):
-                if "value" in self.attrs.get("StoredVehicleDataResponseParsed")["0x0301020001"]:
+            if P.OUTSIDE_TEMPERATURE in self.attrs.get("StoredVehicleDataResponseParsed"):
+                if "value" in self.attrs.get("StoredVehicleDataResponseParsed")[P.OUTSIDE_TEMPERATURE]:
                     return True
         return False
 
@@ -1647,7 +1667,7 @@ class Vehicle:
         return (
             self.attrs.get("StoredVehicleDataResponseParsed", {})
             .get("StoredVehicleDataResponseParsed", {})
-            .get("0x0301050001", {})
+            .get(P.FRONT_LEFT_WINDOW_CLOSED, {})
             .get("BACKEND_RECEIVED_TIMESTAMP")
         )
 
@@ -1668,7 +1688,7 @@ class Vehicle:
 
         :return:
         """
-        response = int(self.attrs.get("StoredVehicleDataResponseParsed")["0x0301050001"].get("value", 0))
+        response = int(self.attrs.get("StoredVehicleDataResponseParsed")[P.FRONT_LEFT_WINDOW_CLOSED].get("value", 0))
         return response == CLOSED_STATE
 
     @property
@@ -1677,7 +1697,7 @@ class Vehicle:
         return (
             self.attrs.get("StoredVehicleDataResponseParsed", {})
             .get("StoredVehicleDataResponseParsed", {})
-            .get("0x0301050001", {})
+            .get(P.FRONT_LEFT_WINDOW_CLOSED, {})
             .get("BACKEND_RECEIVED_TIMESTAMP")
         )
 
@@ -1685,8 +1705,11 @@ class Vehicle:
     def is_window_closed_left_front_supported(self) -> bool:
         """Return true if window state is supported."""
         if self.attrs.get("StoredVehicleDataResponseParsed", False):
-            if "0x0301050001" in self.attrs.get("StoredVehicleDataResponseParsed"):
-                return int(self.attrs.get("StoredVehicleDataResponseParsed")["0x0301050001"].get("value", 0)) != 0
+            if P.FRONT_LEFT_WINDOW_CLOSED in self.attrs.get("StoredVehicleDataResponseParsed"):
+                return (
+                    int(self.attrs.get("StoredVehicleDataResponseParsed")[P.FRONT_LEFT_WINDOW_CLOSED].get("value", 0))
+                    != 0
+                )
         return False
 
     @property
@@ -1696,7 +1719,7 @@ class Vehicle:
 
         :return:
         """
-        response = int(self.attrs.get("StoredVehicleDataResponseParsed")["0x0301050005"].get("value", 0))
+        response = int(self.attrs.get("StoredVehicleDataResponseParsed")[P.FRONT_RIGHT_WINDOW_CLOSED].get("value", 0))
         return response == CLOSED_STATE
 
     @property
@@ -1705,7 +1728,7 @@ class Vehicle:
         return (
             self.attrs.get("StoredVehicleDataResponseParsed", {})
             .get("StoredVehicleDataResponseParsed", {})
-            .get("0x0301050005", {})
+            .get(P.FRONT_RIGHT_WINDOW_CLOSED, {})
             .get("BACKEND_RECEIVED_TIMESTAMP")
         )
 
@@ -1713,8 +1736,11 @@ class Vehicle:
     def is_window_closed_right_front_supported(self) -> bool:
         """Return true if window state is supported."""
         if self.attrs.get("StoredVehicleDataResponseParsed", False):
-            if "0x0301050005" in self.attrs.get("StoredVehicleDataResponseParsed"):
-                return int(self.attrs.get("StoredVehicleDataResponseParsed")["0x0301050005"].get("value", 0)) != 0
+            if P.FRONT_RIGHT_WINDOW_CLOSED in self.attrs.get("StoredVehicleDataResponseParsed"):
+                return (
+                    int(self.attrs.get("StoredVehicleDataResponseParsed")[P.FRONT_RIGHT_WINDOW_CLOSED].get("value", 0))
+                    != 0
+                )
         return False
 
     @property
@@ -1724,7 +1750,7 @@ class Vehicle:
 
         :return:
         """
-        response = int(self.attrs.get("StoredVehicleDataResponseParsed")["0x0301050003"].get("value", 0))
+        response = int(self.attrs.get("StoredVehicleDataResponseParsed")[P.REAR_LEFT_WINDOW_CLOSED].get("value", 0))
         return response == CLOSED_STATE
 
     @property
@@ -1733,7 +1759,7 @@ class Vehicle:
         return (
             self.attrs.get("StoredVehicleDataResponseParsed", {})
             .get("StoredVehicleDataResponseParsed", {})
-            .get("0x0301050003", {})
+            .get(P.REAR_LEFT_WINDOW_CLOSED, {})
             .get("BACKEND_RECEIVED_TIMESTAMP")
         )
 
@@ -1741,8 +1767,11 @@ class Vehicle:
     def is_window_closed_left_back_supported(self) -> bool:
         """Return true if window state is supported."""
         if self.attrs.get("StoredVehicleDataResponseParsed", False):
-            if "0x0301050003" in self.attrs.get("StoredVehicleDataResponseParsed"):
-                return int(self.attrs.get("StoredVehicleDataResponseParsed")["0x0301050003"].get("value", 0)) != 0
+            if P.REAR_LEFT_WINDOW_CLOSED in self.attrs.get("StoredVehicleDataResponseParsed"):
+                return (
+                    int(self.attrs.get("StoredVehicleDataResponseParsed")[P.REAR_LEFT_WINDOW_CLOSED].get("value", 0))
+                    != 0
+                )
         return False
 
     @property
@@ -1752,7 +1781,7 @@ class Vehicle:
 
         :return:
         """
-        response = int(self.attrs.get("StoredVehicleDataResponseParsed")["0x0301050007"].get("value", 0))
+        response = int(self.attrs.get("StoredVehicleDataResponseParsed")[P.REAR_RIGHT_WINDOW_CLOSED].get("value", 0))
         return response == CLOSED_STATE
 
     @property
@@ -1761,7 +1790,7 @@ class Vehicle:
         return (
             self.attrs.get("StoredVehicleDataResponseParsed", {})
             .get("StoredVehicleDataResponseParsed", {})
-            .get("0x0301050007", {})
+            .get(P.REAR_RIGHT_WINDOW_CLOSED, {})
             .get("BACKEND_RECEIVED_TIMESTAMP")
         )
 
@@ -1769,8 +1798,11 @@ class Vehicle:
     def is_window_closed_right_back_supported(self) -> bool:
         """Return true if window state is supported."""
         if self.attrs.get("StoredVehicleDataResponseParsed", False):
-            if "0x0301050007" in self.attrs.get("StoredVehicleDataResponseParsed"):
-                return int(self.attrs.get("StoredVehicleDataResponseParsed")["0x0301050007"].get("value", 0)) != 0
+            if P.REAR_RIGHT_WINDOW_CLOSED in self.attrs.get("StoredVehicleDataResponseParsed"):
+                return (
+                    int(self.attrs.get("StoredVehicleDataResponseParsed")[P.REAR_RIGHT_WINDOW_CLOSED].get("value", 0))
+                    != 0
+                )
         return False
 
     @property
@@ -1780,7 +1812,7 @@ class Vehicle:
 
         :return:
         """
-        response = int(self.attrs.get("StoredVehicleDataResponseParsed")["0x030105000B"].get("value", 0))
+        response = int(self.attrs.get("StoredVehicleDataResponseParsed")[P.SUNROOF_CLOSED].get("value", 0))
         return response == CLOSED_STATE
 
     @property
@@ -1789,7 +1821,7 @@ class Vehicle:
         return (
             self.attrs.get("StoredVehicleDataResponseParsed", {})
             .get("StoredVehicleDataResponseParsed", {})
-            .get("0x030105000B", {})
+            .get(P.SUNROOF_CLOSED, {})
             .get("BACKEND_RECEIVED_TIMESTAMP")
         )
 
@@ -1797,8 +1829,8 @@ class Vehicle:
     def is_sunroof_closed_supported(self) -> bool:
         """Return true if sunroof state is supported."""
         if self.attrs.get("StoredVehicleDataResponseParsed", False):
-            if "0x030105000B" in self.attrs.get("StoredVehicleDataResponseParsed"):
-                return int(self.attrs.get("StoredVehicleDataResponseParsed")["0x030105000B"].get("value", 0)) != 0
+            if P.SUNROOF_CLOSED in self.attrs.get("StoredVehicleDataResponseParsed"):
+                return int(self.attrs.get("StoredVehicleDataResponseParsed")[P.SUNROOF_CLOSED].get("value", 0)) != 0
         return False
 
     # Locks
@@ -1953,19 +1985,21 @@ class Vehicle:
 
         :return:
         """
-        response = int(self.attrs.get("StoredVehicleDataResponseParsed")["0x0301040002"].get("value", 0))
+        response = int(self.attrs.get("StoredVehicleDataResponseParsed")[P.FRONT_LEFT_DOOR_CLOSED].get("value", 0))
         return response == CLOSED_STATE
 
     @property
     def door_closed_left_front_last_updated(self) -> datetime:
         """Return attribute last updated timestamp."""
-        return self.attrs.get("StoredVehicleDataResponseParsed")["0x0301040002"].get("BACKEND_RECEIVED_TIMESTAMP")
+        return self.attrs.get("StoredVehicleDataResponseParsed")[P.FRONT_LEFT_DOOR_CLOSED].get(
+            "BACKEND_RECEIVED_TIMESTAMP"
+        )
 
     @property
     def is_door_closed_left_front_supported(self) -> bool:
         """Return true if supported."""
         if self.attrs.get("StoredVehicleDataResponseParsed", False):
-            if "0x0301040002" in self.attrs.get("StoredVehicleDataResponseParsed"):
+            if P.FRONT_LEFT_DOOR_CLOSED in self.attrs.get("StoredVehicleDataResponseParsed"):
                 return True
         return False
 
@@ -1976,19 +2010,21 @@ class Vehicle:
 
         :return:
         """
-        response = int(self.attrs.get("StoredVehicleDataResponseParsed")["0x0301040008"].get("value", 0))
+        response = int(self.attrs.get("StoredVehicleDataResponseParsed")[P.FRONT_RIGHT_DOOR_CLOSED].get("value", 0))
         return response == CLOSED_STATE
 
     @property
     def door_closed_right_front_last_updated(self) -> datetime:
         """Return attribute last updated timestamp."""
-        return self.attrs.get("StoredVehicleDataResponseParsed")["0x0301040008"].get("BACKEND_RECEIVED_TIMESTAMP")
+        return self.attrs.get("StoredVehicleDataResponseParsed")[P.FRONT_RIGHT_DOOR_CLOSED].get(
+            "BACKEND_RECEIVED_TIMESTAMP"
+        )
 
     @property
     def is_door_closed_right_front_supported(self) -> bool:
         """Return true if supported."""
         if self.attrs.get("StoredVehicleDataResponseParsed", False):
-            if "0x0301040008" in self.attrs.get("StoredVehicleDataResponseParsed"):
+            if P.FRONT_RIGHT_DOOR_CLOSED in self.attrs.get("StoredVehicleDataResponseParsed"):
                 return True
         return False
 
@@ -1999,19 +2035,21 @@ class Vehicle:
 
         :return:
         """
-        response = int(self.attrs.get("StoredVehicleDataResponseParsed")["0x0301040005"].get("value", 0))
+        response = int(self.attrs.get("StoredVehicleDataResponseParsed")[P.REAR_LEFT_DOOR_CLOSED].get("value", 0))
         return response == CLOSED_STATE
 
     @property
     def door_closed_left_back_last_updated(self) -> datetime:
         """Return attribute last updated timestamp."""
-        return self.attrs.get("StoredVehicleDataResponseParsed")["0x0301040005"].get("BACKEND_RECEIVED_TIMESTAMP")
+        return self.attrs.get("StoredVehicleDataResponseParsed")[P.REAR_LEFT_DOOR_CLOSED].get(
+            "BACKEND_RECEIVED_TIMESTAMP"
+        )
 
     @property
     def is_door_closed_left_back_supported(self) -> bool:
         """Return true if supported."""
         if self.attrs.get("StoredVehicleDataResponseParsed", False):
-            if "0x0301040005" in self.attrs.get("StoredVehicleDataResponseParsed"):
+            if P.REAR_LEFT_DOOR_CLOSED in self.attrs.get("StoredVehicleDataResponseParsed"):
                 return True
         return False
 
@@ -2022,19 +2060,21 @@ class Vehicle:
 
         :return:
         """
-        response = int(self.attrs.get("StoredVehicleDataResponseParsed")["0x030104000B"].get("value", 0))
+        response = int(self.attrs.get("StoredVehicleDataResponseParsed")[P.REAR_RIGHT_DOOR_CLOSED].get("value", 0))
         return response == CLOSED_STATE
 
     @property
     def door_closed_right_back_last_updated(self) -> datetime:
         """Return attribute last updated timestamp."""
-        return self.attrs.get("StoredVehicleDataResponseParsed")["0x030104000B"].get("BACKEND_RECEIVED_TIMESTAMP")
+        return self.attrs.get("StoredVehicleDataResponseParsed")[P.REAR_RIGHT_DOOR_CLOSED].get(
+            "BACKEND_RECEIVED_TIMESTAMP"
+        )
 
     @property
     def is_door_closed_right_back_supported(self) -> bool:
         """Return true if supported."""
         if self.attrs.get("StoredVehicleDataResponseParsed", False):
-            if "0x030104000B" in self.attrs.get("StoredVehicleDataResponseParsed"):
+            if P.REAR_RIGHT_DOOR_CLOSED in self.attrs.get("StoredVehicleDataResponseParsed"):
                 return True
         return False
 
@@ -2045,19 +2085,19 @@ class Vehicle:
 
         :return:
         """
-        response = int(self.attrs.get("StoredVehicleDataResponseParsed")["0x030104000E"].get("value", 0))
+        response = int(self.attrs.get("StoredVehicleDataResponseParsed")[P.TRUNK_CLOSED].get("value", 0))
         return response == CLOSED_STATE
 
     @property
     def trunk_closed_last_updated(self) -> datetime:
         """Return trunk closed last updated."""
-        return self.attrs.get("StoredVehicleDataResponseParsed")["0x030104000E"].get("BACKEND_RECEIVED_TIMESTAMP")
+        return self.attrs.get("StoredVehicleDataResponseParsed")[P.TRUNK_CLOSED].get("BACKEND_RECEIVED_TIMESTAMP")
 
     @property
     def is_trunk_closed_supported(self) -> bool:
         """Return true if trunk closed state is supported."""
         if self.attrs.get("StoredVehicleDataResponseParsed", False):
-            if "0x030104000E" in self.attrs.get("StoredVehicleDataResponseParsed"):
+            if P.TRUNK_CLOSED in self.attrs.get("StoredVehicleDataResponseParsed"):
                 return True
         return False
 
