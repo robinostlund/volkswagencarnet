@@ -863,7 +863,7 @@ def create_instruments():
             attr="charging_time_left",
             name="Charging time left",
             icon="mdi:battery-charging-100",
-            unit="h",
+            unit="",
         ),
         Sensor(
             attr="electric_range",
@@ -887,7 +887,7 @@ def create_instruments():
             attr="charge_max_ampere",
             name="Charger max ampere",
             icon="mdi:flash",
-            unit="A",
+            unit="",
         ),
         Sensor(
             attr="climatisation_target_temperature",
