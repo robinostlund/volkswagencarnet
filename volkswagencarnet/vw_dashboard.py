@@ -863,7 +863,8 @@ def create_instruments():
             attr="charging_time_left",
             name="Charging time left",
             icon="mdi:battery-charging-100",
-            unit="",
+            unit="min",
+            state_class=VWStateClass.MEASUREMENT,
         ),
         Sensor(
             attr="electric_range",

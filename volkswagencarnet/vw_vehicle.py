@@ -1034,7 +1034,7 @@ class Vehicle:
         return False
 
     @property
-    def charging_time_left(self) -> int | str:  # FIXME, should probably be either one
+    def charging_time_left(self) -> int:
         """Return minutes to charging complete."""
         if self.external_power:
             minutes = (
@@ -1047,10 +1047,10 @@ class Vehicle:
             if minutes:
                 try:
                     if minutes == -1:
-                        return "00:00"
+                        return 0
                     if minutes == 65535:
-                        return "00:00"
-                    return "%02d:%02d" % divmod(minutes, 60)
+                        return 0
+                    return minutes
                 except Exception:
                     pass
         return 0
