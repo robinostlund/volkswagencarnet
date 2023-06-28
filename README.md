@@ -15,6 +15,10 @@
 ![Downloads a week](https://img.shields.io/pypi/dw/volkswagencarnet)
 ![Downloads a month](https://img.shields.io/pypi/dm/volkswagencarnet)
 
+## Help Wanted
+
+As i don't have a car with we connect anymore i would appreciate if it would be possible to get help to keep this repository maintained. So if you feel that you have some time over and is interested in helping out with this. Please feel to contact me! Thanks
+
 ## Information
 
 Retrieve statistics about your Volkswagen from the Volkswagen Carnet online service
