@@ -148,7 +148,7 @@ class RateLimitTest(IsolatedAsyncioTestCase):
 
     invocations = 0
 
-    async def rateLimitedFunction(self, url, vin=""):
+    async def rateLimitedFunction(self, method, url, vin="", tries=0, token=None, headers=None):
         """Limit calls test function."""
         ri = MagicMock(aiohttp.RequestInfo)
         e = client_exceptions.ClientResponseError(request_info=ri, history=tuple([]))
