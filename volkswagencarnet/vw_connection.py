@@ -2,6 +2,7 @@
 """Communicate with We Connect services."""
 from __future__ import annotations
 
+import copy
 import hashlib
 import re
 import secrets
@@ -13,6 +14,8 @@ from random import random, randint
 from sys import version_info
 
 import asyncio
+
+import aiohttp
 import jwt
 import logging
 from aiohttp import ClientSession, ClientTimeout, client_exceptions
@@ -40,7 +43,7 @@ from .vw_const import (
 from .vw_utilities import json_loads, read_config
 from .vw_vehicle import Vehicle
 
-MAX_RETRIES_ON_RATE_LIMIT = 3
+MAX_RETRIES_ON_RATE_LIMIT = 40
 
 version_info >= (3, 7) or exit("Python 3.7+ required")
 
@@ -87,7 +90,7 @@ class Connection:
         self._session._cookie_jar._cookies.clear()
 
     # API Login
-    async def doLogin(self, tries: int = 1):
+    async def doLogin(self, tries: int = 3):
         """Login method, clean login."""
         _LOGGER.debug("Initiating new login")
 
@@ -95,7 +98,9 @@ class Connection:
             self._session_logged_in = await self._login("Legacy")
             if self._session_logged_in:
                 break
-            _LOGGER.info("Something failed")
+            if i > tries:
+                _LOGGER.error(f"Login failed after {tries} tries")
+                return False
             await asyncio.sleep(random() * 5)
 
         if not self._session_logged_in:
@@ -103,7 +108,6 @@ class Connection:
 
         _LOGGER.info("Successfully logged in")
         self._session_tokens["identity"] = self._session_tokens["Legacy"].copy()
-        self._session_logged_in = True
 
         # Get VW-Group API tokens
         if not await self._getAPITokens():
@@ -112,24 +116,31 @@ class Connection:
 
         # Get list of vehicles from account
         _LOGGER.debug("Fetching vehicles associated with account")
-        await self.set_token("vwg")
+
         self._session_headers.pop("Content-Type", None)
-        loaded_vehicles = await self.get(
-            url=f"https://msg.volkswagen.de/fs-car/usermanagement/users/v1/{BRAND}/{self._session_country}/vehicles"
-        )
-        # Add Vehicle class object for all VIN-numbers from account
-        if loaded_vehicles.get("userVehicles") is not None:
-            _LOGGER.debug("Found vehicle(s) associated with account.")
-            for vehicle in loaded_vehicles.get("userVehicles").get("vehicle"):
-                self._vehicles.append(Vehicle(self, vehicle))
-        else:
-            _LOGGER.warning("Failed to login to We Connect API.")
-            self._session_logged_in = False
-            return False
+
+        for i in range(tries):
+            loaded_vehicles = await self.get(
+                url=f"https://msg.volkswagen.de/fs-car/usermanagement/users/v1/{BRAND}/{self._session_country}/vehicles",
+                token="vwg"
+            )
+            # Add Vehicle class object for all VIN-numbers from account
+            if loaded_vehicles.get("userVehicles") is not None:
+                _LOGGER.debug(f"Found {len(loaded_vehicles.get('userVehicles'))} vehicle(s) associated with account.")
+                for vehicle in loaded_vehicles.get("userVehicles").get("vehicle"):
+                    self._vehicles.append(Vehicle(self, vehicle))
+                break
+            else:
+                if loaded_vehicles.get('status_code') == 429:
+                    _LOGGER.warning("Vehicle info API call throttled")
+                    await asyncio.sleep(9)
+                    continue
+                _LOGGER.warning("Failed to fetch vehicle data from the We Connect API.")
+                self._session_logged_in = False
+                return False
 
         # Update all vehicles data before returning
-        await self.set_token("vwg")
-        await self.update()
+        # await self.update()
         return True
 
     async def _login(self, client="Legacy"):
@@ -379,19 +390,26 @@ class Connection:
                 "scope": "sc2:fal",
             }
             _LOGGER.debug("Trying to fetch api tokens.")
-            req = await self._session.post(
-                url="https://mbboauth-1d.prd.ece.vwg-connect.com/mbbcoauth/mobile/oauth2/v1/token",
-                headers={
-                    "User-Agent": USER_AGENT,
-                    "X-App-Version": XAPPVERSION,
-                    "X-App-Name": XAPPNAME,
-                    "X-Client-Id": XCLIENT_ID,
-                },
-                data=tokenBody2,
-                allow_redirects=False,
-            )
+            req = None
+            for i in range(3):
+                req = await self._session.post(
+                    url="https://mbboauth-1d.prd.ece.vwg-connect.com/mbbcoauth/mobile/oauth2/v1/token",
+                    headers={
+                        "User-Agent": USER_AGENT,
+                        "X-App-Version": XAPPVERSION,
+                        "X-App-Name": XAPPNAME,
+                        "X-Client-Id": XCLIENT_ID,
+                    },
+                    data=tokenBody2,
+                    allow_redirects=False,
+                )
+                if req.status == 429:
+                    _LOGGER.warning(f"Service responded with {req.status}")
+                    continue
+                _LOGGER.debug(f"Got API tokens in {i+1} tries")
+                break
             if req.status > 400:
-                _LOGGER.debug("API token request failed.")
+                _LOGGER.debug("API token request returned error.")
                 raise Exception(f"API token request returned with status code {req.status}")
             else:
                 # Save tokens as "vwg", use these for get/posts to VW Group API
@@ -457,51 +475,74 @@ class Connection:
                 await self.post("https://tokenrefreshservice.apps.emea.vwapps.io/revokeToken", data=params)
 
     # HTTP methods to API
-    async def _request(self, method, url, **kwargs):
-        """Perform a query to the VW-Group API."""
+    async def _request(self, method, url, token=None, headers: dict | None = None, **kwargs):
+        """Perform a query to the VW-Group API.
+        :param token:
+        """
         _LOGGER.debug(f'HTTP {method} "{url}"')
-        async with self._session.request(
-            method,
-            url,
-            headers=self._session_headers,
-            timeout=ClientTimeout(total=TIMEOUT.seconds),
-            cookies=self._jarCookie,
-            raise_for_status=False,
-            **kwargs,
-        ) as response:
-            response.raise_for_status()
-
-            # Update cookie jar
-            if self._jarCookie != "":
-                self._jarCookie.update(response.cookies)
-            else:
-                self._jarCookie = response.cookies
-
+        tries = 5
+        while tries >= 0:
             try:
-                if response.status == 204:
-                    res = {"status_code": response.status}
-                elif response.status >= 200 or response.status <= 300:
-                    res = await response.json(loads=json_loads)
-                else:
-                    res = {}
-                    _LOGGER.debug(f"Not success status code [{response.status}] response: {response}")
-                if "X-RateLimit-Remaining" in response.headers:
-                    res["rate_limit_remaining"] = response.headers.get("X-RateLimit-Remaining", "")
-            except Exception:
-                res = {}
-                _LOGGER.debug(f"Something went wrong [{response.status}] response: {response}")
-                return res
+                tmpheaders: dict[str, str] = copy.deepcopy(self._session_headers)
+                if headers is None:
+                    headers = {}
+                if token is not None:
+                    tmpheaders["Authorization"] = "Bearer " + self._session_tokens[token]["access_token"]
+                for h in headers:
+                    tmpheaders[h] = headers[h]
 
-            if self._session_fulldebug:
-                _LOGGER.debug(f'Request for "{url}" returned with status code [{response.status}], response: {res}')
-            else:
-                _LOGGER.debug(f'Request for "{url}" returned with status code [{response.status}]')
-            return res
+                async with self._session.request(
+                        method,
+                        url,
+                        headers=tmpheaders,
+                        timeout=ClientTimeout(total=TIMEOUT.seconds),
+                        cookies=self._jarCookie,
+                        raise_for_status=False,
+                        **kwargs,
+                ) as response:
+                    response.raise_for_status()
 
-    async def get(self, url, vin="", tries=0):
+                    # Update cookie jar
+                    if self._jarCookie != "":
+                        self._jarCookie.update(response.cookies)
+                    else:
+                        self._jarCookie = response.cookies
+
+                    try:
+                        if response.status == 204:
+                            res = {"status_code": response.status}
+                        elif response.status >= 200 or response.status <= 300:
+                            res = await response.json(loads=json_loads)
+                        else:
+                            res = {}
+                            _LOGGER.debug(f"Not success status code [{response.status}] response: {response}")
+                        if "X-RateLimit-Remaining" in response.headers:
+                            res["rate_limit_remaining"] = response.headers.get("X-RateLimit-Remaining", "")
+                    except Exception:
+                        res = {}
+                        _LOGGER.debug(f"Something went wrong [{response.status}] response: {response}")
+                        return res
+
+                    if self._session_fulldebug:
+                        _LOGGER.debug(
+                            f'Request for "{url}" returned with status code [{response.status}], response: {res}')
+                    else:
+                        _LOGGER.debug(f'Request for "{url}" returned with status code [{response.status}]')
+                    return res
+            except (aiohttp.ClientOSError, aiohttp.ServerDisconnectedError, aiohttp.ServerTimeoutError) as ex:
+                tries += 1
+                _LOGGER.debug(ex)
+                continue
+
+    async def get(self, url, vin="", tries=0, token: [str, None] = None, headers: dict | None = None):
         """Perform a get query."""
         try:
-            response = await self._request(METH_GET, self._make_url(url, vin))
+            response = await self._request(
+                method=METH_GET,
+                url=self._make_url(url, vin),
+                token=token,
+                headers=headers
+            )
             return response
         except client_exceptions.ClientResponseError as error:
             if error.status == 400:
@@ -513,14 +554,19 @@ class Connection:
                 _LOGGER.warning(f'Received "unauthorized" error while fetching data: {error}')
                 self._session_logged_in = False
             elif error.status == 429 and tries < MAX_RETRIES_ON_RATE_LIMIT:
-                delay = randint(1, 3 + tries * 2)
-                _LOGGER.debug(f"Server side throttled. Waiting {delay}, try {tries + 1}")
+                delay = randint(0, 3)
+                _LOGGER.debug(f"Server side throttled. Waiting {delay}s (try {tries + 1})")
                 await asyncio.sleep(delay)
-                return await self.get(url, vin, tries + 1)
-            elif error.status == 500:
-                _LOGGER.info("Got HTTP 500 from server, service might be temporarily unavailable")
-            elif error.status == 502:
-                _LOGGER.info("Got HTTP 502 from server, this request might not be supported for this vehicle")
+                return await self.get(
+                    url=url,
+                    vin=vin,
+                    tries=tries + 1,
+                    token=token,
+                    headers=headers
+                )
+            elif error.status >= 500:
+                _LOGGER.info(
+                    f"Got HTTP {error.status} from server, service might be temporarily unavailable or vehicle is unsupported")
             else:
                 _LOGGER.error(f"Got unhandled error from server: {error.status}")
             return {"status_code": error.status}
@@ -529,15 +575,29 @@ class Connection:
         """Perform a post query."""
         try:
             if data:
-                return await self._request(METH_POST, self._make_url(url, vin), **data)
+                return await self._request(
+                    method=METH_POST,
+                    url=self._make_url(url, vin),
+                    token=None,
+                    **data
+                )
             else:
-                return await self._request(METH_POST, self._make_url(url, vin))
+                return await self._request(
+                    method=METH_POST,
+                    url=self._make_url(url, vin),
+                    token=None
+                )
         except client_exceptions.ClientResponseError as error:
             if error.status == 429 and tries < MAX_RETRIES_ON_RATE_LIMIT:
                 delay = randint(1, 3 + tries * 2)
                 _LOGGER.debug(f"Server side throttled. Waiting {delay}, try {tries + 1}")
                 await asyncio.sleep(delay)
-                return await self.post(url, vin, tries + 1, **data)
+                return await self.post(
+                    url=url,
+                    vin=vin,
+                    tries=tries + 1,
+                    **data
+                )
 
     # Construct URL from request, home region and variables
     def _make_url(self, ref, vin=""):
@@ -583,9 +643,10 @@ class Connection:
         if not await self.validate_tokens:
             return False
         try:
-            await self.set_token("vwg")
             response = await self.get(
-                "https://mal-1a.prd.ece.vwg-connect.com/api/cs/vds/v1/vehicles/$vin/homeRegion", vin
+                url="https://mal-1a.prd.ece.vwg-connect.com/api/cs/vds/v1/vehicles/$vin/homeRegion",
+                vin=vin,
+                token="vwg"
             )
             self._session_auth_ref_urls[vin] = (
                 response["homeRegion"]["baseUri"]["content"].split("/api")[0].replace("mal-", "fal-")
@@ -604,8 +665,11 @@ class Connection:
         if not await self.validate_tokens:
             return False
         try:
-            await self.set_token("vwg")
-            response = await self.get("/api/rolesrights/operationlist/v3/vehicles/$vin", vin)
+            response = await self.get(
+                url="/api/rolesrights/operationlist/v3/vehicles/$vin",
+                vin=vin,
+                token="vwg"
+            )
             if response.get("operationList", False):
                 data = response.get("operationList", {})
             elif response.get("status_code", {}):
@@ -629,10 +693,11 @@ class Connection:
             subject = jwt.decode(atoken, options={"verify_signature": False}, algorithms=JWT_ALGORITHMS).get(
                 "sub", None
             )
-            await self.set_token("identity")
+
             self._session_headers["Accept"] = "application/json"
             response = await self.get(
-                f"https://customer-profile.apps.emea.vwapps.io/v1/customers/{subject}/realCarData"
+                url=f"https://customer-profile.apps.emea.vwapps.io/v1/customers/{subject}/realCarData",
+                token="identity"
             )
             if response.get("realCars", {}):
                 data = {
@@ -649,42 +714,50 @@ class Connection:
             _LOGGER.warning(f"Could not fetch realCarData, error: {error}")
         return False
 
-    async def getCarportData(self, vin):
+    async def getCarportData(self, vin, tries=10):
         """Get carport data for vehicle, model, model year etc."""
         if not await self.validate_tokens:
             return False
-        try:
-            await self.set_token("vwg")
-            self._session_headers["Accept"] = (
-                "application/vnd.vwg.mbb.vehicleDataDetail_v2_1_0+json,"
-                " application/vnd.vwg.mbb.genericError_v1_0_2+json"
-            )
-            response = await self.get(
-                f"fs-car/vehicleMgmt/vehicledata/v2/{BRAND}/{self._session_country}/vehicles/$vin", vin=vin
-            )
-            self._session_headers["Accept"] = "application/json"
+        for i in range(tries):
+            try:
+                headers = {
+                    "Accept": (
+                        "application/vnd.vwg.mbb.vehicleDataDetail_v2_1_0+json,"
+                        " application/vnd.vwg.mbb.genericError_v1_0_2+json"
+                    )
+                }
+                response = await self.get(
+                    url=f"fs-car/vehicleMgmt/vehicledata/v2/{BRAND}/{self._session_country}/vehicles/$vin",
+                    vin=vin,
+                    token="vwg",
+                    headers=headers
+                )
+                self._session_headers["Accept"] = "application/json"
 
-            if response.get("vehicleDataDetail", {}).get("carportData", {}):
-                data = {"carportData": response.get("vehicleDataDetail", {}).get("carportData", {})}
-                return data
-            elif response.get("status_code", {}):
-                _LOGGER.warning(f'Could not fetch carportdata, HTTP status code: {response.get("status_code")}')
-            else:
-                _LOGGER.info("Unhandled error while trying to fetch carport data")
-        except Exception as error:
-            _LOGGER.warning(f"Could not fetch carportData, error: {error}")
+                if response.get("vehicleDataDetail", {}).get("carportData", {}):
+                    data = {"carportData": response.get("vehicleDataDetail", {}).get("carportData", {})}
+                    return data
+                elif response.get("status_code", {}):
+                    _LOGGER.warning(f'Could not fetch carportdata, HTTP status code: {response.get("status_code")}')
+                else:
+                    _LOGGER.info("Unhandled error while trying to fetch carport data")
+            except Exception as error:
+                _LOGGER.warning(f"Could not fetch carportData, error: {error}")
         return False
 
     async def getVehicleStatusData(self, vin):
         """Get stored vehicle data response."""
         try:
-            await self.set_token("vwg")
-            response = await self.get(f"fs-car/bs/vsr/v1/{BRAND}/{self._session_country}/vehicles/$vin/status", vin=vin)
+            response = await self.get(
+                url=f"fs-car/bs/vsr/v1/{BRAND}/{self._session_country}/vehicles/$vin/status",
+                vin=vin,
+                token="vwg"
+            )
             if (
-                response.get("StoredVehicleDataResponse", {})
-                .get("vehicleData", {})
-                .get("data", {})[0]
-                .get("field", {})[0]
+                    response.get("StoredVehicleDataResponse", {})
+                            .get("vehicleData", {})
+                            .get("data", {})[0]
+                            .get("field", {})[0]
             ):
                 data = {
                     "StoredVehicleDataResponse": response.get("StoredVehicleDataResponse", {}),
@@ -710,10 +783,10 @@ class Connection:
         if not await self.validate_tokens:
             return False
         try:
-            await self.set_token("vwg")
             response = await self.get(
-                f"fs-car/bs/tripstatistics/v1/{BRAND}/{self._session_country}/vehicles/$vin/tripdata/shortTerm?newest",
+                url=f"fs-car/bs/tripstatistics/v1/{BRAND}/{self._session_country}/vehicles/$vin/tripdata/shortTerm?newest",
                 vin=vin,
+                token="vwg"
             )
             if response.get("tripData", {}):
                 data = {"tripstatistics": response.get("tripData", {})}
@@ -731,9 +804,11 @@ class Connection:
         if not await self.validate_tokens:
             return False
         try:
-            await self.set_token("vwg")
+
             response = await self.get(
-                f"fs-car/bs/cf/v1/{BRAND}/{self._session_country}/vehicles/$vin/position", vin=vin
+                url=f"fs-car/bs/cf/v1/{BRAND}/{self._session_country}/vehicles/$vin/position",
+                vin=vin,
+                token="vwg"
             )
             if response.get("findCarResponse", {}):
                 data = {"findCarResponse": response.get("findCarResponse", {}), "isMoving": False}
@@ -756,9 +831,10 @@ class Connection:
         if not await self.validate_tokens:
             return None
         try:
-            await self.set_token("vwg")
             response = await self.get(
-                f"fs-car/bs/departuretimer/v1/{BRAND}/{self._session_country}/vehicles/$vin/timer", vin=vin
+                url=f"fs-car/bs/departuretimer/v1/{BRAND}/{self._session_country}/vehicles/$vin/timer",
+                vin=vin,
+                token="vwg"
             )
             timer = TimerData(**(response.get("timer", {})))
             if timer.valid:
@@ -776,9 +852,11 @@ class Connection:
         if not await self.validate_tokens:
             return False
         try:
-            await self.set_token("vwg")
+
             response = await self.get(
-                f"fs-car/bs/climatisation/v1/{BRAND}/{self._session_country}/vehicles/$vin/climater", vin=vin
+                url=f"fs-car/bs/climatisation/v1/{BRAND}/{self._session_country}/vehicles/$vin/climater",
+                vin=vin,
+                token="vwg"
             )
             if response.get("climater", {}):
                 data = {"climater": response.get("climater", {})}
@@ -796,9 +874,11 @@ class Connection:
         if not await self.validate_tokens:
             return False
         try:
-            await self.set_token("vwg")
+
             response = await self.get(
-                f"fs-car/bs/batterycharge/v1/{BRAND}/{self._session_country}/vehicles/$vin/charger", vin=vin
+                url=f"fs-car/bs/batterycharge/v1/{BRAND}/{self._session_country}/vehicles/$vin/charger",
+                vin=vin,
+                token="vwg"
             )
             if response.get("charger", {}):
                 data = {"charger": response.get("charger", {})}
@@ -816,8 +896,11 @@ class Connection:
         if not await self.validate_tokens:
             return False
         try:
-            await self.set_token("vwg")
-            response = await self.get(f"fs-car/bs/rs/v1/{BRAND}/{self._session_country}/vehicles/$vin/status", vin=vin)
+            response = await self.get(
+                url=f"fs-car/bs/rs/v1/{BRAND}/{self._session_country}/vehicles/$vin/status",
+                vin=vin,
+                token="wvg"
+            )
             if response.get("statusResponse", {}):
                 data = {"heating": response.get("statusResponse", {})}
                 return data
@@ -841,7 +924,6 @@ class Connection:
                 if not await self.doLogin():
                     _LOGGER.warning(f"Login for {BRAND} account failed!")
                     raise Exception(f"Login for {BRAND} account failed")
-            await self.set_token("vwg")
             if sectionId == "climatisation":
                 url = (
                     f"fs-car/bs/$sectionId/v1/{BRAND}/{self._session_country}/vehicles/$vin/climater/actions/$requestId"
@@ -861,7 +943,7 @@ class Connection:
             url = re.sub("\\$sectionId", sectionId, url)
             url = re.sub("\\$requestId", requestId, url)
 
-            response = await self.get(url, vin)
+            response = await self.get(url=url, vin=vin, token="vwg")
             # Pre-heater, ???
             if response.get("requestStatusResponse", {}).get("status", False):
                 result = response.get("requestStatusResponse", {}).get("status", False)

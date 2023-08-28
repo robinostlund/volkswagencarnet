@@ -110,9 +110,13 @@ class Vehicle:
     # API get and set functions #
     # Init and update vehicle data
     async def discover(self):
+        if self._discovered:
+            _LOGGER.debug("Discovery already done. Skipping.")
+            return
+
         """Discover vehicle and initial data."""
         homeregion = await self._connection.getHomeRegion(self.vin)
-        _LOGGER.debug(f"Get homeregion for VIN {self.vin}")
+        _LOGGER.debug(f"Got homeregion for VIN {self.vin}: {homeregion}")
         if homeregion:
             self._homeregion = homeregion
 
