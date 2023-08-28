@@ -122,7 +122,7 @@ class Connection:
         for i in range(tries):
             loaded_vehicles = await self.get(
                 url=f"https://msg.volkswagen.de/fs-car/usermanagement/users/v1/{BRAND}/{self._session_country}/vehicles",
-                token="vwg"
+                token="vwg",
             )
             # Add Vehicle class object for all VIN-numbers from account
             if loaded_vehicles.get("userVehicles") is not None:
@@ -131,7 +131,7 @@ class Connection:
                     self._vehicles.append(Vehicle(self, vehicle))
                 break
             else:
-                if loaded_vehicles.get('status_code') == 429:
+                if loaded_vehicles.get("status_code") == 429:
                     _LOGGER.warning("Vehicle info API call throttled")
                     await asyncio.sleep(9)
                     continue
@@ -492,13 +492,13 @@ class Connection:
                     tmpheaders[h] = headers[h]
 
                 async with self._session.request(
-                        method,
-                        url,
-                        headers=tmpheaders,
-                        timeout=ClientTimeout(total=TIMEOUT.seconds),
-                        cookies=self._jarCookie,
-                        raise_for_status=False,
-                        **kwargs,
+                    method,
+                    url,
+                    headers=tmpheaders,
+                    timeout=ClientTimeout(total=TIMEOUT.seconds),
+                    cookies=self._jarCookie,
+                    raise_for_status=False,
+                    **kwargs,
                 ) as response:
                     response.raise_for_status()
 
@@ -525,7 +525,8 @@ class Connection:
 
                     if self._session_fulldebug:
                         _LOGGER.debug(
-                            f'Request for "{url}" returned with status code [{response.status}], response: {res}')
+                            f'Request for "{url}" returned with status code [{response.status}], response: {res}'
+                        )
                     else:
                         _LOGGER.debug(f'Request for "{url}" returned with status code [{response.status}]')
                     return res
@@ -537,12 +538,7 @@ class Connection:
     async def get(self, url, vin="", tries=0, token: [str, None] = None, headers: dict | None = None):
         """Perform a get query."""
         try:
-            response = await self._request(
-                method=METH_GET,
-                url=self._make_url(url, vin),
-                token=token,
-                headers=headers
-            )
+            response = await self._request(method=METH_GET, url=self._make_url(url, vin), token=token, headers=headers)
             return response
         except client_exceptions.ClientResponseError as error:
             if error.status == 400:
@@ -557,16 +553,11 @@ class Connection:
                 delay = randint(0, 3)
                 _LOGGER.debug(f"Server side throttled. Waiting {delay}s (try {tries + 1})")
                 await asyncio.sleep(delay)
-                return await self.get(
-                    url=url,
-                    vin=vin,
-                    tries=tries + 1,
-                    token=token,
-                    headers=headers
-                )
+                return await self.get(url=url, vin=vin, tries=tries + 1, token=token, headers=headers)
             elif error.status >= 500:
                 _LOGGER.info(
-                    f"Got HTTP {error.status} from server, service might be temporarily unavailable or vehicle is unsupported")
+                    f"Got HTTP {error.status} from server, service might be temporarily unavailable or vehicle is unsupported"
+                )
             else:
                 _LOGGER.error(f"Got unhandled error from server: {error.status}")
             return {"status_code": error.status}
@@ -575,29 +566,15 @@ class Connection:
         """Perform a post query."""
         try:
             if data:
-                return await self._request(
-                    method=METH_POST,
-                    url=self._make_url(url, vin),
-                    token=None,
-                    **data
-                )
+                return await self._request(method=METH_POST, url=self._make_url(url, vin), token=None, **data)
             else:
-                return await self._request(
-                    method=METH_POST,
-                    url=self._make_url(url, vin),
-                    token=None
-                )
+                return await self._request(method=METH_POST, url=self._make_url(url, vin), token=None)
         except client_exceptions.ClientResponseError as error:
             if error.status == 429 and tries < MAX_RETRIES_ON_RATE_LIMIT:
                 delay = randint(1, 3 + tries * 2)
                 _LOGGER.debug(f"Server side throttled. Waiting {delay}, try {tries + 1}")
                 await asyncio.sleep(delay)
-                return await self.post(
-                    url=url,
-                    vin=vin,
-                    tries=tries + 1,
-                    **data
-                )
+                return await self.post(url=url, vin=vin, tries=tries + 1, **data)
 
     # Construct URL from request, home region and variables
     def _make_url(self, ref, vin=""):
@@ -646,7 +623,7 @@ class Connection:
             response = await self.get(
                 url="https://mal-1a.prd.ece.vwg-connect.com/api/cs/vds/v1/vehicles/$vin/homeRegion",
                 vin=vin,
-                token="vwg"
+                token="vwg",
             )
             self._session_auth_ref_urls[vin] = (
                 response["homeRegion"]["baseUri"]["content"].split("/api")[0].replace("mal-", "fal-")
@@ -665,11 +642,7 @@ class Connection:
         if not await self.validate_tokens:
             return False
         try:
-            response = await self.get(
-                url="/api/rolesrights/operationlist/v3/vehicles/$vin",
-                vin=vin,
-                token="vwg"
-            )
+            response = await self.get(url="/api/rolesrights/operationlist/v3/vehicles/$vin", vin=vin, token="vwg")
             if response.get("operationList", False):
                 data = response.get("operationList", {})
             elif response.get("status_code", {}):
@@ -696,8 +669,7 @@ class Connection:
 
             self._session_headers["Accept"] = "application/json"
             response = await self.get(
-                url=f"https://customer-profile.apps.emea.vwapps.io/v1/customers/{subject}/realCarData",
-                token="identity"
+                url=f"https://customer-profile.apps.emea.vwapps.io/v1/customers/{subject}/realCarData", token="identity"
             )
             if response.get("realCars", {}):
                 data = {
@@ -730,7 +702,7 @@ class Connection:
                     url=f"fs-car/vehicleMgmt/vehicledata/v2/{BRAND}/{self._session_country}/vehicles/$vin",
                     vin=vin,
                     token="vwg",
-                    headers=headers
+                    headers=headers,
                 )
                 self._session_headers["Accept"] = "application/json"
 
@@ -749,15 +721,13 @@ class Connection:
         """Get stored vehicle data response."""
         try:
             response = await self.get(
-                url=f"fs-car/bs/vsr/v1/{BRAND}/{self._session_country}/vehicles/$vin/status",
-                vin=vin,
-                token="vwg"
+                url=f"fs-car/bs/vsr/v1/{BRAND}/{self._session_country}/vehicles/$vin/status", vin=vin, token="vwg"
             )
             if (
-                    response.get("StoredVehicleDataResponse", {})
-                            .get("vehicleData", {})
-                            .get("data", {})[0]
-                            .get("field", {})[0]
+                response.get("StoredVehicleDataResponse", {})
+                .get("vehicleData", {})
+                .get("data", {})[0]
+                .get("field", {})[0]
             ):
                 data = {
                     "StoredVehicleDataResponse": response.get("StoredVehicleDataResponse", {}),
@@ -786,7 +756,7 @@ class Connection:
             response = await self.get(
                 url=f"fs-car/bs/tripstatistics/v1/{BRAND}/{self._session_country}/vehicles/$vin/tripdata/shortTerm?newest",
                 vin=vin,
-                token="vwg"
+                token="vwg",
             )
             if response.get("tripData", {}):
                 data = {"tripstatistics": response.get("tripData", {})}
@@ -804,11 +774,8 @@ class Connection:
         if not await self.validate_tokens:
             return False
         try:
-
             response = await self.get(
-                url=f"fs-car/bs/cf/v1/{BRAND}/{self._session_country}/vehicles/$vin/position",
-                vin=vin,
-                token="vwg"
+                url=f"fs-car/bs/cf/v1/{BRAND}/{self._session_country}/vehicles/$vin/position", vin=vin, token="vwg"
             )
             if response.get("findCarResponse", {}):
                 data = {"findCarResponse": response.get("findCarResponse", {}), "isMoving": False}
@@ -834,7 +801,7 @@ class Connection:
             response = await self.get(
                 url=f"fs-car/bs/departuretimer/v1/{BRAND}/{self._session_country}/vehicles/$vin/timer",
                 vin=vin,
-                token="vwg"
+                token="vwg",
             )
             timer = TimerData(**(response.get("timer", {})))
             if timer.valid:
@@ -852,11 +819,10 @@ class Connection:
         if not await self.validate_tokens:
             return False
         try:
-
             response = await self.get(
                 url=f"fs-car/bs/climatisation/v1/{BRAND}/{self._session_country}/vehicles/$vin/climater",
                 vin=vin,
-                token="vwg"
+                token="vwg",
             )
             if response.get("climater", {}):
                 data = {"climater": response.get("climater", {})}
@@ -874,11 +840,10 @@ class Connection:
         if not await self.validate_tokens:
             return False
         try:
-
             response = await self.get(
                 url=f"fs-car/bs/batterycharge/v1/{BRAND}/{self._session_country}/vehicles/$vin/charger",
                 vin=vin,
-                token="vwg"
+                token="vwg",
             )
             if response.get("charger", {}):
                 data = {"charger": response.get("charger", {})}
@@ -897,9 +862,7 @@ class Connection:
             return False
         try:
             response = await self.get(
-                url=f"fs-car/bs/rs/v1/{BRAND}/{self._session_country}/vehicles/$vin/status",
-                vin=vin,
-                token="wvg"
+                url=f"fs-car/bs/rs/v1/{BRAND}/{self._session_country}/vehicles/$vin/status", vin=vin, token="wvg"
             )
             if response.get("statusResponse", {}):
                 data = {"heating": response.get("statusResponse", {})}
