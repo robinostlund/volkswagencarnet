@@ -632,7 +632,7 @@ class Connection:
             await self.set_token("identity")
             self._session_headers["Accept"] = "application/json"
             response = await self.get(
-                f"https://customer-profile.apps.emea.vwapps.io/v1/customers/{subject}/realCarData"
+                f"https://customer-profile.vwgroup.io/v1/customers/{subject}/realCarData"
             )
             if response.get("realCars", {}):
                 data = {
