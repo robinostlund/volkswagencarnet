@@ -28,7 +28,7 @@ CLIENT = {
 }
 
 
-XCLIENT_ID = "85fa2187-5b5c-4c35-adba-1471d0c4ea60"
+XCLIENT_ID = "c8fcb3bf-22d3-44b0-b6ce-30eae0a4986f"
 XAPPVERSION = "5.3.2"
 XAPPNAME = "We Connect"
 USER_AGENT = "okhttp/3.14.7"
