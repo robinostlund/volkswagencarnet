@@ -31,7 +31,7 @@ CLIENT = {
 XCLIENT_ID = "c8fcb3bf-22d3-44b0-b6ce-30eae0a4986f"
 XAPPVERSION = "5.3.2"
 XAPPNAME = "We Connect"
-USER_AGENT = "okhttp/3.14.7"
+USER_AGENT = "OneConnect/000000148 CFNetwork/1485 Darwin/23.1.0"
 APP_URI = "carnet://identity-kit/login"
 
 # Used when fetching data
