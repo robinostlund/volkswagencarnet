@@ -106,14 +106,8 @@ class Connection:
         self._session_tokens["identity"] = self._session_tokens["Legacy"].copy()
         self._session_logged_in = True
 
-        # Get VW-Group API tokens
-        # if not await self._getAPITokens():
-        #    self._session_logged_in = False
-        #    return False
-
         # Get list of vehicles from account
         _LOGGER.debug("Fetching vehicles associated with account")
-        # await self.set_token("vwg")
         self._session_headers.pop("Content-Type", None)
         loaded_vehicles = await self.get(url=f"{BASE_API}/vehicle/v2/vehicles")
         # Add Vehicle class object for all VIN-numbers from account
@@ -127,7 +121,6 @@ class Connection:
             return False
 
         # Update all vehicles data before returning
-        # await self.set_token("vwg")
         await self.update()
         return True
 
@@ -586,7 +579,6 @@ class Connection:
         if not await self.validate_tokens:
             return False
         try:
-            # await self.set_token("vwg")
             # TODO: handle multiple home regions! (no examples available currently)
             return True
             response = await self.get(
@@ -609,7 +601,6 @@ class Connection:
         if not await self.validate_tokens:
             return False
         try:
-            # await self.set_token("vwg")
             response = await self.get(f"{BASE_API}/vehicle/v1/vehicles/{vin}/capabilities", "")
             if response.get("capabilities", False):
                 data = response.get("capabilities", {})
@@ -689,7 +680,6 @@ class Connection:
             subject = jwt.decode(atoken, options={"verify_signature": False}, algorithms=JWT_ALGORITHMS).get(
                 "sub", None
             )
-            # await self.set_token("identity")
             self._session_headers["Accept"] = "application/json"
             response = await self.get(f"https://customer-profile.vwgroup.io/v1/customers/{subject}/realCarData")
             if response.get("realCars", {}):
@@ -712,7 +702,6 @@ class Connection:
         if not await self.validate_tokens:
             return False
         try:
-            # await self.set_token("vwg")
             self._session_headers["Accept"] = (
                 "application/vnd.vwg.mbb.vehicleDataDetail_v2_1_0+json,"
                 " application/vnd.vwg.mbb.genericError_v1_0_2+json"
@@ -736,7 +725,6 @@ class Connection:
     async def getVehicleStatusData(self, vin):
         """Get stored vehicle data response."""
         try:
-            # await self.set_token("vwg")
             response = await self.get(f"fs-car/bs/vsr/v1/{BRAND}/{self._session_country}/vehicles/$vin/status", vin=vin)
             if (
                 response.get("StoredVehicleDataResponse", {})
@@ -768,7 +756,6 @@ class Connection:
         if not await self.validate_tokens:
             return False
         try:
-            # await self.set_token("vwg")
             response = await self.get(
                 f"fs-car/bs/tripstatistics/v1/{BRAND}/{self._session_country}/vehicles/$vin/tripdata/shortTerm?newest",
                 vin=vin,
@@ -789,7 +776,6 @@ class Connection:
         if not await self.validate_tokens:
             return False
         try:
-            # await self.set_token("vwg")
             response = await self.get(
                 f"fs-car/bs/cf/v1/{BRAND}/{self._session_country}/vehicles/$vin/position", vin=vin
             )
@@ -814,7 +800,6 @@ class Connection:
         if not await self.validate_tokens:
             return None
         try:
-            # await self.set_token("vwg")
             response = await self.get(
                 f"fs-car/bs/departuretimer/v1/{BRAND}/{self._session_country}/vehicles/$vin/timer", vin=vin
             )
@@ -834,7 +819,6 @@ class Connection:
         if not await self.validate_tokens:
             return False
         try:
-            # await self.set_token("vwg")
             response = await self.get(
                 f"fs-car/bs/climatisation/v1/{BRAND}/{self._session_country}/vehicles/$vin/climater", vin=vin
             )
@@ -854,7 +838,6 @@ class Connection:
         if not await self.validate_tokens:
             return False
         try:
-            # await self.set_token("vwg")
             response = await self.get(
                 f"fs-car/bs/batterycharge/v1/{BRAND}/{self._session_country}/vehicles/$vin/charger", vin=vin
             )
@@ -874,7 +857,6 @@ class Connection:
         if not await self.validate_tokens:
             return False
         try:
-            # await self.set_token("vwg")
             response = await self.get(f"fs-car/bs/rs/v1/{BRAND}/{self._session_country}/vehicles/$vin/status", vin=vin)
             if response.get("statusResponse", {}):
                 data = {"heating": response.get("statusResponse", {})}
@@ -899,7 +881,6 @@ class Connection:
                 if not await self.doLogin():
                     _LOGGER.warning(f"Login for {BRAND} account failed!")
                     raise Exception(f"Login for {BRAND} account failed")
-            # await self.set_token("vwg")
             if sectionId == "climatisation":
                 url = (
                     f"fs-car/bs/$sectionId/v1/{BRAND}/{self._session_country}/vehicles/$vin/climater/actions/$requestId"
@@ -1024,7 +1005,6 @@ class Connection:
     async def setRefresh(self, vin):
         """Force vehicle data update."""
         try:
-            # await self.set_token("vwg")
             response = await self.dataCall(
                 f"fs-car/bs/vsr/v1/{BRAND}/{self._session_country}/vehicles/$vin/requests", vin, data=None
             )
@@ -1047,7 +1027,6 @@ class Connection:
     async def setCharger(self, vin, data) -> dict[str, str | int | None]:
         """Start/Stop charger."""
         try:
-            # await self.set_token("vwg")
             response = await self.dataCall(
                 f"fs-car/bs/batterycharge/v1/{BRAND}/{self._session_country}/vehicles/$vin/charger/actions",
                 vin,
@@ -1072,7 +1051,6 @@ class Connection:
     async def setClimater(self, vin, data, spin):
         """Execute climatisation actions."""
         try:
-            # await self.set_token("vwg")
             # Only get security token if auxiliary heater is to be started
             if data.get("action", {}).get("settings", {}).get("heaterSource", None) == "auxiliary":
                 self._session_headers["X-securityToken"] = await self.get_sec_token(vin=vin, spin=spin, action="rclima")
@@ -1103,7 +1081,6 @@ class Connection:
         """Petrol/diesel parking heater actions."""
         content_type = None
         try:
-            # await self.set_token("vwg")
             if "Content-Type" in self._session_headers:
                 content_type = self._session_headers["Content-Type"]
             else:
@@ -1163,7 +1140,6 @@ class Connection:
     async def _setDepartureTimer(self, vin, data: TimersAndProfiles, action: str):
         """Set schedules."""
         try:
-            # await self.set_token("vwg")
             response = await self.dataCall(
                 f"fs-car/bs/departuretimer/v1/{BRAND}/{self._session_country}/vehicles/$vin/timer/actions",
                 vin=vin,
@@ -1197,7 +1173,6 @@ class Connection:
         """Remote lock and unlock actions."""
         content_type = None
         try:
-            # await self.set_token("vwg")
             # Prepare data, headers and fetch security token
             if "Content-Type" in self._session_headers:
                 content_type = self._session_headers["Content-Type"]

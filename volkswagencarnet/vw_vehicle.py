@@ -63,19 +63,20 @@ class Vehicle:
 
         # API Endpoints that might be enabled for car (that we support)
         self._services: dict[str, dict[str, Any]] = {
-            # "rheating_v1": {"active": False},  # TODO: equivalent in new API unknown
-            # "rclima_v1": {"active": False},     # TODO: equivalent in new API unknown
+            # TODO needs a complete rework...
+            # "rheating_v1": {"active": False},
+            # "rclima_v1": {"active": False},
             "access": {"active": False},
             "tripStatistics": {"active": False},
             "measurements": {"active": False},
-            # "statusreport_v1": {"active": False}, # TODO: equivalent in new API unknown, potentially "state"?
-            # "rbatterycharge_v1": {"active": False}, # TODO: equivalent in new API unknown
+            # "statusreport_v1": {"active": False},
+            # "rbatterycharge_v1": {"active": False},
             "honkAndFlash": {"active": False},
-            # "carfinder_v1": {"active": False}, # TODO: equivalent in new API unknown
-            # "timerprogramming_v1": {"active": False}, # TODO: equivalent in new API unknown
-            # "jobs_v1": {"active": False}, # TODO: equivalent in new API unknown
-            # "owner_v1": {"active": False}, # TODO: equivalent in new API unknown
-            # vehicles_v1_cai, services_v1, vehicletelemetry_v1  # TODO: equivalent in new API unknown
+            # "carfinder_v1": {"active": False},
+            # "timerprogramming_v1": {"active": False},
+            # "jobs_v1": {"active": False},
+            # "owner_v1": {"active": False},
+            # vehicles_v1_cai, services_v1, vehicletelemetry_v1
         }
 
     def _in_progress(self, topic: str, unknown_offset: int = 0) -> bool:
@@ -119,19 +120,10 @@ class Vehicle:
     # Init and update vehicle data
     async def discover(self):
         """Discover vehicle and initial data."""
-        # homeregion = await self._connection.getHomeRegion(self.vin)
-        # _LOGGER.debug(f"Get homeregion for VIN {self.vin}")
-        # if homeregion:
-        #    self._homeregion = homeregion
-
-        # await asyncio.gather(self.get_carportdata(), self.get_realcardata(), return_exceptions=True)
-        # _LOGGER.info(f'Vehicle {self.vin} added. Homeregion is "{self._homeregion}"')
 
         _LOGGER.debug("Attempting discovery of supported API endpoints for vehicle.")
         operation_list = await self._connection.getOperationList(self.vin)
         if operation_list:
-            # service_info = operation_list["serviceInfo"]
-            # Iterate over all endpoints in ServiceInfo list
             for service_id in operation_list.keys():
                 try:
                     if service_id in self._services.keys():
@@ -1485,12 +1477,7 @@ class Vehicle:
     @property
     def windows_closed_last_updated(self) -> datetime:
         """Return timestamp for windows state last updated."""
-        return (
-            self.attrs.get("StoredVehicleDataResponseParsed", {})
-            .get("StoredVehicleDataResponseParsed", {})
-            .get(P.FRONT_LEFT_WINDOW_CLOSED, {})
-            .get("BACKEND_RECEIVED_TIMESTAMP")
-        )
+        return self.window_closed_left_front_last_updated
 
     @property
     def is_windows_closed_supported(self) -> bool:
