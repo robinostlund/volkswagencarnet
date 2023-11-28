@@ -28,10 +28,8 @@ CLOSED_STATE = 3
 
 _LOGGER = logging.getLogger(__name__)
 
-# TODO find out
-ENGINE_TYPE_ELECTRIC = "3"
+ENGINE_TYPE_ELECTRIC = "electric"
 ENGINE_TYPE_DIESEL = "diesel"
-# TODO verify
 ENGINE_TYPE_GASOLINE = "gasoline"
 ENGINE_TYPE_COMBUSTION = [ENGINE_TYPE_DIESEL, ENGINE_TYPE_GASOLINE]
 
@@ -1218,50 +1216,38 @@ class Vehicle:
     @property
     def climatisation_target_temperature(self) -> float | None:
         """Return the target temperature from climater."""
-        value = self.attrs.get("climater").get("settings").get("targetTemperature").get("content")
-        if value:
-            reply = float((value / 10) - 273)
-            self._climatisation_target_temperature = reply
-            return reply
-        else:
-            return None
+        # TODO should we handle Fahrenheit??
+        return int(find_path(self.attrs, "climatisation.climatisationSettings.value.targetTemperature_C"))
 
     @property
     def climatisation_target_temperature_last_updated(self) -> datetime:
         """Return the target temperature from climater last updated."""
-        return self.attrs.get("climater").get("settings").get("targetTemperature").get(BACKEND_RECEIVED_TIMESTAMP)
+        return find_path(self.attrs, "climatisation.climatisationSettings.value.carCapturedTimestamp")
 
     @property
     def is_climatisation_target_temperature_supported(self) -> bool:
         """Return true if climatisation target temperature is supported."""
-        if self.attrs.get("climater", False):
-            if "settings" in self.attrs.get("climater", {}):
-                if "targetTemperature" in self.attrs.get("climater", {})["settings"]:
-                    return True
-        return False
+        return is_valid_path(self.attrs, "climatisation.climatisationSettings.value.targetTemperature_C")
 
     @property
     def climatisation_without_external_power(self):
         """Return state of climatisation from battery power."""
-        return self.attrs.get("climater").get("settings").get("climatisationWithoutHVpower").get("content", False)
+        return find_path(self.attrs, "climatisation.climatisationSettings.value.climatisationWithoutExternalPower")
 
     @property
     def climatisation_without_external_power_last_updated(self) -> datetime:
         """Return state of climatisation from battery power last updated."""
-        return self.attrs.get("climater").get("settings").get("climatisationWithoutHVpower").get("timestamp")
+        return find_path(self.attrs, "climatisation.climatisationSettings.value.carCapturedTimestamp")
 
     @property
     def is_climatisation_without_external_power_supported(self) -> bool:
         """Return true if climatisation on battery power is supported."""
-        if self.attrs.get("climater", False):
-            if "settings" in self.attrs.get("climater", {}):
-                if "climatisationWithoutHVpower" in self.attrs.get("climater", {})["settings"]:
-                    return True
-        return False
+        return is_valid_path(self.attrs, "climatisation.climatisationSettings.value.climatisationWithoutExternalPower")
 
     @property
     def outside_temperature(self) -> float | bool:  # FIXME should probably be Optional[float] instead
         """Return outside temperature."""
+        # TODO not found yet
         response = int(self.attrs.get("StoredVehicleDataResponseParsed")[P.OUTSIDE_TEMPERATURE].get("value", None))
         if response is not None:
             return round(float((response / 10) - 273.15), 1)
@@ -1271,11 +1257,13 @@ class Vehicle:
     @property
     def outside_temperature_last_updated(self) -> datetime:
         """Return outside temperature last updated."""
+        # TODO not found yet
         return self.attrs.get("StoredVehicleDataResponseParsed")[P.OUTSIDE_TEMPERATURE].get(BACKEND_RECEIVED_TIMESTAMP)
 
     @property
     def is_outside_temperature_supported(self) -> bool:
         """Return true if outside temp is supported."""
+        # TODO not found yet
         if self.attrs.get("StoredVehicleDataResponseParsed", False):
             if P.OUTSIDE_TEMPERATURE in self.attrs.get("StoredVehicleDataResponseParsed"):
                 if "value" in self.attrs.get("StoredVehicleDataResponseParsed")[P.OUTSIDE_TEMPERATURE]:
@@ -1286,6 +1274,7 @@ class Vehicle:
     @property
     def electric_climatisation(self) -> bool:
         """Return status of climatisation."""
+        # TODO not found yet
         climatisation_type = (
             self.attrs.get("climater", {}).get("settings", {}).get("heaterSource", {}).get("content", "")
         )
@@ -1301,6 +1290,7 @@ class Vehicle:
     @property
     def electric_climatisation_last_updated(self) -> datetime:
         """Return status of climatisation last updated."""
+        # TODO not found yet
         return (
             self.attrs.get("climater", {})
             .get("status", {})
@@ -1312,130 +1302,92 @@ class Vehicle:
     @property
     def is_electric_climatisation_supported(self) -> bool:
         """Return true if vehicle has climater."""
+        # TODO not found yet
         return self.is_climatisation_supported
 
     @property
     def auxiliary_climatisation(self) -> bool:
         """Return status of auxiliary climatisation."""
-        climatisation_type = (
-            self.attrs.get("climater", {}).get("settings", {}).get("heaterSource", {}).get("content", "")
-        )
-        status = (
-            self.attrs.get("climater", {})
-            .get("status", {})
-            .get("climatisationStatusData", {})
-            .get("climatisationState", {})
-            .get("content", "")
-        )
-        if status in ["heating", "heatingAuxiliary", "on"] and climatisation_type == "auxiliary":
+        climatisation_state = find_path(self.attrs, "climatisation.climatisationStatus.value.climatisationState")
+        if climatisation_state in ["heating", "heatingAuxiliary", "on"]:
             return True
-        elif status in ["heatingAuxiliary"] and climatisation_type == "electric":
-            return True
-        else:
-            return False
 
     @property
     def auxiliary_climatisation_last_updated(self) -> datetime:
         """Return status of auxiliary climatisation last updated."""
-        return (
-            self.attrs.get("climater", {})
-            .get("status", {})
-            .get("climatisationStatusData", {})
-            .get("climatisationState", {})
-            .get(BACKEND_RECEIVED_TIMESTAMP)
-        )
+        return find_path(self.attrs, "climatisation.climatisationStatus.value.carCapturedTimestamp")
 
     @property
     def is_auxiliary_climatisation_supported(self) -> bool:
         """Return true if vehicle has auxiliary climatisation."""
-        if self._services.get("rclima_v1", False):
-            functions = self._services.get("rclima_v1", {}).get("operations", [])
-            if "P_START_CLIMA_AU" in functions:
-                return True
-        return False
+        return is_valid_path(self.attrs, "climatisation.climatisationStatus.value.climatisationState")
 
     @property
     def is_climatisation_supported(self) -> bool:
         """Return true if climatisation has State."""
-        response = (
-            self.attrs.get("climater", {})
-            .get("status", {})
-            .get("climatisationStatusData", {})
-            .get("climatisationState", {})
-            .get("content", "")
-        )
-        return response != ""
+        return is_valid_path(self.attrs, "climatisation.climatisationStatus.value.climatisationState")
 
     @property
     def is_climatisation_supported_last_updated(self) -> datetime:
         """Return attribute last updated timestamp."""
-        return (
-            self.attrs.get("climater", {})
-            .get("status", {})
-            .get("climatisationStatusData", {})
-            .get("climatisationState", {})
-            .get(BACKEND_RECEIVED_TIMESTAMP)
-        )
+        return find_path(self.attrs, "climatisation.climatisationStatus.value.carCapturedTimestamp")
+
+    @property
+    def window_heater_front(self) -> bool:
+        """Return status of front window heater."""
+        ret = False
+        window_heating_status = find_path(self.attrs, "climatisation.windowHeatingStatus.value.windowHeatingStatus")
+        for window_heating_state in window_heating_status:
+            if window_heating_state["windowLocation"] == "front":
+                return window_heating_state["windowHeatingState"] == "on"
+
+        return False
+
+    @property
+    def window_heater_front_last_updated(self) -> datetime:
+        """Return front window heater last updated."""
+        return find_path(self.attrs, "climatisation.windowHeatingStatus.value.carCapturedTimestamp")
+
+    @property
+    def is_window_heater_front_supported(self) -> bool:
+        """Return true if vehicle has heater."""
+        return is_valid_path(self.attrs, "climatisation.windowHeatingStatus.value.windowHeatingStatus")
+
+    @property
+    def window_heater_back(self) -> bool:
+        """Return status of rear window heater."""
+        ret = False
+        window_heating_status = find_path(self.attrs, "climatisation.windowHeatingStatus.value.windowHeatingStatus")
+        for window_heating_state in window_heating_status:
+            if window_heating_state["windowLocation"] == "rear":
+                return window_heating_state["windowHeatingState"] == "on"
+
+        return False
+
+    @property
+    def window_heater_rear_last_updated(self) -> datetime:
+        """Return front window heater last updated."""
+        return find_path(self.attrs, "climatisation.windowHeatingStatus.value.carCapturedTimestamp")
+
+    @property
+    def is_window_heater_rear_supported(self) -> bool:
+        """Return true if vehicle has heater."""
+        return is_valid_path(self.attrs, "climatisation.windowHeatingStatus.value.windowHeatingStatus")
 
     @property
     def window_heater(self) -> bool:
         """Return status of window heater."""
-        ret = False
-        status_front = (
-            self.attrs.get("climater", {})
-            .get("status", {})
-            .get("windowHeatingStatusData", {})
-            .get("windowHeatingStateFront", {})
-            .get("content", "")
-        )
-        if status_front == "on":
-            ret = True
-
-        status_rear = (
-            self.attrs.get("climater", {})
-            .get("status", {})
-            .get("windowHeatingStatusData", {})
-            .get("windowHeatingStateRear", {})
-            .get("content", "")
-        )
-        if status_rear == "on":
-            ret = True
-        return ret
+        return self.window_heater_front or self.window_heater_back
 
     @property
     def window_heater_last_updated(self) -> datetime:
-        """Return window heater last updated."""
-        front = (
-            self.attrs.get("climater", {})
-            .get("status", {})
-            .get("windowHeatingStatusData", {})
-            .get("windowHeatingStateFront", {})
-            .get(BACKEND_RECEIVED_TIMESTAMP)
-        )
-        if front is not None:
-            return front
-
-        return (
-            self.attrs.get("climater", {})
-            .get("status", {})
-            .get("windowHeatingStatusData", {})
-            .get("windowHeatingStateRear", {})
-            .get(BACKEND_RECEIVED_TIMESTAMP)
-        )
+        """Return front window heater last updated."""
+        return self.window_heater_front_last_updated
 
     @property
-    def is_window_heater_supported(self) -> bool:
+    def is_window_supported(self) -> bool:
         """Return true if vehicle has heater."""
-        if self.is_electric_climatisation_supported:
-            if self.attrs.get("climater", {}).get("status", {}).get("windowHeatingStatusData", {}).get(
-                "windowHeatingStateFront", {}
-            ).get("content", "") in ["on", "off"]:
-                return True
-            if self.attrs.get("climater", {}).get("status", {}).get("windowHeatingStatusData", {}).get(
-                "windowHeatingStateRear", {}
-            ).get("content", "") in ["on", "off"]:
-                return True
-        return False
+        return self.is_window_heater_front_supported
 
     # Parking heater, "legacy" auxiliary climatisation
     @property
@@ -2569,18 +2521,14 @@ class Vehicle:
 
     def is_primary_drive_electric(self):
         """Check if primary engine is electric."""
-        return (
-            P.PRIMARY_DRIVE in self.attrs.get("StoredVehicleDataResponseParsed", {})
-            and self.attrs.get("StoredVehicleDataResponseParsed")[P.PRIMARY_DRIVE].get("value", UNSUPPORTED)
-            == ENGINE_TYPE_ELECTRIC
-        )
+        return find_path(self.attrs, "measurements.fuelLevelStatus.value.primaryEngineType") == ENGINE_TYPE_ELECTRIC
+
 
     def is_secondary_drive_electric(self):
         """Check if secondary engine is electric."""
         return (
-            P.SECONDARY_DRIVE in self.attrs.get("StoredVehicleDataResponseParsed", {})
-            and self.attrs.get("StoredVehicleDataResponseParsed")[P.SECONDARY_DRIVE].get("value", UNSUPPORTED)
-            == ENGINE_TYPE_ELECTRIC
+                is_valid_path(self.attrs, "measurements.fuelLevelStatus.value.primaryEngineType") and
+                find_path(self.attrs, "measurements.fuelLevelStatus.value.primaryEngineType") == ENGINE_TYPE_ELECTRIC
         )
 
     def is_primary_drive_combustion(self):
@@ -2589,13 +2537,8 @@ class Vehicle:
 
     def is_secondary_drive_combustion(self):
         """Check if secondary engine is combustion."""
-        return (
-            # TODO Verify
-            True
-            if is_valid_path(self.attrs, "measurements.fuelLevelStatus.value.secondaryEngineType")
-            and find_path(self.attrs, "measurements.fuelLevelStatus.value.secondaryEngineType")
-            in ENGINE_TYPE_COMBUSTION
-            else False
+        return is_valid_path(self.attrs, "measurements.fuelLevelStatus.value.secondaryEngineType") and (
+            find_path(self.attrs, "measurements.fuelLevelStatus.value.secondaryEngineType") in ENGINE_TYPE_COMBUSTION
         )
 
     def has_combustion_engine(self):

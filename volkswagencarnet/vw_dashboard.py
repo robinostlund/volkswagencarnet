@@ -772,6 +772,20 @@ def create_instruments():
         TrunkLock(),
         RequestUpdate(),
         WindowHeater(),
+        BinarySensor(
+            attr="window_heater_front",
+            name="Window Heater Front",
+            device_class=VWDeviceClass.WINDOW,
+            icon="mdi:car-defrost-front",
+            reverse_state=True
+        ),
+        BinarySensor(
+            attr="window_heater_back",
+            name="Window Heater Back",
+            device_class=VWDeviceClass.WINDOW,
+            icon="mdi:car-defrost-rear",
+            reverse_state=True
+        ),
         BatteryClimatisation(),
         ElectricClimatisation(),
         AuxiliaryClimatisation(),
@@ -1051,6 +1065,9 @@ def create_instruments():
         ),
         BinarySensor(
             attr="sunroof_closed", name="Sunroof closed", device_class=VWDeviceClass.WINDOW, reverse_state=True
+        ),
+        BinarySensor(
+            attr="roof_cover_closed", name="Roof cover closed", device_class=VWDeviceClass.WINDOW, reverse_state=True
         ),
         BinarySensor(
             attr="windows_closed", name="Windows closed", device_class=VWDeviceClass.WINDOW, reverse_state=True
