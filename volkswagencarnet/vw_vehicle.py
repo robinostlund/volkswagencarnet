@@ -1335,7 +1335,6 @@ class Vehicle:
     @property
     def window_heater_front(self) -> bool:
         """Return status of front window heater."""
-        ret = False
         window_heating_status = find_path(self.attrs, "climatisation.windowHeatingStatus.value.windowHeatingStatus")
         for window_heating_state in window_heating_status:
             if window_heating_state["windowLocation"] == "front":
@@ -1356,7 +1355,6 @@ class Vehicle:
     @property
     def window_heater_back(self) -> bool:
         """Return status of rear window heater."""
-        ret = False
         window_heating_status = find_path(self.attrs, "climatisation.windowHeatingStatus.value.windowHeatingStatus")
         for window_heating_state in window_heating_status:
             if window_heating_state["windowLocation"] == "rear":
