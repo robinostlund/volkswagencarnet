@@ -1,4 +1,5 @@
 aiohttp
 beautifulsoup4
+cryptography
 lxml
 pyjwt
