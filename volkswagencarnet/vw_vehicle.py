@@ -2598,7 +2598,6 @@ class Vehicle:
             else False
         )
 
-
     def has_combustion_engine(self):
         """Return true if car has a combustion engine."""
         return self.is_primary_drive_combustion() or self.is_secondary_drive_combustion()
