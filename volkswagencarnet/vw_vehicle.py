@@ -2591,8 +2591,10 @@ class Vehicle:
         """Check if secondary engine is combustion."""
         return (
             # TODO Verify
-            True if is_valid_path(self.attrs, "measurements.fuelLevelStatus.value.secondaryEngineType")
-            and find_path(self.attrs, "measurements.fuelLevelStatus.value.secondaryEngineType") in ENGINE_TYPE_COMBUSTION
+            True
+            if is_valid_path(self.attrs, "measurements.fuelLevelStatus.value.secondaryEngineType")
+            and find_path(self.attrs, "measurements.fuelLevelStatus.value.secondaryEngineType")
+            in ENGINE_TYPE_COMBUSTION
             else False
         )
 
