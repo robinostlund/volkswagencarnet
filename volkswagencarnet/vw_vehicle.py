@@ -2590,10 +2590,12 @@ class Vehicle:
     def is_secondary_drive_combustion(self):
         """Check if secondary engine is combustion."""
         return (
-            # TODO verify
-            find_path(self.attrs, "measurements.fuelLevelStatus.value.secondaryEngineType")
-            in ENGINE_TYPE_COMBUSTION
+            # TODO Verify
+            True if is_valid_path(self.attrs, "measurements.fuelLevelStatus.value.secondaryEngineType")
+            and find_path(self.attrs, "measurements.fuelLevelStatus.value.secondaryEngineType") in ENGINE_TYPE_COMBUSTION
+            else False
         )
+
 
     def has_combustion_engine(self):
         """Return true if car has a combustion engine."""
