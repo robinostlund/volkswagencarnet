@@ -2,17 +2,18 @@
 
 BASE_SESSION = "https://msg.volkswagen.de"
 BASE_AUTH = "https://identity.vwgroup.io"
+BASE_API = "https://emea.bff.cariad.digital"
 BRAND = "VW"
 COUNTRY = "DE"
 
 # Data used in communication
 CLIENT = {
     "Legacy": {
-        "CLIENT_ID": "9496332b-ea03-4091-a224-8c746b885068@apps_vw-dilab_com",
+        "CLIENT_ID": "a24fba63-34b3-4d43-b181-942111e6bda8@apps_vw-dilab_com",
         # client id for VWG API, legacy Skoda Connect/MySkoda
-        "SCOPE": "openid mbb profile cars address email birthdate nickname phone",
+        "SCOPE": "openid profile badge cars dealers vin",
         # 'SCOPE': 'openid mbb profile cars address email birthdate badge phone driversLicense dealers profession vin',
-        "TOKEN_TYPES": "code id_token token",
+        "TOKEN_TYPES": "code",  # id_token token",
     },
     "New": {
         "CLIENT_ID": "f9a2359a-b776-46d9-bd0c-db1904343117@apps_vw-dilab_com",
@@ -31,8 +32,8 @@ CLIENT = {
 XCLIENT_ID = "c8fcb3bf-22d3-44b0-b6ce-30eae0a4986f"
 XAPPVERSION = "5.3.2"
 XAPPNAME = "We Connect"
-USER_AGENT = "OneConnect/000000148 CFNetwork/1485 Darwin/23.1.0"
-APP_URI = "carnet://identity-kit/login"
+USER_AGENT = "Volkswagen/2.20.0 iOS/17.1.1"
+APP_URI = "weconnect://authenticated"
 
 # Used when fetching data
 HEADERS_SESSION = {
