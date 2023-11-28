@@ -42,10 +42,10 @@ NO_VALUE = -1
 class Vehicle:
     """Vehicle contains the state of sensors and methods for interacting with the car."""
 
-    def __init__(self, conn, vin):
+    def __init__(self, conn, url):
         """Initialize the Vehicle with default values."""
         self._connection = conn
-        self._vin = vin
+        self._url = url
         self._homeregion = "https://msg.volkswagen.de"
         self._discovered = False
         self._states = {}
@@ -663,7 +663,7 @@ class Vehicle:
 
         :return:
         """
-        return self._vin
+        return self._url
 
     @property
     def unique_id(self) -> str:
