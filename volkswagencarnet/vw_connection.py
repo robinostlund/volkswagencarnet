@@ -536,6 +536,7 @@ class Connection:
 
     # Construct URL from request, home region and variables
     def _make_url(self, ref, vin=""):
+        # TODO after verifying that we don't need home region handling anymore, this method should be completely removed
         return ref
         replacedUrl = re.sub("\\$vin", vin, ref)
         if "://" in replacedUrl:
@@ -663,8 +664,8 @@ class Connection:
 
             if "data" in response:
                 return {"parkingposition": response["data"]}
-
-            _LOGGER.warning(f"Could not fetch parkingposition for vin {vin}")
+            else:
+                return {"parkingposition": {}}
 
         except Exception as error:
             _LOGGER.warning(f"Could not fetch parkingposition, error: {error}")
@@ -695,31 +696,6 @@ class Connection:
                 _LOGGER.info("Unhandled error while trying to fetch realcar data")
         except Exception as error:
             _LOGGER.warning(f"Could not fetch realCarData, error: {error}")
-        return False
-
-    async def getCarportData(self, vin):
-        """Get carport data for vehicle, model, model year etc."""
-        if not await self.validate_tokens:
-            return False
-        try:
-            self._session_headers["Accept"] = (
-                "application/vnd.vwg.mbb.vehicleDataDetail_v2_1_0+json,"
-                " application/vnd.vwg.mbb.genericError_v1_0_2+json"
-            )
-            response = await self.get(
-                f"fs-car/vehicleMgmt/vehicledata/v2/{BRAND}/{self._session_country}/vehicles/$vin", vin=vin
-            )
-            self._session_headers["Accept"] = "application/json"
-
-            if response.get("vehicleDataDetail", {}).get("carportData", {}):
-                data = {"carportData": response.get("vehicleDataDetail", {}).get("carportData", {})}
-                return data
-            elif response.get("status_code", {}):
-                _LOGGER.warning(f'Could not fetch carportdata, HTTP status code: {response.get("status_code")}')
-            else:
-                _LOGGER.info("Unhandled error while trying to fetch carport data")
-        except Exception as error:
-            _LOGGER.warning(f"Could not fetch carportData, error: {error}")
         return False
 
     async def getVehicleStatusData(self, vin):

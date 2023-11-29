@@ -213,12 +213,6 @@ class Vehicle:
         if data:
             self._states.update(data)
 
-    async def get_carportdata(self):
-        """Fetch carport data."""
-        data = await self._connection.getCarportData(self.vin)
-        if data:
-            self._states.update(data)
-
     async def get_preheater(self):
         """Fetch pre-heater data if function is enabled."""
         if self._services.get("rheating_v1", {}).get("active", False):
@@ -1049,10 +1043,9 @@ class Vehicle:
             if self.vehicle_moving:
                 output = {"lat": None, "lng": None, "timestamp": None}
             else:
-                pos_obj = self.attrs.get("findCarResponse", {})
-                lat = int(pos_obj.get("Position").get("carCoordinate").get("latitude")) / 1000000
-                lng = int(pos_obj.get("Position").get("carCoordinate").get("longitude")) / 1000000
-                parking_time = pos_obj.get("parkingTimeUTC")
+                lat = float(find_path(self.attrs, "parkingposition.lat"))
+                lng = float(find_path(self.attrs, "parkingposition.lon"))
+                parking_time = find_path(self.attrs, "parkingposition.carCapturedTimestamp")
                 output = {"lat": lat, "lng": lng, "timestamp": parking_time}
         except Exception:
             output = {
@@ -1064,22 +1057,23 @@ class Vehicle:
     @property
     def position_last_updated(self) -> datetime:
         """Return  position last updated."""
-        return self.attrs.get("findCarResponse", {}).get("Position", {}).get("timestampTssReceived")
+        return find_path(self.attrs, "parkingposition.carCapturedTimestamp")
 
     @property
     def is_position_supported(self) -> bool:
-        """Return true if carfinder_v1 service is active."""
-        return self._services.get("carfinder_v1", {}).get("active", False) or self.attrs.get("isMoving", False)
+        """Return true if position is available."""
+        return is_valid_path(self.attrs, "parkingposition.carCapturedTimestamp")
 
     @property
     def vehicle_moving(self) -> bool:
         """Return true if vehicle is moving."""
-        return self.attrs.get("isMoving", False)
+        # there is not "isMoving" property anymore in VW's API, so we just take the absence of position data as the indicator
+        return not is_valid_path(self.attrs, "parkingposition.lat")
 
     @property
     def vehicle_moving_last_updated(self) -> datetime:
         """Return attribute last updated timestamp."""
-        return self.attrs.get("findCarResponse", {}).get("Position", {}).get("timestampTssReceived")
+        return find_path(self.attrs, "parkingposition.carCapturedTimestamp")
 
     @property
     def is_vehicle_moving_supported(self) -> bool:
