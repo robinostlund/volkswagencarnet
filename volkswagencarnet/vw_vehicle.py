@@ -1359,12 +1359,12 @@ class Vehicle:
         return False
 
     @property
-    def window_heater_rear_last_updated(self) -> datetime:
+    def window_heater_back_last_updated(self) -> datetime:
         """Return front window heater last updated."""
         return find_path(self.attrs, "climatisation.windowHeatingStatus.value.carCapturedTimestamp")
 
     @property
-    def is_window_heater_rear_supported(self) -> bool:
+    def is_window_heater_back_supported(self) -> bool:
         """Return true if vehicle has heater."""
         return is_valid_path(self.attrs, "climatisation.windowHeatingStatus.value.windowHeatingStatus")
 
@@ -1379,7 +1379,7 @@ class Vehicle:
         return self.window_heater_front_last_updated
 
     @property
-    def is_window_supported(self) -> bool:
+    def is_window_heater_supported(self) -> bool:
         """Return true if vehicle has heater."""
         return self.is_window_heater_front_supported
 

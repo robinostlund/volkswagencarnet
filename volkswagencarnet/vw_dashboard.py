@@ -772,20 +772,6 @@ def create_instruments():
         TrunkLock(),
         RequestUpdate(),
         WindowHeater(),
-        BinarySensor(
-            attr="window_heater_front",
-            name="Window Heater Front",
-            device_class=VWDeviceClass.WINDOW,
-            icon="mdi:car-defrost-front",
-            reverse_state=True
-        ),
-        BinarySensor(
-            attr="window_heater_back",
-            name="Window Heater Back",
-            device_class=VWDeviceClass.WINDOW,
-            icon="mdi:car-defrost-rear",
-            reverse_state=True
-        ),
         BatteryClimatisation(),
         ElectricClimatisation(),
         AuxiliaryClimatisation(),
