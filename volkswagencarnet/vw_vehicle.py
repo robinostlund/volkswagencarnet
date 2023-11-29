@@ -2518,13 +2518,25 @@ class Vehicle:
 
     def is_primary_drive_combustion(self):
         """Check if primary engine is combustion."""
-        return find_path(self.attrs, "measurements.fuelLevelStatus.value.primaryEngineType") in ENGINE_TYPE_COMBUSTION
+        engine_type = ""
+        if is_valid_path(self.attrs, "fuelStatus.rangeStatus.value.primaryEngine.type"):
+            engine_type = find_path(self.attrs, "fuelStatus.rangeStatus.value.primaryEngine.type")
+
+        if is_valid_path(self.attrs, "measurements.fuelLevelStatus.value.primaryEngineType"):
+            engine_type = find_path(self.attrs, "measurements.fuelLevelStatus.value.primaryEngineType")
+
+        return engine_type in ENGINE_TYPE_COMBUSTION
 
     def is_secondary_drive_combustion(self):
         """Check if secondary engine is combustion."""
-        return is_valid_path(self.attrs, "measurements.fuelLevelStatus.value.secondaryEngineType") and (
-            find_path(self.attrs, "measurements.fuelLevelStatus.value.secondaryEngineType") in ENGINE_TYPE_COMBUSTION
-        )
+        engine_type = ""
+        if is_valid_path(self.attrs, "fuelStatus.rangeStatus.value.secondaryEngine.type"):
+            engine_type = find_path(self.attrs, "fuelStatus.rangeStatus.value.secondaryEngine.type")
+
+        if is_valid_path(self.attrs, "measurements.fuelLevelStatus.value.secondaryEngineType"):
+            engine_type = find_path(self.attrs, "measurements.fuelLevelStatus.value.secondaryEngineType")
+
+        return engine_type in ENGINE_TYPE_COMBUSTION
 
     def has_combustion_engine(self):
         """Return true if car has a combustion engine."""
