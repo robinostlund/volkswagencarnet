@@ -671,6 +671,21 @@ class Connection:
             _LOGGER.warning(f"Could not fetch parkingposition, error: {error}")
         return False
 
+    async def getTripLast(self, vin):
+        """Get car information like VIN, nickname, etc."""
+        if not await self.validate_tokens:
+            return False
+        try:
+            response = await self.get(f"{BASE_API}/vehicle/v1/trips/{vin}/shortterm/last", "")
+            if "data" in response:
+                return {"trip_last": response["data"]}
+            else:
+                _LOGGER.warning(f"Could not fetch last trip data, server response: {response}")
+
+        except Exception as error:
+            _LOGGER.warning(f"Could not fetch last trip data, error: {error}")
+        return False
+
     async def getRealCarData(self, vin):
         """Get car information from customer profile, VIN, nickname, etc."""
         if not await self.validate_tokens:
