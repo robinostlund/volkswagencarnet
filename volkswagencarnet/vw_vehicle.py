@@ -1676,11 +1676,6 @@ class Vehicle:
 
     # Locks
     @property
-    def door_locked_sensor(self) -> bool:
-        """Return same state as lock entity, since they are mutually exclusive."""
-        return self.door_locked
-
-    @property
     def door_locked(self) -> bool:
         """
         Return true if all doors are locked.
@@ -1695,21 +1690,7 @@ class Vehicle:
         return find_path(self.attrs, "access.accessStatus.value.carCapturedTimestamp")
 
     @property
-    def door_locked_sensor_last_updated(self) -> datetime:
-        """Return door lock last updated."""
-        return find_path(self.attrs, "access.accessStatus.value.carCapturedTimestamp")
-
-    @property
     def is_door_locked_supported(self) -> bool:
-        """
-        Return true if supported.
-
-        :return:
-        """
-        return is_valid_path(self.attrs, "access.accessStatus.value.doorLockStatus")
-
-    @property
-    def is_door_locked_sensor_supported(self) -> bool:
         """
         Return true if supported.
 
@@ -1737,38 +1718,6 @@ class Vehicle:
 
     @property
     def is_trunk_locked_supported(self) -> bool:
-        """
-        Return true if supported.
-
-        :return:
-        """
-        if is_valid_path(self.attrs, "access.accessStatus.value.doors"):
-            doors = find_path(self.attrs, "access.accessStatus.value.doors")
-            for door in doors:
-                if door["name"] == "trunk" and "unsupported" not in door["status"]:
-                    return True
-        return False
-
-    @property
-    def trunk_locked_sensor(self) -> bool:
-        """
-        Return trunk locked state.
-
-        :return:
-        """
-        doors = find_path(self.attrs, "access.accessStatus.value.doors")
-        for door in doors:
-            if door["name"] == "trunk":
-                return "locked" in door["status"]
-        return False
-
-    @property
-    def trunk_locked_sensor_last_updated(self) -> datetime:
-        """Return attribute last updated timestamp."""
-        return find_path(self.attrs, "access.accessStatus.value.carCapturedTimestamp")
-
-    @property
-    def is_trunk_locked_sensor_supported(self) -> bool:
         """
         Return true if supported.
 
