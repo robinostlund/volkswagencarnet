@@ -1093,19 +1093,19 @@ class Vehicle:
     @property
     def parking_time(self) -> str:
         """Return timestamp of last parking time."""
-        park_time_utc: datetime = self.attrs.get("findCarResponse", {}).get("parkingTimeUTC", "Unknown")
+        park_time_utc: datetime = find_path(self.attrs, "parkingposition.carCapturedTimestamp")
         park_time = park_time_utc.replace(tzinfo=timezone.utc).astimezone(tz=None)
         return park_time.strftime("%Y-%m-%d %H:%M:%S")
 
     @property
     def parking_time_last_updated(self) -> datetime:
         """Return attribute last updated timestamp."""
-        return self.attrs.get("findCarResponse", {}).get("Position", {}).get(BACKEND_RECEIVED_TIMESTAMP)
+        return find_path(self.attrs, "parkingposition.carCapturedTimestamp")
 
     @property
     def is_parking_time_supported(self) -> bool:
         """Return true if vehicle parking timestamp is supported."""
-        return "parkingTimeUTC" in self.attrs.get("findCarResponse", {})
+        return is_valid_path(self.attrs, "parkingposition.carCapturedTimestamp")
 
     # Vehicle fuel level and range
     @property
