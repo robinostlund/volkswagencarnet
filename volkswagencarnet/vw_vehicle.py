@@ -159,14 +159,12 @@ class Vehicle:
             await self.discover()
         if not self.deactivated:
             await asyncio.gather(
-                # TODO: we don't check against capabilities currently, but this also doesn't seem to be neccesary
+                # TODO: we don't check against capabilities currently, but this also doesn't seem to be necessary
                 # to be checked if we should still do it for UI purposes
                 self.get_selectivestatus(
                     [
                         "access",
                         "fuelStatus",
-                        "honkAndFlash",
-                        "userCapabilities",
                         "vehicleLights",
                         "vehicleHealthInspection",
                         "measurements",
