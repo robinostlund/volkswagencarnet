@@ -1091,19 +1091,19 @@ class Vehicle:
     @property
     def parking_time(self) -> str:
         """Return timestamp of last parking time."""
-        park_time_utc: datetime = self.attrs.get("findCarResponse", {}).get("parkingTimeUTC", "Unknown")
+        park_time_utc: datetime = find_path(self.attrs, "parkingposition.carCapturedTimestamp")
         park_time = park_time_utc.replace(tzinfo=timezone.utc).astimezone(tz=None)
         return park_time.strftime("%Y-%m-%d %H:%M:%S")
 
     @property
     def parking_time_last_updated(self) -> datetime:
         """Return attribute last updated timestamp."""
-        return self.attrs.get("findCarResponse", {}).get("Position", {}).get(BACKEND_RECEIVED_TIMESTAMP)
+        return find_path(self.attrs, "parkingposition.carCapturedTimestamp")
 
     @property
     def is_parking_time_supported(self) -> bool:
         """Return true if vehicle parking timestamp is supported."""
-        return "parkingTimeUTC" in self.attrs.get("findCarResponse", {})
+        return is_valid_path(self.attrs, "parkingposition.carCapturedTimestamp")
 
     # Vehicle fuel level and range
     @property
@@ -1190,12 +1190,24 @@ class Vehicle:
 
         :return:
         """
-        return int(find_path(self.attrs, "measurements.fuelLevelStatus.value.currentFuelLevel_pct"))
+        fuel_level_pct = ""
+        if is_valid_path(self.attrs, "fuelStatus.rangeStatus.value.primaryEngine.currentFuelLevel_pct"):
+            fuel_level_pct = find_path(self.attrs, "fuelStatus.rangeStatus.value.primaryEngine.currentFuelLevel_pct")
+
+        if is_valid_path(self.attrs, "measurements.fuelLevelStatus.value.currentFuelLevel_pct"):
+            fuel_level_pct = find_path(self.attrs, "measurements.fuelLevelStatus.value.currentFuelLevel_pct")
+        return int(fuel_level_pct)
 
     @property
     def fuel_level_last_updated(self) -> datetime:
         """Return fuel level last updated."""
-        return find_path(self.attrs, "measurements.fuelLevelStatus.value.carCapturedTimestamp")
+        fuel_level_lastupdated = ""
+        if is_valid_path(self.attrs, "fuelStatus.rangeStatus.value.carCapturedTimestamp"):
+            fuel_level_lastupdated = find_path(self.attrs, "fuelStatus.rangeStatus.value.carCapturedTimestamp")
+
+        if is_valid_path(self.attrs, "measurements.fuelLevelStatus.value.carCapturedTimestamp"):
+            fuel_level_lastupdated = find_path(self.attrs, "measurements.fuelLevelStatus.value.carCapturedTimestamp")
+        return fuel_level_lastupdated
 
     @property
     def is_fuel_level_supported(self) -> bool:
@@ -1204,7 +1216,8 @@ class Vehicle:
 
         :return:
         """
-        return is_valid_path(self.attrs, "measurements.fuelLevelStatus.value.currentFuelLevel_pct")
+        return (is_valid_path(self.attrs, "measurements.fuelLevelStatus.value.currentFuelLevel_pct") 
+                or is_valid_path(self.attrs, "fuelStatus.rangeStatus.value.primaryEngine.currentFuelLevel_pct"))
 
     # Climatisation settings
     @property
