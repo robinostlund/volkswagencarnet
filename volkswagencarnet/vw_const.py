@@ -10,22 +10,9 @@ COUNTRY = "DE"
 CLIENT = {
     "Legacy": {
         "CLIENT_ID": "a24fba63-34b3-4d43-b181-942111e6bda8@apps_vw-dilab_com",
-        # client id for VWG API, legacy Skoda Connect/MySkoda
         "SCOPE": "openid profile badge cars dealers vin",
-        # 'SCOPE': 'openid mbb profile cars address email birthdate badge phone driversLicense dealers profession vin',
-        "TOKEN_TYPES": "code",  # id_token token",
-    },
-    "New": {
-        "CLIENT_ID": "f9a2359a-b776-46d9-bd0c-db1904343117@apps_vw-dilab_com",
-        # Provides access to new API? tokentype=IDK_TECHNICAL..
-        "SCOPE": "openid mbb profile",
-        "TOKEN_TYPES": "code id_token",
-    },
-    "Unknown": {
-        "CLIENT_ID": "72f9d29d-aa2b-40c1-bebe-4c7683681d4c@apps_vw-dilab_com",  # gives tokentype=IDK_SMARTLINK ?
-        "SCOPE": "openid dealers profile email cars address",
-        "TOKEN_TYPES": "code id_token",
-    },
+        "TOKEN_TYPES": "code"
+    }
 }
 
 
