@@ -386,7 +386,7 @@ class Vehicle:
 
     async def set_charger(self, action) -> bool:
         """Charging actions."""
-        if not self._services.get("rbatterycharge_v1", False):
+        if not self._services.get("charging", False):
             _LOGGER.info("Remote start/stop of charger is not supported.")
             raise Exception("Remote start/stop of charger is not supported.")
         if self._in_progress("batterycharge"):
@@ -480,7 +480,7 @@ class Vehicle:
 
     async def set_climater(self, data, spin=False):
         """Climater actions."""
-        if not self._services.get("rclima_v1", False):
+        if not self._services.get("climatisation", False):
             _LOGGER.info("Remote control of climatisation functions is not supported.")
             raise Exception("Remote control of climatisation functions is not supported.")
         if self._in_progress("climatisation"):
