@@ -589,12 +589,17 @@ class Connection:
             return False
         try:
             response = await self.get(f"{BASE_API}/vehicle/v1/vehicles/{vin}/parkingposition", "")
-
             if "data" in response:
-                return {"parkingposition": response["data"]}
+                return {"isMoving": False, "parkingposition": response["data"]}
+            elif response.get("status_code", {}):
+                if response.get("status_code", 0) == 204:
+                    _LOGGER.debug("Seems car is moving, HTTP 204 received from parkingposition")
+                    data = {"isMoving": True, "parkingposition": {}}
+                    return data
+                else:
+                    _LOGGER.warning(f'Could not fetch parkingposition, HTTP status code: {response.get("status_code")}')
             else:
-                return {"parkingposition": {}}
-
+                _LOGGER.info("Unhandled error while trying to fetch parkingposition data")
         except Exception as error:
             _LOGGER.warning(f"Could not fetch parkingposition, error: {error}")
         return False
