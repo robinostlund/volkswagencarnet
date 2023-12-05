@@ -1075,10 +1075,7 @@ class Vehicle:
     @property
     def vehicle_moving(self) -> bool:
         """Return true if vehicle is moving."""
-        # there is not "isMoving" property anymore in VW's API, so we just take the absence of position data as the indicator
-        ## not used currently, because we only update parkingposition when the last trip's data has changed, because
-        ## of its rate limiting, so this is not reliable at all...
-        return not is_valid_path(self.attrs, "parkingposition.lat")
+        return self.attrs.get("isMoving", False)
 
     @property
     def vehicle_moving_last_updated(self) -> datetime:
