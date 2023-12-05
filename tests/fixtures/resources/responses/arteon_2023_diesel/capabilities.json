@@ -1,0 +1,426 @@
+{
+  "vin": "WVWZZZ0XXXX000000",
+  "capabilities": {
+    "destinations": {
+      "id": "destinations",
+      "expirationDate": "2025-11-25T10:37:00Z",
+      "userDisablingAllowed": false,
+      "endpoint": "vs",
+      "isEnabled": true,
+      "status": [],
+      "operations": {
+        "getDestinations": {
+          "id": "getDestinations",
+          "scopes": [
+            "navigation"
+          ]
+        },
+        "postDestinations": {
+          "id": "postDestinations",
+          "scopes": [
+            "navigation"
+          ]
+        },
+        "putDestinations": {
+          "id": "putDestinations",
+          "scopes": [
+            "navigation"
+          ]
+        },
+        "deleteDestinationsByID": {
+          "id": "deleteDestinationsByID",
+          "scopes": [
+            "navigation"
+          ]
+        }
+      },
+      "parameters": [
+        {
+          "key": "chargingStationsForEVTourImport",
+          "value": ""
+        }
+      ]
+    },
+    "roadsideAssistant": {
+      "id": "roadsideAssistant",
+      "expirationDate": "2052-11-25T10:37:00Z",
+      "userDisablingAllowed": false,
+      "endpoint": "vs",
+      "isEnabled": true,
+      "status": [],
+      "operations": {},
+      "parameters": []
+    },
+    "fuelStatus": {
+      "id": "fuelStatus",
+      "expirationDate": "2052-11-25T10:37:00Z",
+      "userDisablingAllowed": false,
+      "endpoint": "vs",
+      "isEnabled": true,
+      "status": [],
+      "operations": {
+        "getFuelStatus": {
+          "id": "getFuelStatus",
+          "scopes": [
+            "fuelLevels"
+          ]
+        }
+      },
+      "parameters": []
+    },
+    "honkAndFlash": {
+      "id": "honkAndFlash",
+      "expirationDate": "2025-11-25T10:37:00Z",
+      "userDisablingAllowed": false,
+      "endpoint": "vs",
+      "isEnabled": true,
+      "status": [],
+      "operations": {
+        "postHonkandflash": {
+          "id": "postHonkandflash",
+          "scopes": [
+            "honk"
+          ]
+        },
+        "getHonkandflashRequestsByID": {
+          "id": "getHonkandflashRequestsByID",
+          "scopes": [
+            "honk"
+          ]
+        }
+      },
+      "parameters": []
+    },
+    "measurements": {
+      "id": "measurements",
+      "expirationDate": "2052-11-25T10:37:00Z",
+      "userDisablingAllowed": false,
+      "endpoint": "vs",
+      "isEnabled": true,
+      "status": [],
+      "operations": {
+        "getMeasurements": {
+          "id": "getMeasurements",
+          "scopes": [
+            "range",
+            "mileage"
+          ]
+        }
+      },
+      "parameters": []
+    },
+    "parkingPosition": {
+      "id": "parkingPosition",
+      "expirationDate": "2052-11-25T10:37:00Z",
+      "userDisablingAllowed": false,
+      "endpoint": "vs",
+      "isEnabled": true,
+      "status": [],
+      "operations": {
+        "getParkingposition": {
+          "id": "getParkingposition",
+          "scopes": [
+            "parking_position"
+          ]
+        }
+      },
+      "parameters": []
+    },
+    "state": {
+      "id": "state",
+      "expirationDate": "2052-11-25T10:37:00Z",
+      "userDisablingAllowed": false,
+      "endpoint": "vs",
+      "isEnabled": true,
+      "status": [],
+      "operations": {
+        "getAccessStatus": {
+          "id": "getAccessStatus",
+          "scopes": [
+            "doors_windows"
+          ]
+        }
+      },
+      "parameters": []
+    },
+    "vehicleHealth": {
+      "id": "vehicleHealth",
+      "expirationDate": "2052-11-25T10:37:00Z",
+      "userDisablingAllowed": false,
+      "endpoint": "vs",
+      "isEnabled": true,
+      "status": [],
+      "operations": {},
+      "parameters": []
+    },
+    "vehicleHealthInspection": {
+      "id": "vehicleHealthInspection",
+      "expirationDate": "2052-11-25T10:37:00Z",
+      "userDisablingAllowed": false,
+      "endpoint": "vs",
+      "isEnabled": true,
+      "status": [],
+      "operations": {
+        "getMaintenanceStatus": {
+          "id": "getMaintenanceStatus",
+          "scopes": [
+            "serviceInterval"
+          ]
+        }
+      },
+      "parameters": []
+    },
+    "vehicleHealthWarnings": {
+      "id": "vehicleHealthWarnings",
+      "expirationDate": "2052-11-25T10:37:00Z",
+      "userDisablingAllowed": false,
+      "endpoint": "vs",
+      "isEnabled": true,
+      "status": [],
+      "operations": {
+        "getWarninglightsLast": {
+          "id": "getWarninglightsLast",
+          "scopes": [
+            "warning_lights"
+          ]
+        }
+      },
+      "parameters": []
+    },
+    "vehicleWakeUpTrigger": {
+      "id": "vehicleWakeUpTrigger",
+      "expirationDate": "2052-11-25T10:37:00Z",
+      "userDisablingAllowed": false,
+      "endpoint": "vs",
+      "isEnabled": true,
+      "status": [],
+      "operations": {
+        "postVehiclewakeupUpdate": {
+          "id": "postVehiclewakeupUpdate",
+          "scopes": []
+        }
+      },
+      "parameters": []
+    },
+    "vehicleWakeUp": {
+      "id": "vehicleWakeUp",
+      "expirationDate": "2052-11-25T10:37:00Z",
+      "userDisablingAllowed": false,
+      "endpoint": "vs",
+      "isEnabled": true,
+      "status": [],
+      "operations": {
+        "postVehiclewakeup": {
+          "id": "postVehiclewakeup",
+          "scopes": []
+        },
+        "getVehiclewakeupRequestsByID": {
+          "id": "getVehiclewakeupRequestsByID",
+          "scopes": []
+        }
+      },
+      "parameters": []
+    },
+    "personalizationOnline": {
+      "id": "personalizationOnline",
+      "userDisablingAllowed": false,
+      "endpoint": "vs",
+      "isEnabled": true,
+      "status": [],
+      "operations": {},
+      "parameters": []
+    },
+    "vehicleLights": {
+      "id": "vehicleLights",
+      "expirationDate": "2052-11-25T10:37:00Z",
+      "userDisablingAllowed": false,
+      "endpoint": "vs",
+      "isEnabled": true,
+      "status": [],
+      "operations": {
+        "getLightsStatus": {
+          "id": "getLightsStatus",
+          "scopes": [
+            "vehicleLights"
+          ]
+        }
+      },
+      "parameters": []
+    },
+    "tripStatistics": {
+      "id": "tripStatistics",
+      "expirationDate": "2052-11-25T10:37:00Z",
+      "userDisablingAllowed": false,
+      "endpoint": "vs",
+      "isEnabled": true,
+      "status": [],
+      "operations": {
+        "deleteTripdataCyclicByID": {
+          "id": "deleteTripdataCyclicByID",
+          "scopes": [
+            "tripStatistics"
+          ]
+        },
+        "getTripdataLongtermLast": {
+          "id": "getTripdataLongtermLast",
+          "scopes": [
+            "tripStatistics"
+          ]
+        },
+        "deleteTripdataLongtermByID": {
+          "id": "deleteTripdataLongtermByID",
+          "scopes": [
+            "tripStatistics"
+          ]
+        },
+        "getTripdataShorttermLast": {
+          "id": "getTripdataShorttermLast",
+          "scopes": [
+            "tripStatistics"
+          ]
+        },
+        "getTripdataCyclic": {
+          "id": "getTripdataCyclic",
+          "scopes": [
+            "tripStatistics"
+          ]
+        },
+        "getTripdataCyclicLast": {
+          "id": "getTripdataCyclicLast",
+          "scopes": [
+            "tripStatistics"
+          ]
+        },
+        "getTripdataLongterm": {
+          "id": "getTripdataLongterm",
+          "scopes": [
+            "tripStatistics"
+          ]
+        },
+        "deleteTripdataShortterm": {
+          "id": "deleteTripdataShortterm",
+          "scopes": [
+            "tripStatistics"
+          ]
+        },
+        "getTripdataShortterm": {
+          "id": "getTripdataShortterm",
+          "scopes": [
+            "tripStatistics"
+          ]
+        },
+        "deleteTripdataShorttermByID": {
+          "id": "deleteTripdataShorttermByID",
+          "scopes": [
+            "tripStatistics"
+          ]
+        },
+        "deleteTripdataCyclic": {
+          "id": "deleteTripdataCyclic",
+          "scopes": [
+            "tripStatistics"
+          ]
+        },
+        "deleteTripdataLongterm": {
+          "id": "deleteTripdataLongterm",
+          "scopes": [
+            "tripStatistics"
+          ]
+        }
+      },
+      "parameters": []
+    },
+    "access": {
+      "id": "access",
+      "expirationDate": "2025-11-25T10:37:00Z",
+      "userDisablingAllowed": false,
+      "endpoint": "vs",
+      "isEnabled": true,
+      "status": [],
+      "operations": {
+        "getAccessRequestsByID": {
+          "id": "getAccessRequestsByID",
+          "scopes": [
+            "lock_unlock"
+          ]
+        },
+        "postAccessUnlock": {
+          "id": "postAccessUnlock",
+          "scopes": [
+            "lock_unlock"
+          ]
+        },
+        "postAccessUnlockwithoutspin": {
+          "id": "postAccessUnlockwithoutspin",
+          "scopes": [
+            "lock_unlock"
+          ]
+        },
+        "postAccessLock": {
+          "id": "postAccessLock",
+          "scopes": [
+            "lock_unlock"
+          ]
+        },
+        "postAccessLockwithoutspin": {
+          "id": "postAccessLockwithoutspin",
+          "scopes": [
+            "lock_unlock"
+          ]
+        }
+      },
+      "parameters": []
+    },
+    "dealerAppointment": {
+      "id": "dealerAppointment",
+      "expirationDate": "2052-11-25T10:37:00Z",
+      "userDisablingAllowed": true,
+      "endpoint": "vs",
+      "isEnabled": false,
+      "status": [
+        "DisabledByUser"
+      ],
+      "operations": {
+        "getMaintenanceStatus": {
+          "id": "getMaintenanceStatus",
+          "scopes": [
+            "serviceInterval"
+          ]
+        },
+        "getPredictivemaintenanceDealerappointment": {
+          "id": "getPredictivemaintenanceDealerappointment",
+          "scopes": [
+            "serviceInterval"
+          ]
+        },
+        "getWarninglightsLast": {
+          "id": "getWarninglightsLast",
+          "scopes": [
+            "warning_lights"
+          ]
+        }
+      },
+      "parameters": []
+    },
+    "oilLevelStatus": {
+      "id": "oilLevelStatus",
+      "expirationDate": "2052-11-25T10:37:00Z",
+      "userDisablingAllowed": false,
+      "endpoint": "vs",
+      "isEnabled": true,
+      "status": [],
+      "operations": {
+        "getStates": {
+          "id": "getStates",
+          "scopes": [
+            "parkingBrakeStatus",
+            "ignitionStatus",
+            "oilLevels"
+          ]
+        }
+      },
+      "parameters": []
+    }
+  },
+  "parameters": {}
+}

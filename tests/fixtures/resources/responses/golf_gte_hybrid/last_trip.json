@@ -1,0 +1,15 @@
+{
+  "data": {
+    "id": "2000000000",
+    "tripEndTimestamp": "2023-12-04T16:10:01Z",
+    "tripType": "shortTerm",
+    "vehicleType": "hybrid",
+    "mileage_km": 7,
+    "startMileage_km": 32199,
+    "overallMileage_km": 32205,
+    "travelTime": 10,
+    "averageFuelConsumption": 0,
+    "averageElectricConsumption": 28.9,
+    "averageSpeed_kmph": 40
+  }
+}
