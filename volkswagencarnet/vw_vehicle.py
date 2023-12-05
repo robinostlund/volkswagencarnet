@@ -1091,9 +1091,13 @@ class Vehicle:
     @property
     def parking_time(self) -> str:
         """Return timestamp of last parking time."""
-        park_time_utc: datetime = find_path(self.attrs, "parkingposition.carCapturedTimestamp")
-        park_time = park_time_utc.replace(tzinfo=timezone.utc).astimezone(tz=None)
-        return park_time.strftime("%Y-%m-%d %H:%M:%S")
+        parking_time_path = "parkingposition.carCapturedTimestamp"
+        if is_valid_path(self.attrs, parking_time_path):
+            park_time_utc: datetime = find_path(self.attrs, parking_time_path)
+            park_time = park_time_utc.replace(tzinfo=timezone.utc).astimezone(tz=None)
+            return park_time.strftime("%Y-%m-%d %H:%M:%S")
+
+        return None
 
     @property
     def parking_time_last_updated(self) -> datetime:
