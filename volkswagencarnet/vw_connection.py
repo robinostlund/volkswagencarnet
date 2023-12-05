@@ -32,9 +32,6 @@ from .vw_const import (
     BASE_API,
     BASE_AUTH,
     CLIENT,
-    XCLIENT_ID,
-    XAPPVERSION,
-    XAPPNAME,
     USER_AGENT,
     APP_URI,
 )
@@ -1203,15 +1200,12 @@ class Connection:
                 "Connection": "keep-alive",
                 "Content-Type": "application/x-www-form-urlencoded",
                 "User-Agent": USER_AGENT,
-                "X-App-Version": XAPPVERSION,
-                "X-App-Name": XAPPNAME,
-                "X-Client-Id": XCLIENT_ID,
             }
 
             body = {
                 "grant_type": "refresh_token",
                 "refresh_token": self._session_tokens["identity"]["refresh_token"],
-                "client_id": XCLIENT_ID
+                "client_id": CLIENT["Legacy"]["CLIENT_ID"]
             }
             response = await self._session.post(
                 url="https://emea.bff.cariad.digital/login/v1/idk/token", headers=tHeaders, data=body
