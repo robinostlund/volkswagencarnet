@@ -1082,7 +1082,9 @@ def create_instruments():
             device_class=VWDeviceClass.WINDOW,
             reverse_state=True,
         ),
-        BinarySensor(attr="vehicle_moving", name="Vehicle Moving", device_class=VWDeviceClass.MOVING),
+        ## not used currently, because we only update parkingposition when the last trip's data has changed, because
+        ## of its rate limiting, so this is not reliable at all...
+        # BinarySensor(attr="vehicle_moving", name="Vehicle Moving", device_class=VWDeviceClass.MOVING),
         BinarySensor(attr="request_in_progress", name="Request in progress", device_class=VWDeviceClass.CONNECTIVITY),
     ]
 
