@@ -110,6 +110,7 @@ class Connection:
         # Add Vehicle class object for all VIN-numbers from account
         if loaded_vehicles.get("data") is not None:
             _LOGGER.debug("Found vehicle(s) associated with account.")
+            self._vehicles = []
             for vehicle in loaded_vehicles.get("data"):
                 self._vehicles.append(Vehicle(self, vehicle.get("vin")))
         else:
@@ -415,7 +416,7 @@ class Connection:
                 return res
 
             if self._session_fulldebug:
-                _LOGGER.debug(f'Request for "{url}" returned with status code [{response.status}], response: {res.text}')
+                _LOGGER.debug(f'Request for "{url}" returned with status code [{response.status}], response: {res}')
             else:
                 _LOGGER.debug(f'Request for "{url}" returned with status code [{response.status}]')
             return res
