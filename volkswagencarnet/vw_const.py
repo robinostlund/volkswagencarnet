@@ -15,10 +15,6 @@ CLIENT = {
     }
 }
 
-
-XCLIENT_ID = "c8fcb3bf-22d3-44b0-b6ce-30eae0a4986f"
-XAPPVERSION = "5.3.2"
-XAPPNAME = "We Connect"
 USER_AGENT = "Volkswagen/2.20.0 iOS/17.1.1"
 APP_URI = "weconnect://authenticated"
 
@@ -28,9 +24,6 @@ HEADERS_SESSION = {
     "Content-Type": "application/json",
     "Accept-charset": "UTF-8",
     "Accept": "application/json",
-    "X-Client-Id": XCLIENT_ID,
-    "X-App-Version": XAPPVERSION,
-    "X-App-Name": XAPPNAME,
     "User-Agent": USER_AGENT,
     "tokentype": "IDK_TECHNICAL",
 }
@@ -41,9 +34,6 @@ HEADERS_AUTH = {
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9",
     "Accept-Encoding": "gzip, deflate",
     "Content-Type": "application/x-www-form-urlencoded",
-    "x-requested-with": XAPPNAME,
-    "User-Agent": USER_AGENT,
-    "X-App-Name": XAPPNAME,
 }
 
 TEMP_CELSIUS: str = "°C"
