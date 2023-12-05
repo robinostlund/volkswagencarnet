@@ -1,0 +1,395 @@
+{
+  "access": {
+    "accessStatus": {
+      "value": {
+        "overallStatus": "safe",
+        "carCapturedTimestamp": "2023-12-05T08:29:18Z",
+        "doors": [
+          {
+            "name": "bonnet",
+            "status": [
+              "closed"
+            ]
+          },
+          {
+            "name": "frontLeft",
+            "status": [
+              "locked",
+              "closed"
+            ]
+          },
+          {
+            "name": "frontRight",
+            "status": [
+              "locked",
+              "closed"
+            ]
+          },
+          {
+            "name": "rearLeft",
+            "status": [
+              "locked",
+              "closed"
+            ]
+          },
+          {
+            "name": "rearRight",
+            "status": [
+              "locked",
+              "closed"
+            ]
+          },
+          {
+            "name": "trunk",
+            "status": [
+              "locked",
+              "closed"
+            ]
+          }
+        ],
+        "windows": [
+          {
+            "name": "frontLeft",
+            "status": [
+              "unsupported"
+            ]
+          },
+          {
+            "name": "frontRight",
+            "status": [
+              "unsupported"
+            ]
+          },
+          {
+            "name": "rearLeft",
+            "status": [
+              "unsupported"
+            ]
+          },
+          {
+            "name": "rearRight",
+            "status": [
+              "unsupported"
+            ]
+          },
+          {
+            "name": "roofCover",
+            "status": [
+              "unsupported"
+            ]
+          },
+          {
+            "name": "sunRoof",
+            "status": [
+              "unsupported"
+            ]
+          }
+        ],
+        "doorLockStatus": "locked"
+      }
+    }
+  },
+  "userCapabilities": {
+    "capabilitiesStatus": {
+      "value": [
+        {
+          "id": "automation",
+          "expirationDate": "2024-10-25T14:11:00Z",
+          "userDisablingAllowed": false
+        },
+        {
+          "id": "charging",
+          "expirationDate": "2024-10-25T14:11:00Z",
+          "userDisablingAllowed": false
+        },
+        {
+          "id": "climatisation",
+          "expirationDate": "2024-10-25T14:11:00Z",
+          "userDisablingAllowed": false
+        },
+        {
+          "id": "departureProfiles",
+          "expirationDate": "2024-10-25T14:11:00Z",
+          "userDisablingAllowed": false
+        },
+        {
+          "id": "fuelStatus",
+          "expirationDate": "2024-10-25T14:11:00Z",
+          "userDisablingAllowed": false
+        },
+        {
+          "id": "hybridCarAuxiliaryHeating",
+          "status": [
+            1007
+          ],
+          "expirationDate": "2024-10-25T14:11:00Z",
+          "userDisablingAllowed": false
+        },
+        {
+          "id": "hybridCarAuxiliaryHeatingTimers",
+          "status": [
+            1007
+          ],
+          "expirationDate": "2024-10-25T14:11:00Z",
+          "userDisablingAllowed": false
+        },
+        {
+          "id": "measurements",
+          "expirationDate": "2024-10-25T14:11:00Z",
+          "userDisablingAllowed": false
+        },
+        {
+          "id": "oilLevelStatus",
+          "expirationDate": "2024-10-25T14:11:00Z",
+          "userDisablingAllowed": false
+        },
+        {
+          "id": "parkingPosition",
+          "expirationDate": "2024-10-25T14:11:00Z",
+          "userDisablingAllowed": false
+        },
+        {
+          "id": "state",
+          "expirationDate": "2024-10-25T14:11:00Z",
+          "userDisablingAllowed": false
+        },
+        {
+          "id": "tripStatistics",
+          "expirationDate": "2024-10-25T14:11:00Z",
+          "userDisablingAllowed": false
+        },
+        {
+          "id": "vehicleHealthInspection",
+          "expirationDate": "2024-10-25T14:11:00Z",
+          "userDisablingAllowed": false
+        },
+        {
+          "id": "vehicleHealthWakeUp",
+          "expirationDate": "2024-10-25T14:11:00Z",
+          "userDisablingAllowed": false
+        },
+        {
+          "id": "vehicleLights",
+          "expirationDate": "2024-10-25T14:11:00Z",
+          "userDisablingAllowed": false
+        },
+        {
+          "id": "vehicleWakeUp",
+          "expirationDate": "2024-10-25T14:11:00Z",
+          "userDisablingAllowed": false
+        },
+        {
+          "id": "vehicleWakeUpTrigger",
+          "expirationDate": "2024-10-25T14:11:00Z",
+          "userDisablingAllowed": false
+        }
+      ]
+    }
+  },
+  "charging": {
+    "batteryStatus": {
+      "value": {
+        "carCapturedTimestamp": "2023-12-05T08:27:15Z",
+        "currentSOC_pct": 82,
+        "cruisingRangeElectric_km": 137
+      }
+    },
+    "chargingStatus": {
+      "value": {
+        "carCapturedTimestamp": "2023-12-05T08:27:15Z",
+        "remainingChargingTimeToComplete_min": 80,
+        "chargingState": "notReadyForCharging",
+        "chargeMode": "",
+        "chargeType": ""
+      }
+    },
+    "chargingSettings": {
+      "value": {
+        "carCapturedTimestamp": "2023-12-04T07:32:11Z",
+        "maxChargeCurrentAC": "maximum"
+      }
+    },
+    "plugStatus": {
+      "value": {
+        "carCapturedTimestamp": "2023-12-05T08:27:42Z",
+        "plugConnectionState": "disconnected",
+        "plugLockState": "locked",
+        "externalPower": "unavailable",
+        "ledColor": "none"
+      }
+    },
+    "chargeMode": {
+      "error": {
+        "message": "Bad Gateway",
+        "errorTimeStamp": "2023-12-05T08:30:40Z",
+        "info": "Upstream service responded with an unexpected status. If the problem persists, please contact our support.",
+        "code": 4111,
+        "group": 2,
+        "retry": true
+      }
+    }
+  },
+  "climatisation": {
+    "climatisationSettings": {
+      "value": {
+        "carCapturedTimestamp": "2023-11-24T13:10:27Z",
+        "targetTemperature_C": 30,
+        "targetTemperature_F": 88,
+        "climatisationWithoutExternalPower": true
+      }
+    },
+    "climatisationStatus": {
+      "value": {
+        "carCapturedTimestamp": "2023-12-05T08:27:10Z",
+        "climatisationState": "off"
+      }
+    },
+    "windowHeatingStatus": {
+      "value": {
+        "carCapturedTimestamp": "2023-12-05T08:27:11Z",
+        "windowHeatingStatus": [
+          {
+            "windowLocation": "front",
+            "windowHeatingState": "off"
+          },
+          {
+            "windowLocation": "rear",
+            "windowHeatingState": "off"
+          }
+        ]
+      }
+    }
+  },
+  "fuelStatus": {
+    "rangeStatus": {
+      "value": {
+        "carCapturedTimestamp": "2023-12-05T08:27:15Z",
+        "carType": "electric",
+        "primaryEngine": {
+          "type": "electric",
+          "currentSOC_pct": 82,
+          "remainingRange_km": 137
+        },
+        "totalRange_km": 137
+      }
+    }
+  },
+  "vehicleLights": {
+    "lightsStatus": {
+      "value": {
+        "carCapturedTimestamp": "2023-12-05T08:29:18Z",
+        "lights": [
+          {
+            "name": "right",
+            "status": "off"
+          },
+          {
+            "name": "left",
+            "status": "off"
+          }
+        ]
+      }
+    }
+  },
+  "departureProfiles": {
+    "departureProfilesStatus": {
+      "value": {
+        "carCapturedTimestamp": "2023-11-27T23:42:03Z",
+        "minSOC_pct": 30,
+        "timers": [
+          {
+            "id": 2,
+            "enabled": false,
+            "recurringTimer": {
+              "startTime": "06:00",
+              "recurringOn": {
+                "mondays": true,
+                "tuesdays": true,
+                "wednesdays": true,
+                "thursdays": true,
+                "fridays": true,
+                "saturdays": true,
+                "sundays": true
+              }
+            },
+            "profileIDs": [
+              1
+            ]
+          },
+          {
+            "id": 1,
+            "enabled": false,
+            "recurringTimer": {
+              "startTime": "16:00",
+              "recurringOn": {
+                "mondays": true,
+                "tuesdays": true,
+                "wednesdays": true,
+                "thursdays": true,
+                "fridays": true,
+                "saturdays": true,
+                "sundays": true
+              }
+            },
+            "profileIDs": [
+              2
+            ]
+          },
+          {
+            "id": 3,
+            "enabled": false,
+            "recurringTimer": {
+              "startTime": "13:00",
+              "recurringOn": {
+                "mondays": true,
+                "tuesdays": true,
+                "wednesdays": true,
+                "thursdays": true,
+                "fridays": true,
+                "saturdays": true,
+                "sundays": true
+              }
+            },
+            "profileIDs": [
+              2
+            ]
+          }
+        ],
+        "profiles": [
+          {
+            "id": 1,
+            "name": "Profile 1",
+            "charging": true,
+            "climatisation": false,
+            "targetSOC_pct": 90,
+            "maxChargeCurrentAC": 5,
+            "preferredChargingTimes": [
+              {
+                "id": 1,
+                "enabled": false,
+                "startTime": "00:00",
+                "endTime": "00:00"
+              }
+            ]
+          },
+          {
+            "id": 2,
+            "name": "Profile 2",
+            "charging": true,
+            "climatisation": true,
+            "targetSOC_pct": 90,
+            "maxChargeCurrentAC": 32,
+            "preferredChargingTimes": [
+              {
+                "id": 1,
+                "enabled": false,
+                "startTime": "00:00",
+                "endTime": "00:00"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  }
+}

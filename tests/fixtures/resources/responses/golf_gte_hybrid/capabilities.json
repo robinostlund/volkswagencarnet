@@ -1,0 +1,791 @@
+{
+  "vin": "WVWZZZXXXXX000000",
+  "capabilities": {
+    "climatisation": {
+      "id": "climatisation",
+      "expirationDate": "2025-03-14T12:50:00Z",
+      "userDisablingAllowed": false,
+      "endpoint": "vs",
+      "isEnabled": true,
+      "status": [],
+      "operations": {
+        "getClimatisationSettings": {
+          "id": "getClimatisationSettings",
+          "scopes": [
+            "climatisation"
+          ]
+        },
+        "getClimatisationStatus": {
+          "id": "getClimatisationStatus",
+          "scopes": [
+            "climatisation"
+          ]
+        },
+        "postWindowheatingStart": {
+          "id": "postWindowheatingStart",
+          "scopes": [
+            "manageClimatisation"
+          ]
+        },
+        "postWindowheatingStop": {
+          "id": "postWindowheatingStop",
+          "scopes": [
+            "manageClimatisation"
+          ]
+        },
+        "getClimatisationRequestsByID": {
+          "id": "getClimatisationRequestsByID",
+          "scopes": [
+            "manageClimatisation"
+          ]
+        },
+        "putClimatisationSettings": {
+          "id": "putClimatisationSettings",
+          "scopes": [
+            "manageClimatisation"
+          ]
+        },
+        "postClimatisationStart": {
+          "id": "postClimatisationStart",
+          "scopes": [
+            "manageClimatisation"
+          ]
+        },
+        "postClimatisationStop": {
+          "id": "postClimatisationStop",
+          "scopes": [
+            "manageClimatisation"
+          ]
+        },
+        "getWindowheatingRequestsByID": {
+          "id": "getWindowheatingRequestsByID",
+          "scopes": [
+            "manageClimatisation"
+          ]
+        }
+      },
+      "parameters": [
+        {
+          "key": "supportsTargetTemperatureInStartClimatisation",
+          "value": ""
+        },
+        {
+          "key": "supportsTargetTemperatureInSettings",
+          "value": ""
+        },
+        {
+          "key": "supportsClimatisationAtUnlock",
+          "value": "false"
+        },
+        {
+          "key": "supportsWindowHeatingEnabled",
+          "value": "false"
+        },
+        {
+          "key": "supportsZoneFrontLeftEnabled",
+          "value": "false"
+        },
+        {
+          "key": "supportsZoneFrontRightEnabled",
+          "value": "false"
+        },
+        {
+          "key": "supportsZoneRearLeftEnabled",
+          "value": "false"
+        },
+        {
+          "key": "supportsZoneRearRightEnabled",
+          "value": "false"
+        },
+        {
+          "key": "supportsClimatisationMode",
+          "value": ""
+        },
+        {
+          "key": "supportsOffGridClimatisation",
+          "value": "true"
+        },
+        {
+          "key": "supportsStartParallelClimatisationWindowHeating",
+          "value": "true"
+        },
+        {
+          "key": "supportsStartWindowHeating",
+          "value": "true"
+        }
+      ]
+    },
+    "access": {
+      "id": "access",
+      "expirationDate": "2025-03-14T12:50:00Z",
+      "userDisablingAllowed": false,
+      "endpoint": "vs",
+      "isEnabled": true,
+      "status": [],
+      "operations": {
+        "postAccessLock": {
+          "id": "postAccessLock",
+          "scopes": [
+            "lock_unlock"
+          ]
+        },
+        "postAccessLockwithoutspin": {
+          "id": "postAccessLockwithoutspin",
+          "scopes": [
+            "lock_unlock"
+          ]
+        },
+        "getAccessRequestsByID": {
+          "id": "getAccessRequestsByID",
+          "scopes": [
+            "lock_unlock"
+          ]
+        },
+        "postAccessUnlock": {
+          "id": "postAccessUnlock",
+          "scopes": [
+            "lock_unlock"
+          ]
+        },
+        "postAccessUnlockwithoutspin": {
+          "id": "postAccessUnlockwithoutspin",
+          "scopes": [
+            "lock_unlock"
+          ]
+        }
+      },
+      "parameters": []
+    },
+    "departureProfiles": {
+      "id": "departureProfiles",
+      "expirationDate": "2025-03-14T12:50:00Z",
+      "userDisablingAllowed": false,
+      "endpoint": "vs",
+      "isEnabled": true,
+      "status": [],
+      "operations": {
+        "deleteDepartureProfiles": {
+          "id": "deleteDepartureProfiles",
+          "scopes": [
+            "manageClimatisation",
+            "manageCharging"
+          ]
+        },
+        "getDepartureProfiles": {
+          "id": "getDepartureProfiles",
+          "scopes": [
+            "climatisation",
+            "charging"
+          ]
+        },
+        "postDepartureProfiles": {
+          "id": "postDepartureProfiles",
+          "scopes": [
+            "manageClimatisation",
+            "manageCharging"
+          ]
+        },
+        "putDepartureProfiles": {
+          "id": "putDepartureProfiles",
+          "scopes": [
+            "manageClimatisation",
+            "manageCharging"
+          ]
+        },
+        "deleteDepartureProfilesByID": {
+          "id": "deleteDepartureProfilesByID",
+          "scopes": [
+            "manageClimatisation",
+            "manageCharging"
+          ]
+        }
+      },
+      "parameters": []
+    },
+    "parkingInformation": {
+      "id": "parkingInformation",
+      "expirationDate": "2023-03-13T10:16:00Z",
+      "userDisablingAllowed": false,
+      "endpoint": "vs",
+      "isEnabled": false,
+      "status": [
+        "MissingLicense",
+        "LicenseExpired"
+      ],
+      "operations": {},
+      "parameters": []
+    },
+    "parkingPosition": {
+      "id": "parkingPosition",
+      "expirationDate": "2025-03-14T12:50:00Z",
+      "userDisablingAllowed": false,
+      "endpoint": "vs",
+      "isEnabled": true,
+      "status": [],
+      "operations": {
+        "getParkingposition": {
+          "id": "getParkingposition",
+          "scopes": [
+            "parking_position"
+          ]
+        }
+      },
+      "parameters": []
+    },
+    "honkAndFlash": {
+      "id": "honkAndFlash",
+      "expirationDate": "2025-03-14T12:50:00Z",
+      "userDisablingAllowed": false,
+      "endpoint": "vs",
+      "isEnabled": true,
+      "status": [],
+      "operations": {
+        "postHonkandflash": {
+          "id": "postHonkandflash",
+          "scopes": [
+            "honk"
+          ]
+        },
+        "getHonkandflashRequestsByID": {
+          "id": "getHonkandflashRequestsByID",
+          "scopes": [
+            "honk"
+          ]
+        }
+      },
+      "parameters": []
+    },
+    "measurements": {
+      "id": "measurements",
+      "expirationDate": "2025-03-14T12:50:00Z",
+      "userDisablingAllowed": false,
+      "endpoint": "vs",
+      "isEnabled": true,
+      "status": [],
+      "operations": {
+        "getMeasurements": {
+          "id": "getMeasurements",
+          "scopes": [
+            "range",
+            "mileage"
+          ]
+        }
+      },
+      "parameters": []
+    },
+    "automation": {
+      "id": "automation",
+      "expirationDate": "2025-03-14T12:50:00Z",
+      "userDisablingAllowed": false,
+      "endpoint": "vs",
+      "isEnabled": true,
+      "status": [],
+      "operations": {
+        "getChargingProfiles": {
+          "id": "getChargingProfiles",
+          "scopes": [
+            "charging"
+          ]
+        },
+        "putChargingProfiles": {
+          "id": "putChargingProfiles",
+          "scopes": [
+            "manageCharging"
+          ]
+        },
+        "deleteChargingProfilesByID": {
+          "id": "deleteChargingProfilesByID",
+          "scopes": [
+            "charging"
+          ]
+        },
+        "getChargingTimers": {
+          "id": "getChargingTimers",
+          "scopes": [
+            "charging"
+          ]
+        },
+        "getClimatisationTimers": {
+          "id": "getClimatisationTimers",
+          "scopes": [
+            "climatisation"
+          ]
+        },
+        "getDepartureTimers": {
+          "id": "getDepartureTimers",
+          "scopes": [
+            "climatisation",
+            "charging"
+          ]
+        },
+        "postChargingProfiles": {
+          "id": "postChargingProfiles",
+          "scopes": [
+            "manageCharging"
+          ]
+        },
+        "putChargingTimers": {
+          "id": "putChargingTimers",
+          "scopes": [
+            "manageCharging"
+          ]
+        },
+        "putClimatisationTimers": {
+          "id": "putClimatisationTimers",
+          "scopes": [
+            "manageClimatisation"
+          ]
+        }
+      },
+      "parameters": []
+    },
+    "charging": {
+      "id": "charging",
+      "expirationDate": "2025-03-14T12:50:00Z",
+      "userDisablingAllowed": false,
+      "endpoint": "vs",
+      "isEnabled": true,
+      "status": [],
+      "operations": {
+        "putChargingMode": {
+          "id": "putChargingMode",
+          "scopes": [
+            "manageCharging"
+          ]
+        },
+        "getChargingSettings": {
+          "id": "getChargingSettings",
+          "scopes": [
+            "charging"
+          ]
+        },
+        "postChargingStop": {
+          "id": "postChargingStop",
+          "scopes": [
+            "manageCharging"
+          ]
+        },
+        "getChargingCareStatus": {
+          "id": "getChargingCareStatus",
+          "scopes": [
+            "manageCharging"
+          ]
+        },
+        "getChargingMode": {
+          "id": "getChargingMode",
+          "scopes": [
+            "charging"
+          ]
+        },
+        "getChargingRequestsByID": {
+          "id": "getChargingRequestsByID",
+          "scopes": [
+            "manageCharging"
+          ]
+        },
+        "putChargingSettings": {
+          "id": "putChargingSettings",
+          "scopes": [
+            "manageCharging"
+          ]
+        },
+        "postChargingStart": {
+          "id": "postChargingStart",
+          "scopes": [
+            "manageCharging"
+          ]
+        },
+        "getChargingStatus": {
+          "id": "getChargingStatus",
+          "scopes": [
+            "charging"
+          ]
+        }
+      },
+      "parameters": [
+        {
+          "key": "allowPlugUnlockACPermanent",
+          "value": "false"
+        },
+        {
+          "key": "allowPlugUnlockACOnce",
+          "value": "false"
+        },
+        {
+          "key": "allowPlugUnlockDCPermanent",
+          "value": "false"
+        },
+        {
+          "key": "allowPlugUnlockDCOnce",
+          "value": "false"
+        },
+        {
+          "key": "supportsTargetStateOfCharge",
+          "value": ""
+        },
+        {
+          "key": "targetStateOfChargeMinimumAllowedValue",
+          "value": ""
+        },
+        {
+          "key": "targetStateOfChargeStepSize",
+          "value": ""
+        }
+      ]
+    },
+    "dealerAppointment": {
+      "id": "dealerAppointment",
+      "expirationDate": "2030-03-13T10:16:00Z",
+      "userDisablingAllowed": true,
+      "endpoint": "vs",
+      "isEnabled": true,
+      "status": [],
+      "operations": {
+        "getMaintenanceStatus": {
+          "id": "getMaintenanceStatus",
+          "scopes": [
+            "serviceInterval"
+          ]
+        },
+        "getPredictivemaintenanceDealerappointment": {
+          "id": "getPredictivemaintenanceDealerappointment",
+          "scopes": [
+            "serviceInterval"
+          ]
+        },
+        "getWarninglightsLast": {
+          "id": "getWarninglightsLast",
+          "scopes": [
+            "warning_lights"
+          ]
+        }
+      },
+      "parameters": []
+    },
+    "destinations": {
+      "id": "destinations",
+      "expirationDate": "2023-03-13T10:16:00Z",
+      "userDisablingAllowed": false,
+      "endpoint": "vs",
+      "isEnabled": false,
+      "status": [
+        "MissingLicense",
+        "LicenseExpired"
+      ],
+      "operations": {
+        "deleteDestinationsByID": {
+          "id": "deleteDestinationsByID",
+          "scopes": [
+            "navigation"
+          ]
+        },
+        "getDestinations": {
+          "id": "getDestinations",
+          "scopes": [
+            "navigation"
+          ]
+        },
+        "postDestinations": {
+          "id": "postDestinations",
+          "scopes": [
+            "navigation"
+          ]
+        },
+        "putDestinations": {
+          "id": "putDestinations",
+          "scopes": [
+            "navigation"
+          ]
+        }
+      },
+      "parameters": [
+        {
+          "key": "chargingStationsForEVTourImport",
+          "value": ""
+        }
+      ]
+    },
+    "fuelStatus": {
+      "id": "fuelStatus",
+      "expirationDate": "2025-03-14T12:50:00Z",
+      "userDisablingAllowed": false,
+      "endpoint": "vs",
+      "isEnabled": true,
+      "status": [],
+      "operations": {
+        "getFuelStatus": {
+          "id": "getFuelStatus",
+          "scopes": [
+            "fuelLevels"
+          ]
+        }
+      },
+      "parameters": []
+    },
+    "hybridCarAuxiliaryHeating": {
+      "id": "hybridCarAuxiliaryHeating",
+      "expirationDate": "2025-03-14T12:50:00Z",
+      "userDisablingAllowed": false,
+      "endpoint": "vs",
+      "isEnabled": true,
+      "status": [],
+      "operations": {
+        "getAuxiliaryheatingRequestsByID": {
+          "id": "getAuxiliaryheatingRequestsByID",
+          "scopes": [
+            "manageClimatisation"
+          ]
+        },
+        "postAuxiliaryheatingStart": {
+          "id": "postAuxiliaryheatingStart",
+          "scopes": [
+            "manageClimatisation"
+          ]
+        },
+        "postAuxiliaryheatingStop": {
+          "id": "postAuxiliaryheatingStop",
+          "scopes": [
+            "manageClimatisation"
+          ]
+        },
+        "putAuxiliaryheatingTimers": {
+          "id": "putAuxiliaryheatingTimers",
+          "scopes": [
+            "manageClimatisation"
+          ]
+        }
+      },
+      "parameters": [
+        {
+          "key": "supportsAutomaticMode",
+          "value": "false"
+        }
+      ]
+    },
+    "oilLevelStatus": {
+      "id": "oilLevelStatus",
+      "expirationDate": "2025-03-14T12:50:00Z",
+      "userDisablingAllowed": false,
+      "endpoint": "vs",
+      "isEnabled": true,
+      "status": [],
+      "operations": {
+        "getStates": {
+          "id": "getStates",
+          "scopes": [
+            "parkingBrakeStatus",
+            "ignitionStatus",
+            "oilLevels"
+          ]
+        }
+      },
+      "parameters": []
+    },
+    "roadsideAssistant": {
+      "id": "roadsideAssistant",
+      "expirationDate": "2030-03-13T10:16:00Z",
+      "userDisablingAllowed": false,
+      "endpoint": "vs",
+      "isEnabled": true,
+      "status": [],
+      "operations": {},
+      "parameters": []
+    },
+    "vehicleHealthInspection": {
+      "id": "vehicleHealthInspection",
+      "expirationDate": "2025-03-14T12:50:00Z",
+      "userDisablingAllowed": false,
+      "endpoint": "vs",
+      "isEnabled": true,
+      "status": [],
+      "operations": {
+        "getMaintenanceStatus": {
+          "id": "getMaintenanceStatus",
+          "scopes": [
+            "serviceInterval"
+          ]
+        }
+      },
+      "parameters": []
+    },
+    "vehicleWakeUp": {
+      "id": "vehicleWakeUp",
+      "expirationDate": "2025-03-14T12:50:00Z",
+      "userDisablingAllowed": false,
+      "endpoint": "vs",
+      "isEnabled": true,
+      "status": [],
+      "operations": {
+        "postVehiclewakeup": {
+          "id": "postVehiclewakeup",
+          "scopes": []
+        },
+        "getVehiclewakeupRequestsByID": {
+          "id": "getVehiclewakeupRequestsByID",
+          "scopes": []
+        }
+      },
+      "parameters": []
+    },
+    "vehicleWakeUpTrigger": {
+      "id": "vehicleWakeUpTrigger",
+      "expirationDate": "2025-03-14T12:50:00Z",
+      "userDisablingAllowed": false,
+      "endpoint": "vs",
+      "isEnabled": true,
+      "status": [],
+      "operations": {
+        "postVehiclewakeupUpdate": {
+          "id": "postVehiclewakeupUpdate",
+          "scopes": []
+        }
+      },
+      "parameters": []
+    },
+    "state": {
+      "id": "state",
+      "expirationDate": "2025-03-14T12:50:00Z",
+      "userDisablingAllowed": false,
+      "endpoint": "vs",
+      "isEnabled": true,
+      "status": [],
+      "operations": {
+        "getAccessStatus": {
+          "id": "getAccessStatus",
+          "scopes": [
+            "doors_windows"
+          ]
+        }
+      },
+      "parameters": []
+    },
+    "vehicleHealthWarnings": {
+      "id": "vehicleHealthWarnings",
+      "expirationDate": "2030-03-13T10:16:00Z",
+      "userDisablingAllowed": false,
+      "endpoint": "vs",
+      "isEnabled": true,
+      "status": [],
+      "operations": {
+        "getWarninglightsLast": {
+          "id": "getWarninglightsLast",
+          "scopes": [
+            "warning_lights"
+          ]
+        }
+      },
+      "parameters": []
+    },
+    "vehicleHealth": {
+      "id": "vehicleHealth",
+      "expirationDate": "2030-03-13T10:16:00Z",
+      "userDisablingAllowed": false,
+      "endpoint": "vs",
+      "isEnabled": true,
+      "status": [],
+      "operations": {},
+      "parameters": []
+    },
+    "vehicleLights": {
+      "id": "vehicleLights",
+      "expirationDate": "2025-03-14T12:50:00Z",
+      "userDisablingAllowed": false,
+      "endpoint": "vs",
+      "isEnabled": true,
+      "status": [],
+      "operations": {
+        "getLightsStatus": {
+          "id": "getLightsStatus",
+          "scopes": [
+            "vehicleLights"
+          ]
+        }
+      },
+      "parameters": []
+    },
+    "tripStatistics": {
+      "id": "tripStatistics",
+      "expirationDate": "2025-03-14T12:50:00Z",
+      "userDisablingAllowed": false,
+      "endpoint": "vs",
+      "isEnabled": true,
+      "status": [],
+      "operations": {
+        "getTripdataCyclic": {
+          "id": "getTripdataCyclic",
+          "scopes": [
+            "tripStatistics"
+          ]
+        },
+        "getTripdataLongtermLast": {
+          "id": "getTripdataLongtermLast",
+          "scopes": [
+            "tripStatistics"
+          ]
+        },
+        "deleteTripdataLongtermByID": {
+          "id": "deleteTripdataLongtermByID",
+          "scopes": [
+            "tripStatistics"
+          ]
+        },
+        "getTripdataShortterm": {
+          "id": "getTripdataShortterm",
+          "scopes": [
+            "tripStatistics"
+          ]
+        },
+        "getTripdataShorttermLast": {
+          "id": "getTripdataShorttermLast",
+          "scopes": [
+            "tripStatistics"
+          ]
+        },
+        "deleteTripdataShorttermByID": {
+          "id": "deleteTripdataShorttermByID",
+          "scopes": [
+            "tripStatistics"
+          ]
+        },
+        "deleteTripdataCyclic": {
+          "id": "deleteTripdataCyclic",
+          "scopes": [
+            "tripStatistics"
+          ]
+        },
+        "getTripdataCyclicLast": {
+          "id": "getTripdataCyclicLast",
+          "scopes": [
+            "tripStatistics"
+          ]
+        },
+        "deleteTripdataCyclicByID": {
+          "id": "deleteTripdataCyclicByID",
+          "scopes": [
+            "tripStatistics"
+          ]
+        },
+        "deleteTripdataLongterm": {
+          "id": "deleteTripdataLongterm",
+          "scopes": [
+            "tripStatistics"
+          ]
+        },
+        "getTripdataLongterm": {
+          "id": "getTripdataLongterm",
+          "scopes": [
+            "tripStatistics"
+          ]
+        },
+        "deleteTripdataShortterm": {
+          "id": "deleteTripdataShortterm",
+          "scopes": [
+            "tripStatistics"
+          ]
+        }
+      },
+      "parameters": []
+    }
+  },
+  "parameters": {}
+}
