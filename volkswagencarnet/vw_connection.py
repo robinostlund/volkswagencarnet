@@ -402,7 +402,7 @@ class Connection:
 
             try:
                 if response.status == 204:
-                    res = {"status_code": response.status, "body": response.text}
+                    res = {"status_code": response.status}
                 elif response.status >= 200 or response.status <= 300:
                     res = await response.json(loads=json_loads)
                 else:
@@ -924,8 +924,8 @@ class Connection:
     async def setRefresh(self, vin):
         """Force vehicle data update."""
         try:
-            response = await self.dataCall(
-                f"fs-car/bs/vsr/v1/{BRAND}/{self._session_country}/vehicles/$vin/requests", vin, data=None
+            response = await self.post(
+                f"{BASE_API}/vehicle/v1/vehicles/{vin}/vehiclewakeuptrigger", data=None
             )
             if not response:
                 raise Exception("Invalid or no response")

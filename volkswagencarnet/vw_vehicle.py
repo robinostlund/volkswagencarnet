@@ -68,7 +68,8 @@ class Vehicle:
             "tripStatistics": {"active": False},
             "measurements": {"active": False},
             "honkAndFlash": {"active": False},
-            "parkingPosition": {"active" : False}
+            "parkingPosition": {"active" : False},
+            "vehicleWakeUpTrigger": {"active": False}
             # "rheating_v1": {"active": False},
             # "rclima_v1": {"active": False},
             # "statusreport_v1": {"active": False},
@@ -551,7 +552,7 @@ class Vehicle:
     # Refresh vehicle data (VSR)
     async def set_refresh(self):
         """Wake up vehicle and update status data."""
-        if not self._services.get("statusreport_v1", {}).get("active", False):
+        if not self._services.get("vehicleWakeUpTrigger", {}).get("active", False):
             _LOGGER.info("Data refresh is not supported.")
             raise Exception("Data refresh is not supported.")
         if self._in_progress("refresh", unknown_offset=-5):
