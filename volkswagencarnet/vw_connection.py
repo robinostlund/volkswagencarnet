@@ -416,7 +416,7 @@ class Connection:
                 return res
 
             if self._session_fulldebug:
-                _LOGGER.debug(f'Request for "{url}" returned with status code [{response.status}], response: {res.text}')
+                _LOGGER.debug(f'Request for "{url}" returned with status code [{response.status}], response: {res}')
             else:
                 _LOGGER.debug(f'Request for "{url}" returned with status code [{response.status}]')
             return res
