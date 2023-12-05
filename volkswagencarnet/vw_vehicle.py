@@ -60,11 +60,14 @@ class Vehicle:
         }
         self._climate_duration: int = 30
         self._climatisation_target_temperature: float | None = None
+        self._last_last_trip_id: int = 0
 
         # API Endpoints that might be enabled for car (that we support)
         self._services: dict[str, dict[str, Any]] = {
             # TODO needs a complete rework...
             "access": {"active": False},
+            "charging": {"active": False},
+            "climatisation": {"active": False},
             "tripStatistics": {"active": False},
             "measurements": {"active": False},
             "honkAndFlash": {"active": False},
@@ -160,8 +163,6 @@ class Vehicle:
             await self.discover()
         if not self.deactivated:
             await asyncio.gather(
-                # TODO: we don't check against capabilities currently, but this also doesn't seem to be necessary
-                # to be checked if we should still do it for UI purposes
                 self.get_selectivestatus(
                     [
                         "access",
@@ -175,14 +176,13 @@ class Vehicle:
                     ]
                 ),
                 self.get_vehicle(),
-                self.get_parkingposition(),
                 self.get_trip_last()
+                # Parking Position is _not_ requested here, because it is rate limited!
+                # Parking Position will be implicitly updated when `trip_last` has new data
+                # self.get_parkingposition(),
+                # TODO: these legacy calls still have to be evaluated to find their new counterparts
                 #     self.get_preheater(),
-                #     self.get_climater(),
-                #     self.get_trip_statistic(),
-                #     self.get_position(),
                 #     self.get_statusreport(),
-                #     self.get_charger(),
                 #     self.get_timerprogramming(),
                 #     return_exceptions=True,
             )
@@ -192,6 +192,10 @@ class Vehicle:
     # Data collection functions
     async def get_selectivestatus(self, services):
         """Fetch selective status for specified services."""
+
+        # only keep active services for the update
+        services = [service for service in services if self._services.get(service, {}).get("active", False)]
+
         data = await self._connection.getSelectiveStatus(self.vin, services)
         if data:
             self._states.update(data)
@@ -203,7 +207,7 @@ class Vehicle:
             self._states.update(data)
 
     async def get_parkingposition(self):
-        """Fetch parking position if supported."""
+        """Fetch parking position if supported. Be aware: THIS REQUEST IS RATE LIMITED."""
         if self._services.get("parkingPosition", {}).get("active", False):
             data = await self._connection.getParkingPosition(self.vin)
             if data:
@@ -215,6 +219,9 @@ class Vehicle:
             data = await self._connection.getTripLast(self.vin)
             if data:
                 self._states.update(data)
+                if self._last_last_trip_id != data.get("id", self._last_last_trip_id):
+                    # trip id has changed, update parking position
+                    self.get_parkingposition()
 
     async def get_realcardata(self):
         """Fetch realcardata."""

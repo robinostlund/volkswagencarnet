@@ -392,6 +392,8 @@ class Connection:
             raise_for_status=False,
             **kwargs,
         ) as response:
+            if not response.ok:
+                _LOGGER.debug(f"Request failed with status {response.status}, body: {response.text}")
             response.raise_for_status()
 
             # Update cookie jar
@@ -403,7 +405,7 @@ class Connection:
             try:
                 if response.status == 204:
                     res = {"status_code": response.status}
-                elif response.status >= 200 or response.status <= 300:
+                elif response.status >= 200 and response.status <= 300:
                     res = await response.json(loads=json_loads)
                 else:
                     res = {}
