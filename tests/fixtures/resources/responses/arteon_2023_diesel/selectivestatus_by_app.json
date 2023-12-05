@@ -1,0 +1,284 @@
+{
+  "access": {
+    "accessStatus": {
+      "value": {
+        "overallStatus": "unsafe",
+        "carCapturedTimestamp": "2023-11-30T09:44:47Z",
+        "doors": [
+          {
+            "name": "bonnet",
+            "status": [
+              "open"
+            ]
+          },
+          {
+            "name": "frontLeft",
+            "status": [
+              "unlocked",
+              "closed"
+            ]
+          },
+          {
+            "name": "frontRight",
+            "status": [
+              "unlocked",
+              "closed"
+            ]
+          },
+          {
+            "name": "rearLeft",
+            "status": [
+              "unlocked",
+              "closed"
+            ]
+          },
+          {
+            "name": "rearRight",
+            "status": [
+              "unlocked",
+              "closed"
+            ]
+          },
+          {
+            "name": "trunk",
+            "status": [
+              "unlocked",
+              "closed"
+            ]
+          }
+        ],
+        "windows": [
+          {
+            "name": "frontLeft",
+            "status": [
+              "open"
+            ]
+          },
+          {
+            "name": "frontRight",
+            "status": [
+              "closed"
+            ]
+          },
+          {
+            "name": "rearLeft",
+            "status": [
+              "closed"
+            ]
+          },
+          {
+            "name": "rearRight",
+            "status": [
+              "closed"
+            ]
+          },
+          {
+            "name": "roofCover",
+            "status": [
+              "unsupported"
+            ]
+          },
+          {
+            "name": "sunRoof",
+            "status": [
+              "unsupported"
+            ]
+          }
+        ],
+        "doorLockStatus": "unlocked"
+      }
+    }
+  },
+  "userCapabilities": {
+    "capabilitiesStatus": {
+      "value": [
+        {
+          "id": "access",
+          "expirationDate": "2025-11-25T10:37:00Z",
+          "userDisablingAllowed": false
+        },
+        {
+          "id": "cubicNetwork",
+          "userDisablingAllowed": false
+        },
+        {
+          "id": "cubicNetworkConsumption",
+          "userDisablingAllowed": false
+        },
+        {
+          "id": "dealerAppointment",
+          "status": [
+            1004
+          ],
+          "expirationDate": "2052-11-25T10:37:00Z",
+          "userDisablingAllowed": true
+        },
+        {
+          "id": "destinations",
+          "expirationDate": "2025-11-25T10:37:00Z",
+          "userDisablingAllowed": false
+        },
+        {
+          "id": "digitalKey",
+          "expirationDate": "2052-11-25T10:37:00Z",
+          "userDisablingAllowed": false
+        },
+        {
+          "id": "emergencyCalling",
+          "expirationDate": "2032-11-25T10:37:00Z",
+          "userDisablingAllowed": false
+        },
+        {
+          "id": "fuelStatus",
+          "expirationDate": "2052-11-25T10:37:00Z",
+          "userDisablingAllowed": false
+        },
+        {
+          "id": "honkAndFlash",
+          "expirationDate": "2025-11-25T10:37:00Z",
+          "userDisablingAllowed": false
+        },
+        {
+          "id": "measurements",
+          "expirationDate": "2052-11-25T10:37:00Z",
+          "userDisablingAllowed": false
+        },
+        {
+          "id": "oilLevelStatus",
+          "expirationDate": "2052-11-25T10:37:00Z",
+          "userDisablingAllowed": false
+        },
+        {
+          "id": "parkingPosition",
+          "expirationDate": "2052-11-25T10:37:00Z",
+          "userDisablingAllowed": false
+        },
+        {
+          "id": "personalizationOnline",
+          "userDisablingAllowed": false
+        },
+        {
+          "id": "roadsideAssistant",
+          "expirationDate": "2052-11-25T10:37:00Z",
+          "userDisablingAllowed": false
+        },
+        {
+          "id": "state",
+          "expirationDate": "2052-11-25T10:37:00Z",
+          "userDisablingAllowed": false
+        },
+        {
+          "id": "transactionHistoryDigitalKey",
+          "expirationDate": "2052-11-25T10:37:00Z",
+          "userDisablingAllowed": false
+        },
+        {
+          "id": "transactionHistoryHonkFlash",
+          "expirationDate": "2025-11-25T10:37:00Z",
+          "userDisablingAllowed": false
+        },
+        {
+          "id": "transactionHistoryLockUnlock",
+          "expirationDate": "2025-11-25T10:37:00Z",
+          "userDisablingAllowed": false
+        },
+        {
+          "id": "tripStatistics",
+          "expirationDate": "2052-11-25T10:37:00Z",
+          "userDisablingAllowed": false
+        },
+        {
+          "id": "vehicleHealth",
+          "expirationDate": "2052-11-25T10:37:00Z",
+          "userDisablingAllowed": false
+        },
+        {
+          "id": "vehicleHealthArchive",
+          "status": [
+            1007
+          ],
+          "expirationDate": "2052-11-25T10:37:00Z",
+          "userDisablingAllowed": false
+        },
+        {
+          "id": "vehicleHealthInspection",
+          "expirationDate": "2052-11-25T10:37:00Z",
+          "userDisablingAllowed": false
+        },
+        {
+          "id": "vehicleHealthSettings",
+          "status": [
+            1007
+          ],
+          "expirationDate": "2052-11-25T10:37:00Z",
+          "userDisablingAllowed": false
+        },
+        {
+          "id": "vehicleHealthTrigger",
+          "status": [
+            1007
+          ],
+          "expirationDate": "2052-11-25T10:37:00Z",
+          "userDisablingAllowed": false
+        },
+        {
+          "id": "vehicleHealthWakeUp",
+          "expirationDate": "2052-11-25T10:37:00Z",
+          "userDisablingAllowed": false
+        },
+        {
+          "id": "vehicleHealthWarnings",
+          "expirationDate": "2052-11-25T10:37:00Z",
+          "userDisablingAllowed": false
+        },
+        {
+          "id": "vehicleLights",
+          "expirationDate": "2052-11-25T10:37:00Z",
+          "userDisablingAllowed": false
+        },
+        {
+          "id": "vehicleWakeUp",
+          "expirationDate": "2052-11-25T10:37:00Z",
+          "userDisablingAllowed": false
+        },
+        {
+          "id": "vehicleWakeUpTrigger",
+          "expirationDate": "2052-11-25T10:37:00Z",
+          "userDisablingAllowed": false
+        }
+      ]
+    }
+  },
+  "fuelStatus": {
+    "rangeStatus": {
+      "value": {
+        "carCapturedTimestamp": "2023-11-30T09:44:47Z",
+        "carType": "diesel",
+        "primaryEngine": {
+          "type": "diesel",
+          "currentSOC_pct": 19,
+          "remainingRange_km": 140,
+          "currentFuelLevel_pct": 19
+        },
+        "totalRange_km": 140
+      }
+    }
+  },
+  "vehicleLights": {
+    "lightsStatus": {
+      "value": {
+        "carCapturedTimestamp": "2023-11-30T09:44:47Z",
+        "lights": [
+          {
+            "name": "right",
+            "status": "off"
+          },
+          {
+            "name": "left",
+            "status": "off"
+          }
+        ]
+      }
+    }
+  }
+}
