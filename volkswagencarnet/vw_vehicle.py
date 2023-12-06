@@ -1065,13 +1065,7 @@ class Vehicle:
     @property
     def position_last_updated(self) -> datetime:
         """Return  position last updated."""
-        parking_time_path = "parkingposition.carCapturedTimestamp"
-        if is_valid_path(self.attrs, parking_time_path):
-            park_time_utc: datetime = find_path(self.attrs, parking_time_path)
-            park_time = park_time_utc.replace(tzinfo=timezone.utc).astimezone(tz=None)
-            return park_time.strftime("%Y-%m-%d %H:%M:%S")
-
-        return None
+        return self.attrs.get("parkingposition", {}).get("carCapturedTimestamp", "Unknown")
 
     @property
     def is_position_supported(self) -> bool:
@@ -1086,13 +1080,7 @@ class Vehicle:
     @property
     def vehicle_moving_last_updated(self) -> datetime:
         """Return attribute last updated timestamp."""
-        parking_time_path = "parkingposition.carCapturedTimestamp"
-        if is_valid_path(self.attrs, parking_time_path):
-            park_time_utc: datetime = find_path(self.attrs, parking_time_path)
-            park_time = park_time_utc.replace(tzinfo=timezone.utc).astimezone(tz=None)
-            return park_time.strftime("%Y-%m-%d %H:%M:%S")
-
-        return None
+        return self.position_last_updated
 
     @property
     def is_vehicle_moving_supported(self) -> bool:
@@ -1102,23 +1090,23 @@ class Vehicle:
     @property
     def parking_time(self) -> str:
         """Return timestamp of last parking time."""
+        park_time = "Unknown"
         parking_time_path = "parkingposition.carCapturedTimestamp"
         if is_valid_path(self.attrs, parking_time_path):
-            park_time_utc: datetime = find_path(self.attrs, parking_time_path)
+            park_time_utc = find_path(self.attrs, parking_time_path)
             park_time = park_time_utc.replace(tzinfo=timezone.utc).astimezone(tz=None)
             return park_time.strftime("%Y-%m-%d %H:%M:%S")
-
-        return None
+        return park_time
 
     @property
     def parking_time_last_updated(self) -> datetime:
         """Return attribute last updated timestamp."""
-        return find_path(self.attrs, "parkingposition.carCapturedTimestamp")
+        return self.position_last_updated
 
     @property
     def is_parking_time_supported(self) -> bool:
         """Return true if vehicle parking timestamp is supported."""
-        return is_valid_path(self.attrs, "parkingposition.carCapturedTimestamp")
+        return self.is_position_supported
 
     # Vehicle fuel level and range
     @property
