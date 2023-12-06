@@ -101,7 +101,6 @@ class Connection:
 
         _LOGGER.info("Successfully logged in")
         self._session_tokens["identity"] = self._session_tokens["Legacy"].copy()
-        self._session_logged_in = True
 
         # Get list of vehicles from account
         _LOGGER.debug("Fetching vehicles associated with account")
@@ -348,6 +347,7 @@ class Connection:
                 _LOGGER.warning("User identity token could not be verified!")
             else:
                 _LOGGER.debug("User identity token verified OK.")
+                self._session_logged_in = True
         except Exception as error:
             _LOGGER.error(f"Login failed for {BRAND} account, {error}")
             _LOGGER.exception(error)
