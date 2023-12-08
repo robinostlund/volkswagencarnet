@@ -81,6 +81,8 @@ class Connection:
         self._jarCookie = ""
         self._state = {}
 
+        self._service_status = {'vehicles': 'Unknown', 'capabilities': 'Unknown', 'selectivestatus': 'Unknown', 'trips': 'Unknown', 'parkingposition': 'Unknown', 'token': 'Unknown'}
+
     def _clear_cookies(self):
         self._session._cookie_jar._cookies.clear()
 
@@ -399,6 +401,9 @@ class Connection:
                 self._jarCookie.update(response.cookies)
             else:
                 self._jarCookie = response.cookies
+
+            # Update service status
+            await self.update_service_status(url, response.status)
 
             try:
                 if response.status == 204:
@@ -1211,6 +1216,7 @@ class Connection:
             response = await self._session.post(
                 url="https://emea.bff.cariad.digital/login/v1/idk/token", headers=tHeaders, data=body
             )
+            self.update_service_status("token", response.status)
             if response.status == 200:
                 tokens = await response.json()
                 # Verify Token
@@ -1226,6 +1232,34 @@ class Connection:
         except Exception as error:
             _LOGGER.warning(f"Could not refresh tokens: {error}")
             return False
+
+    async def update_service_status(self, url, response_code):
+        """Update service status."""
+        if response_code == 200 or response_code == 204:
+            status = "Up"
+        elif response_code == 207:
+            status = "Warning"
+        else:
+            status = "Down"
+
+        if "vehicle/v2/vehicles" in url:
+            self._service_status["vehicles"] = status
+        elif "parkingposition" in url:
+            self._service_status["parkingposition"] = status
+        elif "/vehicle/v1/trips/" in url:
+            self._service_status["trips"] = status
+        elif "capabilities" in url:
+            self._service_status["capabilities"] = status
+        elif "selectivestatus" in url:
+            self._service_status["selectivestatus"] = status
+        elif "token" in url:
+            self._service_status["token"] = status
+        else:
+            _LOGGER.debug(f'Use-case is not covered! URL: {url}')
+
+    async def get_service_status(self):
+        """Return list of service statuses."""
+        return self._service_status
 
     # Class helpers #
     @property
