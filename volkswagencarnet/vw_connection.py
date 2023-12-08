@@ -1216,7 +1216,7 @@ class Connection:
             response = await self._session.post(
                 url="https://emea.bff.cariad.digital/login/v1/idk/token", headers=tHeaders, data=body
             )
-            self.update_service_status("token", response.status)
+            await self.update_service_status("token", response.status)
             if response.status == 200:
                 tokens = await response.json()
                 # Verify Token
@@ -1237,6 +1237,10 @@ class Connection:
         """Update service status."""
         if response_code in [200, 204, 207]:
             status = "Up"
+        elif response_code == 401:
+            status = "Unauthorized"
+        elif response_code == 403:
+            status = "Forbidden"
         elif response_code == 429:
             status = "Rate limited"
         else:
