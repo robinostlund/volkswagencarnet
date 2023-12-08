@@ -2580,7 +2580,7 @@ class Vehicle:
     @property
     def api_vehicles_status(self) -> bool:
         """Check vehicles API status."""
-        return find_path(self.attrs, "service_status.vehicles")
+        return self.attrs.get("service_status", {}).get("vehicles", "Unknown")
 
     @property
     def api_vehicles_status_last_updated(self) -> datetime:
@@ -2595,7 +2595,7 @@ class Vehicle:
     @property
     def api_capabilities_status(self) -> bool:
         """Check capabilities API status."""
-        return find_path(self.attrs, "service_status.capabilities")
+        return self.attrs.get("service_status", {}).get("capabilities", "Unknown")
 
     @property
     def api_capabilities_status_last_updated(self) -> datetime:
@@ -2610,7 +2610,7 @@ class Vehicle:
     @property
     def api_trips_status(self) -> bool:
         """Check trips API status."""
-        return find_path(self.attrs, "service_status.trips")
+        return self.attrs.get("service_status", {}).get("trips", "Unknown")
 
     @property
     def api_trips_status_last_updated(self) -> datetime:
@@ -2625,7 +2625,7 @@ class Vehicle:
     @property
     def api_selectivestatus_status(self) -> bool:
         """Check selectivestatus API status."""
-        return find_path(self.attrs, "service_status.selectivestatus")
+        return self.attrs.get("service_status", {}).get("selectivestatus", "Unknown")
 
     @property
     def api_selectivestatus_status_last_updated(self) -> datetime:
@@ -2640,7 +2640,7 @@ class Vehicle:
     @property
     def api_parkingposition_status(self) -> bool:
         """Check parkingposition API status."""
-        return find_path(self.attrs, "service_status.parkingposition")
+        return self.attrs.get("service_status", {}).get("parkingposition", "Unknown")
 
     @property
     def api_parkingposition_status_last_updated(self) -> datetime:
@@ -2655,7 +2655,7 @@ class Vehicle:
     @property
     def api_token_status(self) -> bool:
         """Check token API status."""
-        return find_path(self.attrs, "service_status.token")
+        return self.attrs.get("service_status", {}).get("token", "Unknown")
 
     @property
     def api_token_status_last_updated(self) -> datetime:
