@@ -402,7 +402,7 @@ class Connection:
 
             try:
                 if response.status == 204:
-                    res = {"status_code": response.status, "body": response.text}
+                    res = {"status_code": response.status}
                 elif response.status >= 200 or response.status <= 300:
                     res = await response.json(loads=json_loads)
                 else:
