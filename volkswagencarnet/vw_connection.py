@@ -1239,6 +1239,8 @@ class Connection:
             status = "Up"
         elif response_code == 207:
             status = "Warning"
+        elif response_code == 429:
+            status = "Rate limited"
         else:
             status = "Down"
 
