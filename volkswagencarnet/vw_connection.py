@@ -81,7 +81,7 @@ class Connection:
         self._jarCookie = ""
         self._state = {}
 
-        self._service_status = {'vehicles': 'Unknown', 'capabilities': 'Unknown', 'selectivestatus': 'Unknown', 'trips': 'Unknown', 'parkingposition': 'Unknown', 'token': 'Unknown'}
+        self._service_status = {}
 
     def _clear_cookies(self):
         self._session._cookie_jar._cookies.clear()
