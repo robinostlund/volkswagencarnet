@@ -185,6 +185,10 @@ class Vehicle:
                 #     self.get_timerprogramming(),
                 #     return_exceptions=True,
             )
+            await asyncio.sleep(10)
+            await asyncio.gather(
+                self.get_service_status()
+            )
         else:
             _LOGGER.info(f"Vehicle with VIN {self.vin} is deactivated.")
 
@@ -214,6 +218,12 @@ class Vehicle:
             data = await self._connection.getTripLast(self.vin)
             if data:
                 self._states.update(data)
+
+    async def get_service_status(self):
+        """Fetch service status."""
+        data = await self._connection.get_service_status()
+        if data:
+            self._states.update({"service_status": data})
 
     async def get_realcardata(self):
         """Fetch realcardata."""
@@ -2566,3 +2576,93 @@ class Vehicle:
     def has_combustion_engine(self):
         """Return true if car has a combustion engine."""
         return self.is_primary_drive_combustion() or self.is_secondary_drive_combustion()
+
+    @property
+    def api_vehicles_status(self) -> bool:
+        """Check vehicles API status."""
+        return find_path(self.attrs, "service_status.vehicles")
+
+    @property
+    def api_vehicles_status_last_updated(self) -> datetime:
+        """Return attribute last updated timestamp."""
+        return datetime.now()
+
+    @property
+    def is_api_vehicles_status_supported(self):
+        """Vehicles API status is always supported."""
+        return True
+
+    @property
+    def api_capabilities_status(self) -> bool:
+        """Check capabilities API status."""
+        return find_path(self.attrs, "service_status.capabilities")
+
+    @property
+    def api_capabilities_status_last_updated(self) -> datetime:
+        """Return attribute last updated timestamp."""
+        return datetime.now()
+
+    @property
+    def is_api_capabilities_status_supported(self):
+        """Capabilities API status is always supported."""
+        return True
+
+    @property
+    def api_trips_status(self) -> bool:
+        """Check trips API status."""
+        return find_path(self.attrs, "service_status.trips")
+
+    @property
+    def api_trips_status_last_updated(self) -> datetime:
+        """Return attribute last updated timestamp."""
+        return datetime.now()
+
+    @property
+    def is_api_trips_status_supported(self):
+        """Trips API status is always supported."""
+        return True
+
+    @property
+    def api_selectivestatus_status(self) -> bool:
+        """Check selectivestatus API status."""
+        return find_path(self.attrs, "service_status.selectivestatus")
+
+    @property
+    def api_selectivestatus_status_last_updated(self) -> datetime:
+        """Return attribute last updated timestamp."""
+        return datetime.now()
+
+    @property
+    def is_api_selectivestatus_status_supported(self):
+        """Selectivestatus API status is always supported."""
+        return True
+
+    @property
+    def api_parkingposition_status(self) -> bool:
+        """Check parkingposition API status."""
+        return find_path(self.attrs, "service_status.parkingposition")
+
+    @property
+    def api_parkingposition_status_last_updated(self) -> datetime:
+        """Return attribute last updated timestamp."""
+        return datetime.now()
+
+    @property
+    def is_api_parkingposition_status_supported(self):
+        """Parkingposition API status is always supported."""
+        return True
+
+    @property
+    def api_token_status(self) -> bool:
+        """Check token API status."""
+        return find_path(self.attrs, "service_status.token")
+
+    @property
+    def api_token_status_last_updated(self) -> datetime:
+        """Return attribute last updated timestamp."""
+        return datetime.now()
+
+    @property
+    def is_api_token_status_supported(self):
+        """Parkingposition API status is always supported."""
+        return True
