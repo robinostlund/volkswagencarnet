@@ -1235,10 +1235,8 @@ class Connection:
 
     async def update_service_status(self, url, response_code):
         """Update service status."""
-        if response_code == 200 or response_code == 204:
+        if response_code in [200, 204, 207]:
             status = "Up"
-        elif response_code == 207:
-            status = "Warning"
         elif response_code == 429:
             status = "Rate limited"
         else:
