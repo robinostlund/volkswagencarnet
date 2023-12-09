@@ -1270,10 +1270,11 @@ class Connection:
         elif "token" in url:
             self._service_status["token"] = status
         else:
-            _LOGGER.debug(f'Use-case is not covered! URL: {url}')
+            _LOGGER.debug(f'Unhandled API URL: "{url}"')
 
     async def get_service_status(self):
         """Return list of service statuses."""
+        _LOGGER.debug("Getting API status updates")
         return self._service_status
 
     # Class helpers #
