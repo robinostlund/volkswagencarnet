@@ -185,7 +185,6 @@ class Vehicle:
                 #     self.get_timerprogramming(),
                 #     return_exceptions=True,
             )
-            await asyncio.sleep(10)
             await asyncio.gather(
                 self.get_service_status()
             )
