@@ -1233,6 +1233,7 @@ class Connection:
                     _LOGGER.warning("Token could not be verified!")
                 for token in tokens:
                     self._session_tokens["identity"][token] = tokens[token]
+                self._session_headers["Authorization"] = "Bearer " + self._session_tokens["identity"]["access_token"]
             else:
                 _LOGGER.warning(f"Something went wrong when refreshing {BRAND} account tokens.")
                 return False
