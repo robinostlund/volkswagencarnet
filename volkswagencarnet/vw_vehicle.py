@@ -1074,23 +1074,22 @@ class Vehicle:
     @property
     def position_last_updated(self) -> datetime:
         """Return  position last updated."""
-        return find_path(self.attrs, "parkingposition.carCapturedTimestamp")
+        return self.attrs.get("parkingposition", {}).get("carCapturedTimestamp", "Unknown")
 
     @property
     def is_position_supported(self) -> bool:
         """Return true if position is available."""
-        return is_valid_path(self.attrs, "parkingposition.carCapturedTimestamp")
+        return is_valid_path(self.attrs, "parkingposition.carCapturedTimestamp") or self.attrs.get("isMoving", False)
 
     @property
     def vehicle_moving(self) -> bool:
         """Return true if vehicle is moving."""
-        # there is not "isMoving" property anymore in VW's API, so we just take the absence of position data as the indicator
-        return not is_valid_path(self.attrs, "parkingposition.lat")
+        return self.attrs.get("isMoving", False)
 
     @property
     def vehicle_moving_last_updated(self) -> datetime:
         """Return attribute last updated timestamp."""
-        return find_path(self.attrs, "parkingposition.carCapturedTimestamp")
+        return self.position_last_updated
 
     @property
     def is_vehicle_moving_supported(self) -> bool:
@@ -1111,12 +1110,12 @@ class Vehicle:
     @property
     def parking_time_last_updated(self) -> datetime:
         """Return attribute last updated timestamp."""
-        return self.attrs.get("findCarResponse", {}).get("Position", {}).get(BACKEND_RECEIVED_TIMESTAMP)
+        return self.position_last_updated
 
     @property
     def is_parking_time_supported(self) -> bool:
         """Return true if vehicle parking timestamp is supported."""
-        return "parkingTimeUTC" in self.attrs.get("findCarResponse", {})
+        return self.is_position_supported
 
     # Vehicle fuel level and range
     @property
