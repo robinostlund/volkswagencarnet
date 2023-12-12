@@ -81,6 +81,8 @@ class Connection:
         self._jarCookie = ""
         self._state = {}
 
+        self._service_status = {}
+
     def _clear_cookies(self):
         self._session._cookie_jar._cookies.clear()
 
@@ -383,43 +385,55 @@ class Connection:
     async def _request(self, method, url, **kwargs):
         """Perform a query to the VW-Group API."""
         _LOGGER.debug(f'HTTP {method} "{url}"')
-        async with self._session.request(
-            method,
-            url,
-            headers=self._session_headers,
-            timeout=ClientTimeout(total=TIMEOUT.seconds),
-            cookies=self._jarCookie,
-            raise_for_status=False,
-            **kwargs,
-        ) as response:
-            response.raise_for_status()
+        try:
+            async with self._session.request(
+                method,
+                url,
+                headers=self._session_headers,
+                timeout=ClientTimeout(total=TIMEOUT.seconds),
+                cookies=self._jarCookie,
+                raise_for_status=False,
+                **kwargs,
+            ) as response:
+                response.raise_for_status()
 
-            # Update cookie jar
-            if self._jarCookie != "":
-                self._jarCookie.update(response.cookies)
-            else:
-                self._jarCookie = response.cookies
-
-            try:
-                if response.status == 204:
-                    res = {"status_code": response.status}
-                elif response.status >= 200 or response.status <= 300:
-                    res = await response.json(loads=json_loads)
+                # Update cookie jar
+                if self._jarCookie != "":
+                    self._jarCookie.update(response.cookies)
                 else:
-                    res = {}
-                    _LOGGER.debug(f"Not success status code [{response.status}] response: {response.text}")
-                if "X-RateLimit-Remaining" in response.headers:
-                    res["rate_limit_remaining"] = response.headers.get("X-RateLimit-Remaining", "")
-            except Exception:
-                res = {}
-                _LOGGER.debug(f"Something went wrong [{response.status}] response: {response.text}")
-                return res
+                    self._jarCookie = response.cookies
 
-            if self._session_fulldebug:
-                _LOGGER.debug(f'Request for "{url}" returned with status code [{response.status}], response: {res}')
-            else:
-                _LOGGER.debug(f'Request for "{url}" returned with status code [{response.status}]')
-            return res
+                # Update service status
+                await self.update_service_status(url, response.status)
+
+                try:
+                    if response.status == 204:
+                        res = {"status_code": response.status}
+                    elif response.status >= 200 or response.status <= 300:
+                        res = await response.json(loads=json_loads)
+                    else:
+                        res = {}
+                        _LOGGER.debug(f"Not success status code [{response.status}] response: {response.text}")
+                    if "X-RateLimit-Remaining" in response.headers:
+                        res["rate_limit_remaining"] = response.headers.get("X-RateLimit-Remaining", "")
+                except Exception:
+                    res = {}
+                    _LOGGER.debug(f"Something went wrong [{response.status}] response: {response.text}")
+                    return res
+
+                if self._session_fulldebug:
+                    _LOGGER.debug(f'Request for "{url}" returned with status code [{response.status}], response: {res}')
+                else:
+                    _LOGGER.debug(f'Request for "{url}" returned with status code [{response.status}]')
+                return res
+        except client_exceptions.ClientResponseError as httperror:
+            # Update service status
+            await self.update_service_status(url, httperror.code)
+            raise httperror from None
+        except Exception as error:
+            # Update service status
+            await self.update_service_status(url, 1000)
+            raise error from None
 
     async def get(self, url, vin="", tries=0):
         """Perform a get query."""
@@ -1211,6 +1225,7 @@ class Connection:
             response = await self._session.post(
                 url="https://emea.bff.cariad.digital/login/v1/idk/token", headers=tHeaders, data=body
             )
+            await self.update_service_status("token", response.status)
             if response.status == 200:
                 tokens = await response.json()
                 # Verify Token
@@ -1226,6 +1241,41 @@ class Connection:
         except Exception as error:
             _LOGGER.warning(f"Could not refresh tokens: {error}")
             return False
+
+    async def update_service_status(self, url, response_code):
+        """Update service status."""
+        if response_code in [200, 204, 207]:
+            status = "Up"
+        elif response_code == 401:
+            status = "Unauthorized"
+        elif response_code == 403:
+            status = "Forbidden"
+        elif response_code == 429:
+            status = "Rate limited"
+        elif response_code == 1000:
+            status = "Error"
+        else:
+            status = "Down"
+
+        if "vehicle/v2/vehicles" in url:
+            self._service_status["vehicles"] = status
+        elif "parkingposition" in url:
+            self._service_status["parkingposition"] = status
+        elif "/vehicle/v1/trips/" in url:
+            self._service_status["trips"] = status
+        elif "capabilities" in url:
+            self._service_status["capabilities"] = status
+        elif "selectivestatus" in url:
+            self._service_status["selectivestatus"] = status
+        elif "token" in url:
+            self._service_status["token"] = status
+        else:
+            _LOGGER.debug(f'Unhandled API URL: "{url}"')
+
+    async def get_service_status(self):
+        """Return list of service statuses."""
+        _LOGGER.debug("Getting API status updates")
+        return self._service_status
 
     # Class helpers #
     @property

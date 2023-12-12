@@ -994,6 +994,42 @@ def create_instruments():
             icon="mdi:chat-alert",
             unit="",
         ),
+        Sensor(
+            attr="api_vehicles_status",
+            name="API vehicles",
+            icon="mdi:api",
+            unit="",
+        ),
+        Sensor(
+            attr="api_capabilities_status",
+            name="API capabilities",
+            icon="mdi:api",
+            unit="",
+        ),
+        Sensor(
+            attr="api_trips_status",
+            name="API trips",
+            icon="mdi:api",
+            unit="",
+        ),
+        Sensor(
+            attr="api_selectivestatus_status",
+            name="API selectivestatus",
+            icon="mdi:api",
+            unit="",
+        ),
+        Sensor(
+            attr="api_parkingposition_status",
+            name="API parkingposition",
+            icon="mdi:api",
+            unit="",
+        ),
+        Sensor(
+            attr="api_token_status",
+            name="API token",
+            icon="mdi:api",
+            unit="",
+        ),
         BinarySensor(attr="external_power", name="External power", device_class=VWDeviceClass.POWER),
         BinarySensor(attr="energy_flow", name="Energy flow", device_class=VWDeviceClass.POWER),
         BinarySensor(
