@@ -1717,7 +1717,12 @@ class Vehicle:
 
         :return:
         """
-        return is_valid_path(self.attrs, "access.accessStatus.value.doorLockStatus")
+        # First check that the service is actually enabled
+        if not self._services.get("access", {}).get("active", False):
+            return False
+        if is_valid_path(self.attrs, "access.accessStatus.value.doorLockStatus"):
+            return True
+        return False
 
     @property
     def is_door_locked_sensor_supported(self) -> bool:
@@ -1726,7 +1731,12 @@ class Vehicle:
 
         :return:
         """
-        return is_valid_path(self.attrs, "access.accessStatus.value.doorLockStatus")
+        # Use real lock if the service is actually enabled
+        if self._services.get("access", {}).get("active", False):
+            return False
+        if is_valid_path(self.attrs, "access.accessStatus.value.doorLockStatus"):
+            return True
+        return False
 
     @property
     def trunk_locked(self) -> bool:
@@ -1753,6 +1763,8 @@ class Vehicle:
 
         :return:
         """
+        if not self._services.get("access", {}).get("active", False):
+            return False
         if is_valid_path(self.attrs, "access.accessStatus.value.doors"):
             doors = find_path(self.attrs, "access.accessStatus.value.doors")
             for door in doors:
@@ -1785,6 +1797,8 @@ class Vehicle:
 
         :return:
         """
+        if self._services.get("access", {}).get("active", False):
+            return False
         if is_valid_path(self.attrs, "access.accessStatus.value.doors"):
             doors = find_path(self.attrs, "access.accessStatus.value.doors")
             for door in doors:
