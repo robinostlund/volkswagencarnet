@@ -1194,6 +1194,7 @@ class Vehicle:
         if is_valid_path(self.attrs, "measurements.rangeStatus.value.totalRange_km"):
             return self.is_electric_range_supported and self.is_combustion_range_supported
         return False
+
     @property
     def fuel_level(self) -> int:
         """
@@ -2541,7 +2542,6 @@ class Vehicle:
     def is_primary_drive_electric(self):
         """Check if primary engine is electric."""
         return find_path(self.attrs, "measurements.fuelLevelStatus.value.primaryEngineType") == ENGINE_TYPE_ELECTRIC
-
 
     def is_secondary_drive_electric(self):
         """Check if secondary engine is electric."""
