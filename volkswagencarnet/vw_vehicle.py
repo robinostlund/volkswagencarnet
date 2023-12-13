@@ -1193,8 +1193,9 @@ class Vehicle:
 
         :return:
         """
-        return is_valid_path(self.attrs, "measurements.rangeStatus.value.totalRange_km")
-
+        if is_valid_path(self.attrs, "measurements.rangeStatus.value.totalRange_km"):
+            return self.is_electric_range_supported and self.is_combustion_range_supported
+        return False
     @property
     def fuel_level(self) -> int:
         """
