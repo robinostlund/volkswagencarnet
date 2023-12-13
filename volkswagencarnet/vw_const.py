@@ -11,7 +11,7 @@ CLIENT = {
     "Legacy": {
         "CLIENT_ID": "a24fba63-34b3-4d43-b181-942111e6bda8@apps_vw-dilab_com",
         "SCOPE": "openid profile badge cars dealers vin",
-        "TOKEN_TYPES": "code"
+        "TOKEN_TYPES": "code",
     }
 }
 

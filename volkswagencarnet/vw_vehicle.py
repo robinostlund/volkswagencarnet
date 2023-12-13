@@ -68,7 +68,7 @@ class Vehicle:
             "tripStatistics": {"active": False},
             "measurements": {"active": False},
             "honkAndFlash": {"active": False},
-            "parkingPosition": {"active" : False}
+            "parkingPosition": {"active": False}
             # "rheating_v1": {"active": False},
             # "rclima_v1": {"active": False},
             # "statusreport_v1": {"active": False},
@@ -185,9 +185,7 @@ class Vehicle:
                 #     self.get_timerprogramming(),
                 #     return_exceptions=True,
             )
-            await asyncio.gather(
-                self.get_service_status()
-            )
+            await asyncio.gather(self.get_service_status())
         else:
             _LOGGER.info(f"Vehicle with VIN {self.vin} is deactivated.")
 
@@ -1229,8 +1227,9 @@ class Vehicle:
 
         :return:
         """
-        return (is_valid_path(self.attrs, "measurements.fuelLevelStatus.value.currentFuelLevel_pct") 
-                or is_valid_path(self.attrs, "fuelStatus.rangeStatus.value.primaryEngine.currentFuelLevel_pct"))
+        return is_valid_path(self.attrs, "measurements.fuelLevelStatus.value.currentFuelLevel_pct") or is_valid_path(
+            self.attrs, "fuelStatus.rangeStatus.value.primaryEngine.currentFuelLevel_pct")
+        )
 
     # Climatisation settings
     @property
@@ -2139,10 +2138,9 @@ class Vehicle:
 
         :return:
         """
-        return (
-                is_valid_path(self.attrs, "trip_last.averageSpeed_kmph") and
-                type(find_path(self.attrs, "trip_last.averageSpeed_kmph")) in (float, int)
-        )
+        return is_valid_path(self.attrs, "trip_last.averageSpeed_kmph") and type(
+            find_path(self.attrs, "trip_last.averageSpeed_kmph")
+        ) in (float, int)
 
     @property
     def trip_last_average_electric_engine_consumption(self):
@@ -2165,10 +2163,9 @@ class Vehicle:
 
         :return:
         """
-        return (
-                is_valid_path(self.attrs, "trip_last.averageElectricConsumption") and
-                type(find_path(self.attrs, "trip_last.averageElectricConsumption")) in (float, int)
-        )
+        return is_valid_path(self.attrs, "trip_last.averageElectricConsumption") and type(
+            find_path(self.attrs, "trip_last.averageElectricConsumption")
+        ) in (float, int)
 
     @property
     def trip_last_average_fuel_consumption(self):
@@ -2191,10 +2188,9 @@ class Vehicle:
 
         :return:
         """
-        return (
-                is_valid_path(self.attrs, "trip_last.averageFuelConsumption") and
-                type(find_path(self.attrs, "trip_last.averageFuelConsumption")) in (float, int)
-        )
+        return is_valid_path(self.attrs, "trip_last.averageFuelConsumption") and type(
+            find_path(self.attrs, "trip_last.averageFuelConsumption")
+        ) in (float, int)
 
     @property
     def trip_last_average_auxillary_consumption(self):
@@ -2211,7 +2207,6 @@ class Vehicle:
         """Return last updated timestamp."""
         return find_path(self.attrs, "trip_last.tripEndTimestamp")
 
-
     @property
     def is_trip_last_average_auxillary_consumption_supported(self) -> bool:
         """
@@ -2219,11 +2214,9 @@ class Vehicle:
 
         :return:
         """
-        return (
-                is_valid_path(self.attrs, "trip_last.averageAuxiliaryConsumption") and
-                type(find_path(self.attrs, "trip_last.averageAuxiliaryConsumption")) in (float, int)
-        )
-
+        return is_valid_path(self.attrs, "trip_last.averageAuxiliaryConsumption") and type(
+            find_path(self.attrs, "trip_last.averageAuxiliaryConsumption")
+        ) in (float, int)
 
     @property
     def trip_last_average_aux_consumer_consumption(self):
@@ -2247,10 +2240,9 @@ class Vehicle:
 
         :return:
         """
-        return (
-                is_valid_path(self.attrs, "trip_last.averageAuxConsumerConsumption") and
-                type(find_path(self.attrs, "trip_last.averageAuxConsumerConsumption")) in (float, int)
-        )
+        return is_valid_path(self.attrs, "trip_last.averageAuxConsumerConsumption") and type(
+            find_path(self.attrs, "trip_last.averageAuxConsumerConsumption")
+        ) in (float, int)
 
     @property
     def trip_last_duration(self):
@@ -2260,7 +2252,6 @@ class Vehicle:
         :return:
         """
         return find_path(self.attrs, "trip_last.travelTime")
-
 
     @property
     def trip_last_duration_last_updated(self) -> datetime:
@@ -2274,11 +2265,9 @@ class Vehicle:
 
         :return:
         """
-        return (
-                is_valid_path(self.attrs, "trip_last.travelTime") and
-                type(find_path(self.attrs, "trip_last.travelTime")) in (float, int)
-        )
-
+        return is_valid_path(self.attrs, "trip_last.travelTime") and type(
+            find_path(self.attrs, "trip_last.travelTime")
+        ) in (float, int)
 
     @property
     def trip_last_length(self):
@@ -2294,7 +2283,6 @@ class Vehicle:
         """Return last updated timestamp."""
         return find_path(self.attrs, "trip_last.tripEndTimestamp")
 
-
     @property
     def is_trip_last_length_supported(self) -> bool:
         """
@@ -2302,11 +2290,9 @@ class Vehicle:
 
         :return:
         """
-        return (
-                is_valid_path(self.attrs, "trip_last.mileage_km") and
-                type(find_path(self.attrs, "trip_last.mileage_km")) in (float, int)
-        )
-
+        return is_valid_path(self.attrs, "trip_last.mileage_km") and type(
+            find_path(self.attrs, "trip_last.mileage_km")
+        ) in (float, int)
 
     @property
     def trip_last_recuperation(self):
@@ -2546,8 +2532,8 @@ class Vehicle:
     def is_secondary_drive_electric(self):
         """Check if secondary engine is electric."""
         return (
-                is_valid_path(self.attrs, "measurements.fuelLevelStatus.value.primaryEngineType") and
-                find_path(self.attrs, "measurements.fuelLevelStatus.value.primaryEngineType") == ENGINE_TYPE_ELECTRIC
+            is_valid_path(self.attrs, "measurements.fuelLevelStatus.value.primaryEngineType")
+            and find_path(self.attrs, "measurements.fuelLevelStatus.value.primaryEngineType") == ENGINE_TYPE_ELECTRIC
         )
 
     def is_primary_drive_combustion(self):

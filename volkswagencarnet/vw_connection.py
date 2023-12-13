@@ -1220,7 +1220,7 @@ class Connection:
             body = {
                 "grant_type": "refresh_token",
                 "refresh_token": self._session_tokens["identity"]["refresh_token"],
-                "client_id": CLIENT["Legacy"]["CLIENT_ID"]
+                "client_id": CLIENT["Legacy"]["CLIENT_ID"],
             }
             response = await self._session.post(
                 url="https://emea.bff.cariad.digital/login/v1/idk/token", headers=tHeaders, data=body
