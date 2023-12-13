@@ -1228,7 +1228,7 @@ class Vehicle:
         :return:
         """
         return is_valid_path(self.attrs, "measurements.fuelLevelStatus.value.currentFuelLevel_pct") or is_valid_path(
-            self.attrs, "fuelStatus.rangeStatus.value.primaryEngine.currentFuelLevel_pct")
+            self.attrs, "fuelStatus.rangeStatus.value.primaryEngine.currentFuelLevel_pct"
         )
 
     # Climatisation settings
