@@ -2337,8 +2337,7 @@ class Vehicle:
 
         :return:
         """
-        value = self.trip_last_entry.get("averageRecuperation")
-        return float(value / 10)
+        return self.trip_last_entry.get("averageRecuperation")
 
     @property
     def trip_last_average_recuperation_last_updated(self) -> datetime:
