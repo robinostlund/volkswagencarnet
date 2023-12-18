@@ -29,11 +29,9 @@ from .vw_const import (
     HEADERS_SESSION,
     HEADERS_AUTH,
     BASE_SESSION,
+    BASE_API,
     BASE_AUTH,
     CLIENT,
-    XCLIENT_ID,
-    XAPPVERSION,
-    XAPPNAME,
     USER_AGENT,
     APP_URI,
 )
@@ -83,6 +81,8 @@ class Connection:
         self._jarCookie = ""
         self._state = {}
 
+        self._service_status = {}
+
     def _clear_cookies(self):
         self._session._cookie_jar._cookies.clear()
 
@@ -103,32 +103,23 @@ class Connection:
 
         _LOGGER.info("Successfully logged in")
         self._session_tokens["identity"] = self._session_tokens["Legacy"].copy()
-        self._session_logged_in = True
-
-        # Get VW-Group API tokens
-        if not await self._getAPITokens():
-            self._session_logged_in = False
-            return False
 
         # Get list of vehicles from account
         _LOGGER.debug("Fetching vehicles associated with account")
-        await self.set_token("vwg")
         self._session_headers.pop("Content-Type", None)
-        loaded_vehicles = await self.get(
-            url=f"https://msg.volkswagen.de/fs-car/usermanagement/users/v1/{BRAND}/{self._session_country}/vehicles"
-        )
+        loaded_vehicles = await self.get(url=f"{BASE_API}/vehicle/v2/vehicles")
         # Add Vehicle class object for all VIN-numbers from account
-        if loaded_vehicles.get("userVehicles") is not None:
+        if loaded_vehicles.get("data") is not None:
             _LOGGER.debug("Found vehicle(s) associated with account.")
-            for vehicle in loaded_vehicles.get("userVehicles").get("vehicle"):
-                self._vehicles.append(Vehicle(self, vehicle))
+            self._vehicles = []
+            for vehicle in loaded_vehicles.get("data"):
+                self._vehicles.append(Vehicle(self, vehicle.get("vin")))
         else:
             _LOGGER.warning("Failed to login to We Connect API.")
             self._session_logged_in = False
             return False
 
         # Update all vehicles data before returning
-        await self.set_token("vwg")
         await self.update()
         return True
 
@@ -165,16 +156,18 @@ class Connection:
             self._session_auth_headers = HEADERS_AUTH.copy()
             if self._session_fulldebug:
                 _LOGGER.debug("Requesting openid config")
-            req = await self._session.get(url="https://identity.vwgroup.io/.well-known/openid-configuration")
+            req = await self._session.get(url=f"{BASE_API}/login/v1/idk/openid-configuration")
             if req.status != 200:
                 _LOGGER.debug("OpenId config error")
                 return False
             response_data = await req.json()
             authorization_endpoint = response_data["authorization_endpoint"]
+            token_endpoint = response_data["token_endpoint"]
             auth_issuer = response_data["issuer"]
 
             # Get authorization page (login page)
             # https://identity.vwgroup.io/oidc/v1/authorize?nonce={NONCE}&state={STATE}&response_type={TOKEN_TYPES}&scope={SCOPE}&redirect_uri={APP_URI}&client_id={CLIENT_ID}
+            # https://identity.vwgroup.io/oidc/v1/authorize?client_id={CLIENT_ID}&scope={SCOPE}&response_type={TOKEN_TYPES}&redirect_uri={APP_URI}
             if self._session_fulldebug:
                 _LOGGER.debug(f'Get authorization page from "{authorization_endpoint}"')
                 self._session_auth_headers.pop("Referer", None)
@@ -186,7 +179,6 @@ class Connection:
                     raise ValueError("Verifier too short. n_bytes must be > 30.")
                 elif len(code_verifier) > 128:
                     raise ValueError("Verifier too long. n_bytes must be < 97.")
-                challenge = base64URLEncode(hashlib.sha256(code_verifier).digest())
 
                 req = await self._session.get(
                     url=authorization_endpoint,
@@ -194,11 +186,6 @@ class Connection:
                     allow_redirects=False,
                     params={
                         "redirect_uri": APP_URI,
-                        "prompt": "login",
-                        "nonce": getNonce(),
-                        "state": getNonce(),
-                        "code_challenge_method": "s256",
-                        "code_challenge": challenge.decode(),
                         "response_type": CLIENT[client].get("TOKEN_TYPES"),
                         "client_id": CLIENT[client].get("CLIENT_ID"),
                         "scope": CLIENT[client].get("SCOPE"),
@@ -222,7 +209,7 @@ class Connection:
                         )
                 else:
                     _LOGGER.warning("Unable to fetch authorization endpoint.")
-                    raise Exception('Missing "location" header')
+                    raise Exception(f'Missing "location" header, payload returned: {await req.content.read()}')
             except Exception as error:
                 _LOGGER.warning("Failed to get authorization endpoint")
                 raise error
@@ -329,24 +316,24 @@ class Connection:
             _LOGGER.debug("Login successful, received authorization code.")
 
             # Extract code and tokens
-            parsed_qs = parse_qs(urlparse(ref).fragment)
+            parsed_qs = parse_qs(urlparse(ref).query)
             jwt_auth_code = parsed_qs["code"][0]
-            jwt_id_token = parsed_qs["id_token"][0]
+            # jwt_id_token = parsed_qs["id_token"][0]
             # Exchange Auth code and id_token for new tokens with refresh_token (so we can easier fetch new ones later)
             token_body = {
-                "auth_code": jwt_auth_code,
-                "id_token": jwt_id_token,
-                "code_verifier": code_verifier.decode(),
-                "brand": BRAND,
+                "client_id": CLIENT[client].get("CLIENT_ID"),
+                "grant_type": "authorization_code",
+                "code": jwt_auth_code,
+                "redirect_uri": APP_URI
+                # "brand": BRAND,
             }
             _LOGGER.debug("Trying to fetch user identity tokens.")
-            token_url = "https://tokenrefreshservice.apps.emea.vwapps.io/exchangeAuthCode"
+            token_url = token_endpoint
             req = await self._session.post(
                 url=token_url, headers=self._session_auth_headers, data=token_body, allow_redirects=False
             )
             if req.status != 200:
-                raise Exception("Token exchange failed")
-            # Save tokens as "identity", these are tokens representing the user
+                raise Exception(f"Token exchange failed. Received message: {await req.content.read()}")
             self._session_tokens[client] = await req.json()
             if "error" in self._session_tokens[client]:
                 error_msg = self._session_tokens[client].get("error", "")
@@ -362,61 +349,13 @@ class Connection:
                 _LOGGER.warning("User identity token could not be verified!")
             else:
                 _LOGGER.debug("User identity token verified OK.")
+                self._session_logged_in = True
         except Exception as error:
             _LOGGER.error(f"Login failed for {BRAND} account, {error}")
             _LOGGER.exception(error)
             self._session_logged_in = False
             return False
-        return True
-
-    async def _getAPITokens(self):
-        try:
-            # Get VW Group API tokens
-            # https://mbboauth-1d.prd.ece.vwg-connect.com/mbbcoauth/mobile/oauth2/v1/token
-            tokenBody2 = {
-                "grant_type": "id_token",
-                "token": self._session_tokens["identity"]["id_token"],
-                "scope": "sc2:fal",
-            }
-            _LOGGER.debug("Trying to fetch api tokens.")
-            req = await self._session.post(
-                url="https://mbboauth-1d.prd.ece.vwg-connect.com/mbbcoauth/mobile/oauth2/v1/token",
-                headers={
-                    "User-Agent": USER_AGENT,
-                    "X-App-Version": XAPPVERSION,
-                    "X-App-Name": XAPPNAME,
-                    "X-Client-Id": XCLIENT_ID,
-                },
-                data=tokenBody2,
-                allow_redirects=False,
-            )
-            if req.status > 400:
-                _LOGGER.debug("API token request failed.")
-                raise Exception(f"API token request returned with status code {req.status}")
-            else:
-                # Save tokens as "vwg", use these for get/posts to VW Group API
-                self._session_tokens["vwg"] = await req.json()
-                if "error" in self._session_tokens["vwg"]:
-                    error = self._session_tokens["vwg"].get("error", "")
-                    if "error_description" in self._session_tokens["vwg"]:
-                        error_description = self._session_tokens["vwg"].get("error_description", "")
-                        raise Exception(f"{error} - {error_description}")
-                    else:
-                        raise Exception(error)
-                if self._session_fulldebug:
-                    for token in self._session_tokens.get("vwg", {}):
-                        _LOGGER.debug(f"Got token {token}")
-                if not await self.verify_tokens(self._session_tokens["vwg"].get("access_token", ""), "vwg"):
-                    _LOGGER.warning("VW-Group API token could not be verified!")
-                else:
-                    _LOGGER.debug("VW-Group API token verified OK.")
-
-            # Update headers for requests, defaults to using VWG token
-            self._session_headers["Authorization"] = "Bearer " + self._session_tokens["vwg"]["access_token"]
-        except Exception as error:
-            _LOGGER.error(f"Failed to fetch VW-Group API tokens, {error}")
-            self._session_logged_in = False
-            return False
+        self._session_headers["Authorization"] = "Bearer " + self._session_tokens[client]["access_token"]
         return True
 
     async def terminate(self):
@@ -426,77 +365,75 @@ class Connection:
 
     async def logout(self):
         """Logout, revoke tokens."""
+        # TODO: not tested yet
         self._session_headers.pop("Authorization", None)
 
         if self._session_logged_in:
-            if self._session_headers.get("vwg", {}).get("access_token"):
-                _LOGGER.info("Revoking API Access Token...")
-                self._session_headers["token_type_hint"] = "access_token"
-                params = {"token": self._session_tokens["vwg"]["access_token"]}
-                await self.post(
-                    "https://mbboauth-1d.prd.ece.vwg-connect.com/mbbcoauth/mobile/oauth2/v1/revoke", data=params
-                )
-            if self._session_headers.get("vwg", {}).get("refresh_token"):
-                _LOGGER.info("Revoking API Refresh Token...")
-                self._session_headers["token_type_hint"] = "refresh_token"
-                params = {"token": self._session_tokens["vwg"]["refresh_token"]}
-                await self.post(
-                    "https://mbboauth-1d.prd.ece.vwg-connect.com/mbbcoauth/mobile/oauth2/v1/revoke", data=params
-                )
-                self._session_headers.pop("token_type_hint", None)
             if self._session_headers.get("identity", {}).get("identity_token"):
                 _LOGGER.info("Revoking Identity Access Token...")
                 # params = {
                 #    "token": self._session_tokens['identity']['access_token'],
                 #    "brand": BRAND
                 # }
-                # revoke_at = await self.post('https://tokenrefreshservice.apps.emea.vwapps.io/revokeToken', data = params)
+                # revoke_at = await self.post('https://emea.bff.cariad.digital/login/v1/idk/revoke', data = params)
             if self._session_headers.get("identity", {}).get("refresh_token"):
                 _LOGGER.info("Revoking Identity Refresh Token...")
-                params = {"token": self._session_tokens["identity"]["refresh_token"], "brand": BRAND}
-                await self.post("https://tokenrefreshservice.apps.emea.vwapps.io/revokeToken", data=params)
+                params = {"token": self._session_tokens["identity"]["refresh_token"]}
+                await self.post("https://emea.bff.cariad.digital/login/v1/idk/revoke", data=params)
 
     # HTTP methods to API
     async def _request(self, method, url, **kwargs):
         """Perform a query to the VW-Group API."""
         _LOGGER.debug(f'HTTP {method} "{url}"')
-        async with self._session.request(
-            method,
-            url,
-            headers=self._session_headers,
-            timeout=ClientTimeout(total=TIMEOUT.seconds),
-            cookies=self._jarCookie,
-            raise_for_status=False,
-            **kwargs,
-        ) as response:
-            response.raise_for_status()
+        try:
+            async with self._session.request(
+                method,
+                url,
+                headers=self._session_headers,
+                timeout=ClientTimeout(total=TIMEOUT.seconds),
+                cookies=self._jarCookie,
+                raise_for_status=False,
+                **kwargs,
+            ) as response:
+                response.raise_for_status()
 
-            # Update cookie jar
-            if self._jarCookie != "":
-                self._jarCookie.update(response.cookies)
-            else:
-                self._jarCookie = response.cookies
-
-            try:
-                if response.status == 204:
-                    res = {"status_code": response.status}
-                elif response.status >= 200 or response.status <= 300:
-                    res = await response.json(loads=json_loads)
+                # Update cookie jar
+                if self._jarCookie != "":
+                    self._jarCookie.update(response.cookies)
                 else:
-                    res = {}
-                    _LOGGER.debug(f"Not success status code [{response.status}] response: {response}")
-                if "X-RateLimit-Remaining" in response.headers:
-                    res["rate_limit_remaining"] = response.headers.get("X-RateLimit-Remaining", "")
-            except Exception:
-                res = {}
-                _LOGGER.debug(f"Something went wrong [{response.status}] response: {response}")
-                return res
+                    self._jarCookie = response.cookies
 
-            if self._session_fulldebug:
-                _LOGGER.debug(f'Request for "{url}" returned with status code [{response.status}], response: {res}')
-            else:
-                _LOGGER.debug(f'Request for "{url}" returned with status code [{response.status}]')
-            return res
+                # Update service status
+                await self.update_service_status(url, response.status)
+
+                try:
+                    if response.status == 204:
+                        res = {"status_code": response.status}
+                    elif response.status >= 200 or response.status <= 300:
+                        res = await response.json(loads=json_loads)
+                    else:
+                        res = {}
+                        _LOGGER.debug(f"Not success status code [{response.status}] response: {response.text}")
+                    if "X-RateLimit-Remaining" in response.headers:
+                        res["rate_limit_remaining"] = response.headers.get("X-RateLimit-Remaining", "")
+                except Exception:
+                    res = {}
+                    _LOGGER.debug(f"Something went wrong [{response.status}] response: {response.text}")
+                    return res
+
+                if self._session_fulldebug:
+                    _LOGGER.debug(f'Request for "{url}" returned with status code [{response.status}], response: {res}')
+                else:
+                    _LOGGER.debug(f'Request for "{url}" returned with status code [{response.status}]')
+                return res
+        except client_exceptions.ClientResponseError as httperror:
+            # Update service status
+            await self.update_service_status(url, httperror.code)
+            raise httperror from None
+        except Exception as error:
+            # Update service status
+            await self.update_service_status(url, 1000)
+            raise error from None
 
     async def get(self, url, vin="", tries=0):
         """Perform a get query."""
@@ -541,6 +478,8 @@ class Connection:
 
     # Construct URL from request, home region and variables
     def _make_url(self, ref, vin=""):
+        # TODO after verifying that we don't need home region handling anymore, this method should be completely removed
+        return ref
         replacedUrl = re.sub("\\$vin", vin, ref)
         if "://" in replacedUrl:
             # already server contained in URL
@@ -583,7 +522,8 @@ class Connection:
         if not await self.validate_tokens:
             return False
         try:
-            await self.set_token("vwg")
+            # TODO: handle multiple home regions! (no examples available currently)
+            return True
             response = await self.get(
                 "https://mal-1a.prd.ece.vwg-connect.com/api/cs/vds/v1/vehicles/$vin/homeRegion", vin
             )
@@ -604,10 +544,9 @@ class Connection:
         if not await self.validate_tokens:
             return False
         try:
-            await self.set_token("vwg")
-            response = await self.get("/api/rolesrights/operationlist/v3/vehicles/$vin", vin)
-            if response.get("operationList", False):
-                data = response.get("operationList", {})
+            response = await self.get(f"{BASE_API}/vehicle/v1/vehicles/{vin}/capabilities", "")
+            if response.get("capabilities", False):
+                data = response.get("capabilities", {})
             elif response.get("status_code", {}):
                 _LOGGER.warning(f'Could not fetch operation list, HTTP status code: {response.get("status_code")}')
                 data = response
@@ -619,6 +558,82 @@ class Connection:
             data = {"error": "unknown"}
         return data
 
+    async def getSelectiveStatus(self, vin, services):
+        """Get status information for specified services."""
+        if not await self.validate_tokens:
+            return False
+        try:
+            response = await self.get(
+                f"{BASE_API}/vehicle/v1/vehicles/{vin}/selectivestatus?jobs={','.join(services)}", ""
+            )
+
+            for service in services:
+                if not response.get(service):
+                    _LOGGER.debug(
+                        f"Did not receive return data for requested service {service}. (This is expected for several service/car combinations)"
+                    )
+
+            return response
+
+        except Exception as error:
+            _LOGGER.warning(f"Could not fetch selectivestatus, error: {error}")
+        return False
+
+    async def getVehicleData(self, vin):
+        """Get car information like VIN, nickname, etc."""
+        if not await self.validate_tokens:
+            return False
+        try:
+            response = await self.get(f"{BASE_API}/vehicle/v2/vehicles", "")
+
+            for vehicle in response.get("data"):
+                if vehicle.get("vin") == vin:
+                    data = {"vehicle": vehicle}
+                    return data
+
+            _LOGGER.warning(f"Could not fetch vehicle data for vin {vin}")
+
+        except Exception as error:
+            _LOGGER.warning(f"Could not fetch vehicle data, error: {error}")
+        return False
+
+    async def getParkingPosition(self, vin):
+        """Get information about the parking position."""
+        if not await self.validate_tokens:
+            return False
+        try:
+            response = await self.get(f"{BASE_API}/vehicle/v1/vehicles/{vin}/parkingposition", "")
+
+            if "data" in response:
+                return {"isMoving": False, "parkingposition": response["data"]}
+            elif response.get("status_code", {}):
+                if response.get("status_code", 0) == 204:
+                    _LOGGER.debug("Seems car is moving, HTTP 204 received from parkingposition")
+                    data = {"isMoving": True, "parkingposition": {}}
+                    return data
+                else:
+                    _LOGGER.warning(f'Could not fetch parkingposition, HTTP status code: {response.get("status_code")}')
+            else:
+                _LOGGER.info("Unhandled error while trying to fetch parkingposition data")
+        except Exception as error:
+            _LOGGER.warning(f"Could not fetch parkingposition, error: {error}")
+        return False
+
+    async def getTripLast(self, vin):
+        """Get car information like VIN, nickname, etc."""
+        if not await self.validate_tokens:
+            return False
+        try:
+            response = await self.get(f"{BASE_API}/vehicle/v1/trips/{vin}/shortterm/last", "")
+            if "data" in response:
+                return {"trip_last": response["data"]}
+            else:
+                _LOGGER.warning(f"Could not fetch last trip data, server response: {response}")
+
+        except Exception as error:
+            _LOGGER.warning(f"Could not fetch last trip data, error: {error}")
+        return False
+
     async def getRealCarData(self, vin):
         """Get car information from customer profile, VIN, nickname, etc."""
         if not await self.validate_tokens:
@@ -629,7 +644,6 @@ class Connection:
             subject = jwt.decode(atoken, options={"verify_signature": False}, algorithms=JWT_ALGORITHMS).get(
                 "sub", None
             )
-            await self.set_token("identity")
             self._session_headers["Accept"] = "application/json"
             response = await self.get(f"https://customer-profile.vwgroup.io/v1/customers/{subject}/realCarData")
             if response.get("realCars", {}):
@@ -647,36 +661,9 @@ class Connection:
             _LOGGER.warning(f"Could not fetch realCarData, error: {error}")
         return False
 
-    async def getCarportData(self, vin):
-        """Get carport data for vehicle, model, model year etc."""
-        if not await self.validate_tokens:
-            return False
-        try:
-            await self.set_token("vwg")
-            self._session_headers["Accept"] = (
-                "application/vnd.vwg.mbb.vehicleDataDetail_v2_1_0+json,"
-                " application/vnd.vwg.mbb.genericError_v1_0_2+json"
-            )
-            response = await self.get(
-                f"fs-car/vehicleMgmt/vehicledata/v2/{BRAND}/{self._session_country}/vehicles/$vin", vin=vin
-            )
-            self._session_headers["Accept"] = "application/json"
-
-            if response.get("vehicleDataDetail", {}).get("carportData", {}):
-                data = {"carportData": response.get("vehicleDataDetail", {}).get("carportData", {})}
-                return data
-            elif response.get("status_code", {}):
-                _LOGGER.warning(f'Could not fetch carportdata, HTTP status code: {response.get("status_code")}')
-            else:
-                _LOGGER.info("Unhandled error while trying to fetch carport data")
-        except Exception as error:
-            _LOGGER.warning(f"Could not fetch carportData, error: {error}")
-        return False
-
     async def getVehicleStatusData(self, vin):
         """Get stored vehicle data response."""
         try:
-            await self.set_token("vwg")
             response = await self.get(f"fs-car/bs/vsr/v1/{BRAND}/{self._session_country}/vehicles/$vin/status", vin=vin)
             if (
                 response.get("StoredVehicleDataResponse", {})
@@ -708,7 +695,6 @@ class Connection:
         if not await self.validate_tokens:
             return False
         try:
-            await self.set_token("vwg")
             response = await self.get(
                 f"fs-car/bs/tripstatistics/v1/{BRAND}/{self._session_country}/vehicles/$vin/tripdata/shortTerm?newest",
                 vin=vin,
@@ -729,7 +715,6 @@ class Connection:
         if not await self.validate_tokens:
             return False
         try:
-            await self.set_token("vwg")
             response = await self.get(
                 f"fs-car/bs/cf/v1/{BRAND}/{self._session_country}/vehicles/$vin/position", vin=vin
             )
@@ -754,7 +739,6 @@ class Connection:
         if not await self.validate_tokens:
             return None
         try:
-            await self.set_token("vwg")
             response = await self.get(
                 f"fs-car/bs/departuretimer/v1/{BRAND}/{self._session_country}/vehicles/$vin/timer", vin=vin
             )
@@ -774,7 +758,6 @@ class Connection:
         if not await self.validate_tokens:
             return False
         try:
-            await self.set_token("vwg")
             response = await self.get(
                 f"fs-car/bs/climatisation/v1/{BRAND}/{self._session_country}/vehicles/$vin/climater", vin=vin
             )
@@ -794,7 +777,6 @@ class Connection:
         if not await self.validate_tokens:
             return False
         try:
-            await self.set_token("vwg")
             response = await self.get(
                 f"fs-car/bs/batterycharge/v1/{BRAND}/{self._session_country}/vehicles/$vin/charger", vin=vin
             )
@@ -814,7 +796,6 @@ class Connection:
         if not await self.validate_tokens:
             return False
         try:
-            await self.set_token("vwg")
             response = await self.get(f"fs-car/bs/rs/v1/{BRAND}/{self._session_country}/vehicles/$vin/status", vin=vin)
             if response.get("statusResponse", {}):
                 data = {"heating": response.get("statusResponse", {})}
@@ -839,7 +820,6 @@ class Connection:
                 if not await self.doLogin():
                     _LOGGER.warning(f"Login for {BRAND} account failed!")
                     raise Exception(f"Login for {BRAND} account failed")
-            await self.set_token("vwg")
             if sectionId == "climatisation":
                 url = (
                     f"fs-car/bs/$sectionId/v1/{BRAND}/{self._session_country}/vehicles/$vin/climater/actions/$requestId"
@@ -964,7 +944,6 @@ class Connection:
     async def setRefresh(self, vin):
         """Force vehicle data update."""
         try:
-            await self.set_token("vwg")
             response = await self.dataCall(
                 f"fs-car/bs/vsr/v1/{BRAND}/{self._session_country}/vehicles/$vin/requests", vin, data=None
             )
@@ -987,7 +966,6 @@ class Connection:
     async def setCharger(self, vin, data) -> dict[str, str | int | None]:
         """Start/Stop charger."""
         try:
-            await self.set_token("vwg")
             response = await self.dataCall(
                 f"fs-car/bs/batterycharge/v1/{BRAND}/{self._session_country}/vehicles/$vin/charger/actions",
                 vin,
@@ -1012,7 +990,6 @@ class Connection:
     async def setClimater(self, vin, data, spin):
         """Execute climatisation actions."""
         try:
-            await self.set_token("vwg")
             # Only get security token if auxiliary heater is to be started
             if data.get("action", {}).get("settings", {}).get("heaterSource", None) == "auxiliary":
                 self._session_headers["X-securityToken"] = await self.get_sec_token(vin=vin, spin=spin, action="rclima")
@@ -1043,7 +1020,6 @@ class Connection:
         """Petrol/diesel parking heater actions."""
         content_type = None
         try:
-            await self.set_token("vwg")
             if "Content-Type" in self._session_headers:
                 content_type = self._session_headers["Content-Type"]
             else:
@@ -1103,7 +1079,6 @@ class Connection:
     async def _setDepartureTimer(self, vin, data: TimersAndProfiles, action: str):
         """Set schedules."""
         try:
-            await self.set_token("vwg")
             response = await self.dataCall(
                 f"fs-car/bs/departuretimer/v1/{BRAND}/{self._session_country}/vehicles/$vin/timer/actions",
                 vin=vin,
@@ -1137,7 +1112,6 @@ class Connection:
         """Remote lock and unlock actions."""
         content_type = None
         try:
-            await self.set_token("vwg")
             # Prepare data, headers and fetch security token
             if "Content-Type" in self._session_headers:
                 content_type = self._session_headers["Content-Type"]
@@ -1181,7 +1155,7 @@ class Connection:
     async def validate_tokens(self):
         """Validate expiry of tokens."""
         idtoken = self._session_tokens["identity"]["id_token"]
-        atoken = self._session_tokens["vwg"]["access_token"]
+        atoken = self._session_tokens["identity"]["access_token"]
         id_exp = jwt.decode(
             idtoken, options={"verify_signature": False, "verify_aud": False}, algorithms=JWT_ALGORITHMS
         ).get("exp", None)
@@ -1212,7 +1186,7 @@ class Connection:
     async def verify_tokens(self, token, type, client="Legacy"):
         """Verify JWT against JWK(s)."""
         if type == "identity":
-            req = await self._session.get(url="https://identity.vwgroup.io/oidc/v1/keys")
+            req = await self._session.get(url="https://identity.vwgroup.io/v1/jwks")
             keys = await req.json()
             audience = [
                 CLIENT[client].get("CLIENT_ID"),
@@ -1220,10 +1194,6 @@ class Connection:
                 "https://api.vas.eu.dp15.vwg-connect.com",
                 "https://api.vas.eu.wcardp.io",
             ]
-        elif type == "vwg":
-            req = await self._session.get(url="https://mbboauth-1d.prd.ece.vwg-connect.com/mbbcoauth/public/jwk/v1")
-            keys = await req.json()
-            audience = "mal.prd.ece.vwg-connect.com"
         else:
             _LOGGER.debug("Not implemented")
             return False
@@ -1235,8 +1205,6 @@ class Connection:
                     pubkeys[kid] = jwt.algorithms.RSAAlgorithm.from_jwk(to_json(jwk))
 
             token_kid = jwt.get_unverified_header(token)["kid"]
-            if type == "vwg":
-                token_kid = "VWGMBB01DELIV1." + token_kid
 
             pubkey = pubkeys[token_kid]
             jwt.decode(token, key=pubkey, algorithms=JWT_ALGORITHMS, audience=audience)
@@ -1253,19 +1221,17 @@ class Connection:
                 "Connection": "keep-alive",
                 "Content-Type": "application/x-www-form-urlencoded",
                 "User-Agent": USER_AGENT,
-                "X-App-Version": XAPPVERSION,
-                "X-App-Name": XAPPNAME,
-                "X-Client-Id": XCLIENT_ID,
             }
 
             body = {
                 "grant_type": "refresh_token",
-                "brand": BRAND,
                 "refresh_token": self._session_tokens["identity"]["refresh_token"],
+                "client_id": CLIENT["Legacy"]["CLIENT_ID"],
             }
             response = await self._session.post(
-                url="https://tokenrefreshservice.apps.emea.vwapps.io/refreshTokens", headers=tHeaders, data=body
+                url="https://emea.bff.cariad.digital/login/v1/idk/token", headers=tHeaders, data=body
             )
+            await self.update_service_status("token", response.status)
             if response.status == 200:
                 tokens = await response.json()
                 # Verify Token
@@ -1273,37 +1239,50 @@ class Connection:
                     _LOGGER.warning("Token could not be verified!")
                 for token in tokens:
                     self._session_tokens["identity"][token] = tokens[token]
+                self._session_headers["Authorization"] = "Bearer " + self._session_tokens["identity"]["access_token"]
             else:
                 _LOGGER.warning(f"Something went wrong when refreshing {BRAND} account tokens.")
                 return False
 
-            body = {"grant_type": "id_token", "scope": "sc2:fal", "token": self._session_tokens["identity"]["id_token"]}
-
-            response = await self._session.post(
-                url="https://mbboauth-1d.prd.ece.vwg-connect.com/mbbcoauth/mobile/oauth2/v1/token",
-                headers=tHeaders,
-                data=body,
-                allow_redirects=True,
-            )
-            if response.status == 200:
-                tokens = await response.json()
-                if not await self.verify_tokens(tokens["access_token"], "vwg"):
-                    _LOGGER.warning("Token could not be verified!")
-                for token in tokens:
-                    self._session_tokens["vwg"][token] = tokens[token]
-            else:
-                resp = await response.text()
-                _LOGGER.warning("Something went wrong when refreshing API tokens. %s" % resp)
-                return False
             return True
         except Exception as error:
             _LOGGER.warning(f"Could not refresh tokens: {error}")
             return False
 
-    async def set_token(self, type):
-        """Switch between tokens."""
-        self._session_headers["Authorization"] = "Bearer " + self._session_tokens[type]["access_token"]
-        return
+    async def update_service_status(self, url, response_code):
+        """Update service status."""
+        if response_code in [200, 204, 207]:
+            status = "Up"
+        elif response_code == 401:
+            status = "Unauthorized"
+        elif response_code == 403:
+            status = "Forbidden"
+        elif response_code == 429:
+            status = "Rate limited"
+        elif response_code == 1000:
+            status = "Error"
+        else:
+            status = "Down"
+
+        if "vehicle/v2/vehicles" in url:
+            self._service_status["vehicles"] = status
+        elif "parkingposition" in url:
+            self._service_status["parkingposition"] = status
+        elif "/vehicle/v1/trips/" in url:
+            self._service_status["trips"] = status
+        elif "capabilities" in url:
+            self._service_status["capabilities"] = status
+        elif "selectivestatus" in url:
+            self._service_status["selectivestatus"] = status
+        elif "token" in url:
+            self._service_status["token"] = status
+        else:
+            _LOGGER.debug(f'Unhandled API URL: "{url}"')
+
+    async def get_service_status(self):
+        """Return list of service statuses."""
+        _LOGGER.debug("Getting API status updates")
+        return self._service_status
 
     # Class helpers #
     @property
