@@ -1,0 +1,14 @@
+{
+  "data": {
+    "id": "2000000000",
+    "tripEndTimestamp": "2023-11-30T08:53:20Z",
+    "tripType": "shortTerm",
+    "vehicleType": "fuel",
+    "mileage_km": 18,
+    "startMileage_km": 38933,
+    "overallMileage_km": 38952,
+    "travelTime": 27,
+    "averageFuelConsumption": 7.1,
+    "averageSpeed_kmph": 41
+  }
+}
