@@ -382,7 +382,7 @@ class Connection:
                 await self.post("https://emea.bff.cariad.digital/login/v1/idk/revoke", data=params)
 
     # HTTP methods to API
-    async def _request(self, method, url, **kwargs):
+    async def _request(self, method, url, return_raw=False, **kwargs):
         """Perform a query to the VW-Group API."""
         _LOGGER.debug(f'HTTP {method} "{url}"')
         try:
@@ -408,7 +408,10 @@ class Connection:
 
                 try:
                     if response.status == 204:
-                        res = {"status_code": response.status}
+                        if return_raw:
+                            res = response
+                        else:
+                            res = {"status_code": response.status}
                     elif response.status >= 200 or response.status <= 300:
                         res = await response.json(loads=json_loads)
                     else:
@@ -419,12 +422,18 @@ class Connection:
                 except Exception:
                     res = {}
                     _LOGGER.debug(f"Something went wrong [{response.status}] response: {response.text}")
-                    return res
+                    if return_raw:
+                        return response
+                    else:
+                        return res
 
                 if self._session_fulldebug:
                     _LOGGER.debug(f'Request for "{url}" returned with status code [{response.status}], response: {res}')
                 else:
                     _LOGGER.debug(f'Request for "{url}" returned with status code [{response.status}]')
+
+                if return_raw:
+                    res = response
                 return res
         except client_exceptions.ClientResponseError as httperror:
             # Update service status
@@ -462,19 +471,21 @@ class Connection:
                 _LOGGER.error(f"Got unhandled error from server: {error.status}")
             return {"status_code": error.status}
 
-    async def post(self, url, vin="", tries=0, **data):
+    async def post(self, url, vin="", tries=0, return_raw=False, **data):
         """Perform a post query."""
         try:
             if data:
-                return await self._request(METH_POST, self._make_url(url, vin), **data)
+                return await self._request(METH_POST, self._make_url(url, vin), return_raw=return_raw, **data)
             else:
-                return await self._request(METH_POST, self._make_url(url, vin))
+                return await self._request(METH_POST, self._make_url(url, vin), return_raw=return_raw)
         except client_exceptions.ClientResponseError as error:
             if error.status == 429 and tries < MAX_RETRIES_ON_RATE_LIMIT:
                 delay = randint(1, 3 + tries * 2)
                 _LOGGER.debug(f"Server side throttled. Waiting {delay}, try {tries + 1}")
                 await asyncio.sleep(delay)
-                return await self.post(url, vin, tries + 1, **data)
+                return await self.post(url, vin, tries + 1, return_raw=return_raw, **data)
+            else:
+                raise
 
     # Construct URL from request, home region and variables
     def _make_url(self, ref, vin=""):
@@ -864,6 +875,20 @@ class Connection:
             _LOGGER.warning(f"Failure during get request status: {error}")
             raise Exception(f"Failure during get request status: {error}")
 
+    async def check_spin_state(self):
+        """Determine SPIN state to prevent lockout due to wrong SPIN."""
+        result = await self.get(f"{BASE_API}/vehicle/v1/spin/state")
+        remainingTries = result.get("remainingTries", None)
+        if remainingTries is None:
+            raise Exception("Couldn't determine S-PIN state.")
+
+        if remainingTries < 3:
+            raise Exception("Remaining tries for S-PIN is < 3. Bailing out for security reasons. " +
+                            "To resume operation, please make sure the correct S-PIN has been set in the integration " +
+                            "and then use the correct S-PIN once via the Volkswagen app.")
+
+        return True
+
     async def get_sec_token(self, vin, spin, action):
         """Get a security token, required for certain set functions."""
         urls = {
@@ -1108,47 +1133,30 @@ class Connection:
             self._session_headers.pop("X-securityToken", None)
             raise
 
-    async def setLock(self, vin, data, spin):
+    async def setLock(self, vin, lock, spin):
         """Remote lock and unlock actions."""
-        content_type = None
+        await self.check_spin_state()
+
+        action = "lock" if lock else "unlock"
+
         try:
-            # Prepare data, headers and fetch security token
-            if "Content-Type" in self._session_headers:
-                content_type = self._session_headers["Content-Type"]
-            else:
-                content_type = ""
-            if "unlock" in data:
-                self._session_headers["X-mbbSecToken"] = await self.get_sec_token(vin=vin, spin=spin, action="unlock")
-            else:
-                self._session_headers["X-mbbSecToken"] = await self.get_sec_token(vin=vin, spin=spin, action="lock")
-            self._session_headers["Content-Type"] = "application/vnd.vwg.mbb.RemoteLockUnlock_v1_0_0+xml"
-            response = await self.dataCall(
-                f"fs-car/bs/rlu/v1/{BRAND}/{self._session_country}/vehicles/$vin/actions", vin, data=data
-            )
-            # Clean up headers
-            self._session_headers.pop("X-mbbSecToken", None)
-            self._session_headers.pop("Content-Type", None)
-            if content_type:
-                self._session_headers["Content-Type"] = content_type
+            response_raw = await self.post(f"{BASE_API}/vehicle/v1/vehicles/{vin}/access/{action}", json={"spin":spin}, return_raw=True)
+
+            response = await response_raw.json(loads=json_loads)
             if not response:
                 raise Exception("Invalid or no response")
             elif response == 429:
                 return dict({"id": None, "state": "Throttled", "rate_limit_remaining": 0})
             else:
-                request_id = response.get("rluActionResponse", {}).get("requestId", 0)
-                request_state = response.get("rluActionResponse", {}).get("requestId", "unknown")
-                remaining = response.get("rate_limit_remaining", -1)
+                request_id = response.get("data", {}).get("requestID", 0)
+                remaining = response_raw.headers.get("Vcf-Remaining-Calls")
                 _LOGGER.debug(
-                    f'Request for lock action returned with state "{request_state}", request id: {request_id},'
+                    f'Request for lock action returned with request id: {request_id},'
                     f" remaining requests: {remaining}"
                 )
-                return dict({"id": str(request_id), "state": request_state, "rate_limit_remaining": remaining})
-        except:
-            self._session_headers.pop("X-mbbSecToken", None)
-            self._session_headers.pop("Content-Type", None)
-            if content_type:
-                self._session_headers["Content-Type"] = content_type
-            raise
+                return dict({"id": str(request_id), "rate_limit_remaining": remaining})
+        except Exception as e:
+            raise Exception("Unknown error during setLock") from e
 
     # Token handling #
     @property

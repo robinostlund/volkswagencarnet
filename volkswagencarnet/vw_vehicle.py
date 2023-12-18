@@ -536,19 +536,18 @@ class Vehicle:
     # Lock (RLU)
     async def set_lock(self, action, spin):
         """Remote lock and unlock actions."""
-        if not self._services.get("rlu_v1", {}).get("active", False):
+        if not self._services.get("access", {}).get("active", False):
             _LOGGER.info("Remote lock/unlock is not supported.")
             raise Exception("Remote lock/unlock is not supported.")
         if self._in_progress("lock", unknown_offset=-5):
             return False
-        if action in ["lock", "unlock"]:
-            data = '<rluAction xmlns="http://audi.de/connect/rlu"><action>' + action + "</action></rluAction>"
-        else:
+        if not action in ["lock", "unlock"]:
             _LOGGER.error(f"Invalid lock action: {action}")
             raise Exception(f"Invalid lock action: {action}")
+
         try:
             self._requests["latest"] = "Lock"
-            response = await self._connection.setLock(self.vin, data, spin)
+            response = await self._connection.setLock(self.vin, (action == "lock"), spin)
             return await self._handle_response(response=response, topic="lock", error_msg=f"Failed to {action} vehicle")
         except Exception as error:
             _LOGGER.warning(f"Failed to {action} vehicle - {error}")
@@ -1720,9 +1719,7 @@ class Vehicle:
         # First check that the service is actually enabled
         if not self._services.get("access", {}).get("active", False):
             return False
-        if is_valid_path(self.attrs, "access.accessStatus.value.doorLockStatus"):
-            return True
-        return False
+        return is_valid_path(self.attrs, "access.accessStatus.value.doorLockStatus")
 
     @property
     def is_door_locked_sensor_supported(self) -> bool:
@@ -1734,9 +1731,7 @@ class Vehicle:
         # Use real lock if the service is actually enabled
         if self._services.get("access", {}).get("active", False):
             return False
-        if is_valid_path(self.attrs, "access.accessStatus.value.doorLockStatus"):
-            return True
-        return False
+        return is_valid_path(self.attrs, "access.accessStatus.value.doorLockStatus")
 
     @property
     def trunk_locked(self) -> bool:
