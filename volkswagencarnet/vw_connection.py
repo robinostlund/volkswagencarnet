@@ -1067,7 +1067,7 @@ class Connection:
 
         try:
             response_raw = await self.post(f"{BASE_API}/vehicle/v1/vehicles/{vin}/windowheating/{action}", json={}, return_raw=True)
-            return self._handle_action_result(response_raw)
+            return await self._handle_action_result(response_raw)
 
         except Exception as e:
             raise Exception("Unknown error during setWindowHeater") from e
@@ -1172,7 +1172,7 @@ class Connection:
 
         try:
             response_raw = await self.post(f"{BASE_API}/vehicle/v1/vehicles/{vin}/access/{action}", json={"spin":spin}, return_raw=True)
-            return self._handle_action_result(response_raw)
+            return await self._handle_action_result(response_raw)
 
         except Exception as e:
             raise Exception("Unknown error during setLock") from e
