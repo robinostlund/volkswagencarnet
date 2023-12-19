@@ -336,7 +336,7 @@ class Vehicle:
             self._requests["state"] = status
             if status == "In Progress":
                 await asyncio.sleep(5)
-                return await self.wait_for_request(section, request, retry_count)
+                return await self.wait_for_request(section, request, retry_count, action)
             else:
                 return status
         except Exception as error:

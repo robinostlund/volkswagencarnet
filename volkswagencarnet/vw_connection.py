@@ -883,7 +883,7 @@ class Connection:
                 status = "Failed"
             elif result == "unfetched":
                 status = "No response"
-            elif result == "request_successful" or result == "succeeded":
+            elif result == "request_successful" or result == "successful":
                 status = "Success"
             elif result == "fail_ignition_on":
                 status = "Failed because ignition is on"
