@@ -446,7 +446,9 @@ class Vehicle:
                 _LOGGER.error(f'Window heater action "{action}" is not supported.')
                 raise Exception(f'Window heater action "{action}" is not supported.')
             response = await self._connection.setWindowHeater(self.vin, (action == "start"))
-            return await self._handle_response(response=response, topic="climatisation.windowHeating", error_msg=f"Failed to {action} window heating")
+            return await self._handle_response(
+                response=response, topic="climatisation.windowHeating", error_msg=f"Failed to {action} window heating"
+            )
         else:
             _LOGGER.error("No climatisation support.")
             raise Exception("No climatisation support.")
@@ -553,7 +555,9 @@ class Vehicle:
         try:
             self._requests["latest"] = "Lock"
             response = await self._connection.setLock(self.vin, (action == "lock"), spin)
-            return await self._handle_response(response=response, topic="access", error_msg=f"Failed to {action} vehicle")
+            return await self._handle_response(
+                response=response, topic="access", error_msg=f"Failed to {action} vehicle"
+            )
         except Exception as error:
             _LOGGER.warning(f"Failed to {action} vehicle - {error}")
             self._requests["lock"] = {"status": "Exception", "timestamp": datetime.now()}
@@ -770,9 +774,9 @@ class Vehicle:
     @property
     def is_parking_light_supported(self) -> bool:
         """Return true if parking light is supported."""
-        return self.attrs.get(Services.VEHICLE_LIGHTS, False) and "lights" in self.attrs.get(Services.VEHICLE_LIGHTS).get(
-            "lightsStatus"
-        ).get("value")
+        return self.attrs.get(Services.VEHICLE_LIGHTS, False) and "lights" in self.attrs.get(
+            Services.VEHICLE_LIGHTS
+        ).get("lightsStatus").get("value")
 
     # Connection status
     @property
@@ -994,7 +998,9 @@ class Vehicle:
     @property
     def charging_time_left(self) -> int:
         """Return minutes to charging complete."""
-        return int(find_path(self.attrs, f"{Services.CHARGING}.chargingStatus.value.remainingChargingTimeToComplete_min"))
+        return int(
+            find_path(self.attrs, f"{Services.CHARGING}.chargingStatus.value.remainingChargingTimeToComplete_min")
+        )
 
     @property
     def charging_time_left_last_updated(self) -> datetime:
@@ -1004,7 +1010,9 @@ class Vehicle:
     @property
     def is_charging_time_left_supported(self) -> bool:
         """Return true if charging is supported."""
-        return is_valid_path(self.attrs, f"{Services.CHARGING}.chargingStatus.value.remainingChargingTimeToComplete_min")
+        return is_valid_path(
+            self.attrs, f"{Services.CHARGING}.chargingStatus.value.remainingChargingTimeToComplete_min"
+        )
 
     @property
     def external_power(self) -> bool:
@@ -1208,10 +1216,14 @@ class Vehicle:
         """
         fuel_level_pct = ""
         if is_valid_path(self.attrs, f"{Services.FUEL_STATUS}.rangeStatus.value.primaryEngine.currentFuelLevel_pct"):
-            fuel_level_pct = find_path(self.attrs, f"{Services.FUEL_STATUS}.rangeStatus.value.primaryEngine.currentFuelLevel_pct")
+            fuel_level_pct = find_path(
+                self.attrs, f"{Services.FUEL_STATUS}.rangeStatus.value.primaryEngine.currentFuelLevel_pct"
+            )
 
         if is_valid_path(self.attrs, f"{Services.MEASUREMENTS}.fuelLevelStatus.value.currentFuelLevel_pct"):
-            fuel_level_pct = find_path(self.attrs, f"{Services.MEASUREMENTS}.fuelLevelStatus.value.currentFuelLevel_pct")
+            fuel_level_pct = find_path(
+                self.attrs, f"{Services.MEASUREMENTS}.fuelLevelStatus.value.currentFuelLevel_pct"
+            )
         return int(fuel_level_pct)
 
     @property
@@ -1219,10 +1231,14 @@ class Vehicle:
         """Return fuel level last updated."""
         fuel_level_lastupdated = ""
         if is_valid_path(self.attrs, f"{Services.FUEL_STATUS}.rangeStatus.value.carCapturedTimestamp"):
-            fuel_level_lastupdated = find_path(self.attrs, f"{Services.FUEL_STATUS}.rangeStatus.value.carCapturedTimestamp")
+            fuel_level_lastupdated = find_path(
+                self.attrs, f"{Services.FUEL_STATUS}.rangeStatus.value.carCapturedTimestamp"
+            )
 
         if is_valid_path(self.attrs, f"{Services.MEASUREMENTS}.fuelLevelStatus.value.carCapturedTimestamp"):
-            fuel_level_lastupdated = find_path(self.attrs, f"{Services.MEASUREMENTS}.fuelLevelStatus.value.carCapturedTimestamp")
+            fuel_level_lastupdated = find_path(
+                self.attrs, f"{Services.MEASUREMENTS}.fuelLevelStatus.value.carCapturedTimestamp"
+            )
         return fuel_level_lastupdated
 
     @property
@@ -1232,9 +1248,9 @@ class Vehicle:
 
         :return:
         """
-        return is_valid_path(self.attrs, f"{Services.MEASUREMENTS}.fuelLevelStatus.value.currentFuelLevel_pct") or is_valid_path(
-            self.attrs, f"{Services.FUEL_STATUS}.rangeStatus.value.primaryEngine.currentFuelLevel_pct"
-        )
+        return is_valid_path(
+            self.attrs, f"{Services.MEASUREMENTS}.fuelLevelStatus.value.currentFuelLevel_pct"
+        ) or is_valid_path(self.attrs, f"{Services.FUEL_STATUS}.rangeStatus.value.primaryEngine.currentFuelLevel_pct")
 
     # Climatisation settings
     @property
@@ -2541,13 +2557,17 @@ class Vehicle:
 
     def is_primary_drive_electric(self):
         """Check if primary engine is electric."""
-        return find_path(self.attrs, f"{Services.MEASUREMENTS}.fuelLevelStatus.value.primaryEngineType") == ENGINE_TYPE_ELECTRIC
+        return (
+            find_path(self.attrs, f"{Services.MEASUREMENTS}.fuelLevelStatus.value.primaryEngineType")
+            == ENGINE_TYPE_ELECTRIC
+        )
 
     def is_secondary_drive_electric(self):
         """Check if secondary engine is electric."""
         return (
             is_valid_path(self.attrs, f"{Services.MEASUREMENTS}.fuelLevelStatus.value.primaryEngineType")
-            and find_path(self.attrs, f"{Services.MEASUREMENTS}.fuelLevelStatus.value.primaryEngineType") == ENGINE_TYPE_ELECTRIC
+            and find_path(self.attrs, f"{Services.MEASUREMENTS}.fuelLevelStatus.value.primaryEngineType")
+            == ENGINE_TYPE_ELECTRIC
         )
 
     def is_primary_drive_combustion(self):

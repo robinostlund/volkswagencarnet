@@ -368,7 +368,7 @@ class Connection:
             request_id = response.get("data", {}).get("requestID", 0)
             remaining = response_raw.headers.get("Vcf-Remaining-Calls")
             _LOGGER.debug(
-                f'Request for window heating returned with request id: {request_id},'
+                f"Request for window heating returned with request id: {request_id},"
                 f" remaining requests: {remaining}"
             )
             return dict({"id": str(request_id), "rate_limit_remaining": remaining})
@@ -850,7 +850,7 @@ class Connection:
             _LOGGER.warning(f"Could not fetch pre-heating, error: {error}")
         return False
 
-    async def get_request_status(self, vin, sectionId, requestId, actionId = ""):
+    async def get_request_status(self, vin, sectionId, requestId, actionId=""):
         """Return status of a request ID for a given section ID."""
         if self.logged_in is False:
             if not await self.doLogin():
@@ -902,9 +902,11 @@ class Connection:
             raise Exception("Couldn't determine S-PIN state.")
 
         if remainingTries < 3:
-            raise Exception("Remaining tries for S-PIN is < 3. Bailing out for security reasons. " +
-                            "To resume operation, please make sure the correct S-PIN has been set in the integration " +
-                            "and then use the correct S-PIN once via the Volkswagen app.")
+            raise Exception(
+                "Remaining tries for S-PIN is < 3. Bailing out for security reasons. " +
+                "To resume operation, please make sure the correct S-PIN has been set in the integration " +
+                "and then use the correct S-PIN once via the Volkswagen app."
+            )
 
         return True
 
@@ -1066,7 +1068,9 @@ class Connection:
         action = "start" if action else "stop"
 
         try:
-            response_raw = await self.post(f"{BASE_API}/vehicle/v1/vehicles/{vin}/windowheating/{action}", json={}, return_raw=True)
+            response_raw = await self.post(
+                f"{BASE_API}/vehicle/v1/vehicles/{vin}/windowheating/{action}", json={}, return_raw=True
+            )
             return await self._handle_action_result(response_raw)
 
         except Exception as e:
@@ -1171,7 +1175,9 @@ class Connection:
         action = "lock" if lock else "unlock"
 
         try:
-            response_raw = await self.post(f"{BASE_API}/vehicle/v1/vehicles/{vin}/access/{action}", json={"spin":spin}, return_raw=True)
+            response_raw = await self.post(
+                f"{BASE_API}/vehicle/v1/vehicles/{vin}/access/{action}", json={"spin":spin}, return_raw=True
+            )
             return await self._handle_action_result(response_raw)
 
         except Exception as e:

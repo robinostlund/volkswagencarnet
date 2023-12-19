@@ -113,19 +113,19 @@ class Services:
     """Service names that are used in `capabilities` and `selectivestatus` calls."""
 
     # callable via `selectivestatus`
-    ACCESS = 'access'
-    AUTOMATION = 'automation'
-    CHARGING = 'charging'
-    CLIMATISATION = 'climatisation'
-    FUEL_STATUS = 'fuelStatus'
-    MEASUREMENTS = 'measurements'
-    VEHICLE_LIGHTS = 'vehicleLights'
-    VEHICLE_HEALTH_INSPECTION = 'vehicleHealthInspection'
+    ACCESS = "access"
+    AUTOMATION = "automation"
+    CHARGING = "charging"
+    CLIMATISATION = "climatisation"
+    FUEL_STATUS = "fuelStatus"
+    MEASUREMENTS = "measurements"
+    VEHICLE_LIGHTS = "vehicleLights"
+    VEHICLE_HEALTH_INSPECTION = "vehicleHealthInspection"
 
     # callable via explicit endpoints
-    HONK_AND_FLASH = 'honkAndFlash'
-    PARKING_POSITION = 'parkingPosition'
-    TRIP_STATISTICS = 'tripStatistics'
+    HONK_AND_FLASH = "honkAndFlash"
+    PARKING_POSITION = "parkingPosition"
+    TRIP_STATISTICS = "tripStatistics"
 
     # internally used services names
     SERVICE_STATUS = "service_status"
