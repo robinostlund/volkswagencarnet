@@ -16,7 +16,7 @@ import asyncio
 import jwt
 import logging
 from aiohttp import ClientSession, ClientTimeout, client_exceptions
-from aiohttp.hdrs import METH_GET, METH_POST
+from aiohttp.hdrs import METH_GET, METH_POST, METH_PUT
 from bs4 import BeautifulSoup
 from json import dumps as to_json
 from urllib.parse import urljoin, parse_qs, urlparse
@@ -487,6 +487,22 @@ class Connection:
             else:
                 raise
 
+    async def put(self, url, vin="", tries=0, return_raw=False, **data):
+        """Perform a put query."""
+        try:
+            if data:
+                return await self._request(METH_PUT, self._make_url(url, vin), return_raw=return_raw, **data)
+            else:
+                return await self._request(METH_PUT, self._make_url(url, vin), return_raw=return_raw)
+        except client_exceptions.ClientResponseError as error:
+            if error.status == 429 and tries < MAX_RETRIES_ON_RATE_LIMIT:
+                delay = randint(1, 3 + tries * 2)
+                _LOGGER.debug(f"Server side throttled. Waiting {delay}, try {tries + 1}")
+                await asyncio.sleep(delay)
+                return await self.post(url, vin, tries + 1, return_raw=return_raw, **data)
+            else:
+                raise
+
     # Construct URL from request, home region and variables
     def _make_url(self, ref, vin=""):
         # TODO after verifying that we don't need home region handling anymore, this method should be completely removed
@@ -835,6 +851,10 @@ class Connection:
                 url = (
                     f"fs-car/bs/$sectionId/v1/{BRAND}/{self._session_country}/vehicles/$vin/climater/actions/$requestId"
                 )
+            elif sectionId == "window_heating":
+                url = (
+                    f"{BASE_API}/vehicle/v1/vehicles/{vin}/selectivestatus?jobs=climatisation"
+                )
             elif sectionId == "batterycharge":
                 url = (
                     f"fs-car/bs/$sectionId/v1/{BRAND}/{self._session_country}/vehicles/$vin/charger/actions/$requestId"
@@ -851,8 +871,12 @@ class Connection:
             url = re.sub("\\$requestId", requestId, url)
 
             response = await self.get(url, vin)
+            # window_heating
+            window_heating_status = response.get("climatisation", {}).get("windowHeatingStatus", {}).get("requests", {})[0].get("status", False)
+            if window_heating_status:
+                result = window_heating_status
             # Pre-heater, ???
-            if response.get("requestStatusResponse", {}).get("status", False):
+            elif response.get("requestStatusResponse", {}).get("status", False):
                 result = response.get("requestStatusResponse", {}).get("status", False)
             # For electric charging, climatisation and departure timers
             elif response.get("action", {}).get("actionState", False):
@@ -1040,6 +1064,32 @@ class Connection:
         except:
             self._session_headers.pop("X-securityToken", None)
             raise
+
+    async def setWindowHeater(self, vin, action):
+        """Execute window heating actions."""
+
+        action = "start" if action else "stop"
+
+        try:
+            response_raw = None
+            if action in ["start", "stop"]:
+                response_raw = await self.post(f"{BASE_API}/vehicle/v1/vehicles/{vin}/windowheating/{action}", json={}, return_raw=True)
+
+            response = await response_raw.json(loads=json_loads)
+            if not response:
+                raise Exception("Invalid or no response")
+            elif response == 429:
+                return dict({"id": None, "state": "Throttled", "rate_limit_remaining": 0})
+            else:
+                request_id = response.get("data", {}).get("requestID", 0)
+                remaining = response_raw.headers.get("Vcf-Remaining-Calls")
+                _LOGGER.debug(
+                    f'Request for window heating returned with request id: {request_id},'
+                    f" remaining requests: {remaining}"
+                )
+                return dict({"id": str(request_id), "rate_limit_remaining": remaining})
+        except Exception as e:
+            raise Exception("Unknown error during setWindowHeater") from e
 
     async def setPreHeater(self, vin, data, spin):
         """Petrol/diesel parking heater actions."""

@@ -68,7 +68,8 @@ class Vehicle:
             "tripStatistics": {"active": False},
             "measurements": {"active": False},
             "honkAndFlash": {"active": False},
-            "parkingPosition": {"active": False}
+            "parkingPosition": {"active": False},
+            "climatisation": {"active": False}
             # "rheating_v1": {"active": False},
             # "rclima_v1": {"active": False},
             # "statusreport_v1": {"active": False},
@@ -326,7 +327,7 @@ class Vehicle:
         try:
             status = await self._connection.get_request_status(self.vin, section, request)
             _LOGGER.debug(f"Request ID {request}: {status}")
-            if status == "In progress":
+            if status == "in_progress":
                 self._requests["state"] = "In progress"
                 await asyncio.sleep(5)
                 return await self.wait_for_request(section, request)
@@ -436,12 +437,11 @@ class Vehicle:
     async def set_window_heating(self, action="stop"):
         """Turn on/off window heater."""
         if self.is_window_heater_supported:
-            if action in ["start", "stop"]:
-                data = {"action": {"type": action + "WindowHeating"}}
-            else:
+            if not action in ["start", "stop"]:
                 _LOGGER.error(f'Window heater action "{action}" is not supported.')
                 raise Exception(f'Window heater action "{action}" is not supported.')
-            return await self.set_climater(data)
+            response = await self._connection.setWindowHeater(self.vin, (action == "start"))
+            return await self._handle_response(response=response, topic="window_heating", error_msg=f"Failed to {action} window heating")
         else:
             _LOGGER.error("No climatisation support.")
             raise Exception("No climatisation support.")
@@ -1330,6 +1330,7 @@ class Vehicle:
         climatisation_state = find_path(self.attrs, "climatisation.climatisationStatus.value.climatisationState")
         if climatisation_state in ["heating", "heatingAuxiliary", "on"]:
             return True
+        return False
 
     @property
     def auxiliary_climatisation_last_updated(self) -> datetime:
