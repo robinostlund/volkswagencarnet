@@ -903,9 +903,9 @@ class Connection:
 
         if remainingTries < 3:
             raise Exception(
-                "Remaining tries for S-PIN is < 3. Bailing out for security reasons. " +
-                "To resume operation, please make sure the correct S-PIN has been set in the integration " +
-                "and then use the correct S-PIN once via the Volkswagen app."
+                "Remaining tries for S-PIN is < 3. Bailing out for security reasons. "
+                + "To resume operation, please make sure the correct S-PIN has been set in the integration "
+                + "and then use the correct S-PIN once via the Volkswagen app."
             )
 
         return True
@@ -1176,7 +1176,7 @@ class Connection:
 
         try:
             response_raw = await self.post(
-                f"{BASE_API}/vehicle/v1/vehicles/{vin}/access/{action}", json={"spin":spin}, return_raw=True
+                f"{BASE_API}/vehicle/v1/vehicles/{vin}/access/{action}", json={"spin": spin}, return_raw=True
             )
             return await self._handle_action_result(response_raw)
 
