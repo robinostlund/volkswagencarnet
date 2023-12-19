@@ -875,7 +875,6 @@ class Connection:
                 if request.get("requestId", "") == requestId:
                     result = request.get("status")
 
-
             # Translate status messages to meaningful info
             if result == "in_progress" or result == "queued" or result == "fetched":
                 status = "In Progress"

@@ -109,6 +109,7 @@ class VehicleStatusParameter:
 
     OUTSIDE_TEMPERATURE = "0x0301020001"
 
+
 class Services:
     """Service names that are used in `capabilities` and `selectivestatus` calls."""
 
