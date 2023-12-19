@@ -358,6 +358,21 @@ class Connection:
         self._session_headers["Authorization"] = "Bearer " + self._session_tokens[client]["access_token"]
         return True
 
+    async def _handle_action_result(self, response_raw):
+        response = await response_raw.json(loads=json_loads)
+        if not response:
+            raise Exception("Invalid or no response")
+        elif response == 429:
+            return dict({"id": None, "state": "Throttled", "rate_limit_remaining": 0})
+        else:
+            request_id = response.get("data", {}).get("requestID", 0)
+            remaining = response_raw.headers.get("Vcf-Remaining-Calls")
+            _LOGGER.debug(
+                f'Request for window heating returned with request id: {request_id},'
+                f" remaining requests: {remaining}"
+            )
+            return dict({"id": str(request_id), "rate_limit_remaining": remaining})
+
     async def terminate(self):
         """Log out from connect services."""
         _LOGGER.info("Initiating logout")
@@ -835,7 +850,7 @@ class Connection:
             _LOGGER.warning(f"Could not fetch pre-heating, error: {error}")
         return False
 
-    async def get_request_status(self, vin, sectionId, requestId):
+    async def get_request_status(self, vin, sectionId, requestId, actionId = ""):
         """Return status of a request ID for a given section ID."""
         if self.logged_in is False:
             if not await self.doLogin():
@@ -847,51 +862,31 @@ class Connection:
                 if not await self.doLogin():
                     _LOGGER.warning(f"Login for {BRAND} account failed!")
                     raise Exception(f"Login for {BRAND} account failed")
-            if sectionId == "climatisation":
-                url = (
-                    f"fs-car/bs/$sectionId/v1/{BRAND}/{self._session_country}/vehicles/$vin/climater/actions/$requestId"
-                )
-            elif sectionId == "window_heating":
-                url = (
-                    f"{BASE_API}/vehicle/v1/vehicles/{vin}/selectivestatus?jobs=climatisation"
-                )
-            elif sectionId == "batterycharge":
-                url = (
-                    f"fs-car/bs/$sectionId/v1/{BRAND}/{self._session_country}/vehicles/$vin/charger/actions/$requestId"
-                )
-            elif sectionId == "departuretimer":
-                url = f"fs-car/bs/$sectionId/v1/{BRAND}/{self._session_country}/vehicles/$vin/timer/actions/$requestId"
-            elif sectionId in ["vsr", "refresh"]:
-                url = f"fs-car/bs/vsr/v1/{BRAND}/{self._session_country}/vehicles/$vin/requests/$requestId/jobstatus"
-            else:
-                url = (
-                    f"fs-car/bs/$sectionId/v1/{BRAND}/{self._session_country}/vehicles/$vin/requests/$requestId/status"
-                )
-            url = re.sub("\\$sectionId", sectionId, url)
-            url = re.sub("\\$requestId", requestId, url)
 
-            response = await self.get(url, vin)
-            # window_heating
-            window_heating_status = response.get("climatisation", {}).get("windowHeatingStatus", {}).get("requests", {})[0].get("status", False)
-            if window_heating_status:
-                result = window_heating_status
-            # Pre-heater, ???
-            elif response.get("requestStatusResponse", {}).get("status", False):
-                result = response.get("requestStatusResponse", {}).get("status", False)
-            # For electric charging, climatisation and departure timers
-            elif response.get("action", {}).get("actionState", False):
-                result = response.get("action", {}).get("actionState", False)
-            else:
-                result = "Unknown"
+            # usually, the action is named like the section ("access" -> "accessStatus"), but sometimes not ("climatisation" -> "windowHeatingStatus")
+            if actionId == "":
+                actionId = sectionId
+
+            response = self.getSelectiveStatus(vin, [sectionId])
+
+            requests = response.get(sectionId, {}).get(f"{actionId}Status", {}).get("requests", [])
+            result = None
+            for request in requests:
+                if request.get("requestId", "") == requestId:
+                    result = request.get("status")
+
+
             # Translate status messages to meaningful info
-            if result == "request_in_progress" or result == "queued" or result == "fetched":
-                status = "In progress"
+            if result == "in_progress" or result == "queued" or result == "fetched":
+                status = "In Progress"
             elif result == "request_fail" or result == "failed":
                 status = "Failed"
             elif result == "unfetched":
                 status = "No response"
             elif result == "request_successful" or result == "succeeded":
                 status = "Success"
+            elif result == "fail_ignition_on":
+                status = "Failed because ignition is on"
             else:
                 status = result
             return status
@@ -1071,23 +1066,9 @@ class Connection:
         action = "start" if action else "stop"
 
         try:
-            response_raw = None
-            if action in ["start", "stop"]:
-                response_raw = await self.post(f"{BASE_API}/vehicle/v1/vehicles/{vin}/windowheating/{action}", json={}, return_raw=True)
+            response_raw = await self.post(f"{BASE_API}/vehicle/v1/vehicles/{vin}/windowheating/{action}", json={}, return_raw=True)
+            return self._handle_action_result(response_raw)
 
-            response = await response_raw.json(loads=json_loads)
-            if not response:
-                raise Exception("Invalid or no response")
-            elif response == 429:
-                return dict({"id": None, "state": "Throttled", "rate_limit_remaining": 0})
-            else:
-                request_id = response.get("data", {}).get("requestID", 0)
-                remaining = response_raw.headers.get("Vcf-Remaining-Calls")
-                _LOGGER.debug(
-                    f'Request for window heating returned with request id: {request_id},'
-                    f" remaining requests: {remaining}"
-                )
-                return dict({"id": str(request_id), "rate_limit_remaining": remaining})
         except Exception as e:
             raise Exception("Unknown error during setWindowHeater") from e
 
@@ -1191,20 +1172,8 @@ class Connection:
 
         try:
             response_raw = await self.post(f"{BASE_API}/vehicle/v1/vehicles/{vin}/access/{action}", json={"spin":spin}, return_raw=True)
+            return self._handle_action_result(response_raw)
 
-            response = await response_raw.json(loads=json_loads)
-            if not response:
-                raise Exception("Invalid or no response")
-            elif response == 429:
-                return dict({"id": None, "state": "Throttled", "rate_limit_remaining": 0})
-            else:
-                request_id = response.get("data", {}).get("requestID", 0)
-                remaining = response_raw.headers.get("Vcf-Remaining-Calls")
-                _LOGGER.debug(
-                    f'Request for lock action returned with request id: {request_id},'
-                    f" remaining requests: {remaining}"
-                )
-                return dict({"id": str(request_id), "rate_limit_remaining": remaining})
         except Exception as e:
             raise Exception("Unknown error during setLock") from e
 
