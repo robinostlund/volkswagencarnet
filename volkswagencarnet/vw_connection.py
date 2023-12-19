@@ -867,7 +867,7 @@ class Connection:
             if actionId == "":
                 actionId = sectionId
 
-            response = self.getSelectiveStatus(vin, [sectionId])
+            response = await self.getSelectiveStatus(vin, [sectionId])
 
             requests = response.get(sectionId, {}).get(f"{actionId}Status", {}).get("requests", [])
             result = None
