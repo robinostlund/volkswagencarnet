@@ -473,7 +473,7 @@ class Vehicle:
                 data = {
                     "climatisationWithoutExternalPower": self.climatisation_without_external_power,
                     "targetTemperature": self.climatisation_target_temperature,
-                    "targetTemperatureUnit": "celsius"
+                    "targetTemperatureUnit": "celsius",
                 }
             elif action == "stop":
                 data = {}
@@ -482,7 +482,9 @@ class Vehicle:
                 raise Exception(f"Invalid climatisation action: {action}")
             response = await self._connection.setClimater(self.vin, data, (action == "start"))
             return await self._handle_response(
-                response=response, topic="climatisation", error_msg=f"Failed to {action} climatisation with electric/auxiliary heater."
+                response=response,
+                topic="climatisation",
+                error_msg=f"Failed to {action} climatisation with electric/auxiliary heater.",
             )
         else:
             _LOGGER.error("No climatisation support.")
