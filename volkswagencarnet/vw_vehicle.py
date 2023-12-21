@@ -466,28 +466,24 @@ class Vehicle:
             _LOGGER.error("No climatisation support.")
             raise Exception("No climatisation support.")
 
-    async def set_climatisation(self, mode="off", spin=False):
+    async def set_climatisation(self, action="stop"):
         """Turn on/off climatisation with electric/auxiliary heater."""
         if self.is_electric_climatisation_supported:
-            if mode in ["electric", "auxiliary"]:
-                target_temp = int((self.climatisation_target_temperature + 273) * 10)
-                without_hv_power = self.climatisation_without_external_power
+            if action == "start":
                 data = {
-                    "action": {
-                        "settings": {
-                            "climatisationWithoutHVpower": without_hv_power,
-                            "targetTemperature": target_temp,
-                            "heaterSource": mode,
-                        },
-                        "type": "startClimatisation",
-                    }
+                    "climatisationWithoutExternalPower": self.climatisation_without_external_power,
+                    "targetTemperature": self.climatisation_target_temperature,
+                    "targetTemperatureUnit": "celsius"
                 }
-            elif mode == "off":
-                data = {"action": {"type": "stopClimatisation"}}
+            elif action == "stop":
+                data = {}
             else:
-                _LOGGER.error(f"Invalid climatisation type: {mode}")
-                raise Exception(f"Invalid climatisation type: {mode}")
-            return await self.set_climater(data, spin)
+                _LOGGER.error(f"Invalid climatisation action: {action}")
+                raise Exception(f"Invalid climatisation action: {action}")
+            response = await self._connection.setClimater(self.vin, data, (action == "start"))
+            return await self._handle_response(
+                response=response, topic="climatisation", error_msg=f"Failed to {action} climatisation with electric/auxiliary heater."
+            )
         else:
             _LOGGER.error("No climatisation support.")
             raise Exception("No climatisation support.")
@@ -1314,35 +1310,27 @@ class Vehicle:
     @property
     def electric_climatisation(self) -> bool:
         """Return status of climatisation."""
-        # TODO not found yet
-        climatisation_type = (
-            self.attrs.get("climater", {}).get("settings", {}).get("heaterSource", {}).get("content", "")
-        )
         status = (
-            self.attrs.get("climater", {})
-            .get("status", {})
-            .get("climatisationStatusData", {})
-            .get("climatisationState", {})
-            .get("content", "")
+            self.attrs.get("climatisation", {})
+            .get("climatisationStatus", {})
+            .get("value", {})
+            .get("climatisationState", "")
         )
-        return status in ["heating", "on"] and climatisation_type == "electric"
+        return status in ["heating", "on"]
 
     @property
     def electric_climatisation_last_updated(self) -> datetime:
         """Return status of climatisation last updated."""
-        # TODO not found yet
         return (
-            self.attrs.get("climater", {})
-            .get("status", {})
-            .get("climatisationStatusData", {})
-            .get("climatisationState", {})
-            .get(BACKEND_RECEIVED_TIMESTAMP)
+            self.attrs.get("climatisation", {})
+            .get("climatisationStatus", {})
+            .get("value", {})
+            .get("carCapturedTimestamp")
         )
 
     @property
     def is_electric_climatisation_supported(self) -> bool:
         """Return true if vehicle has climater."""
-        # TODO not found yet
         return self.is_climatisation_supported
 
     @property

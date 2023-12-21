@@ -1032,34 +1032,19 @@ class Connection:
         except:
             raise
 
-    async def setClimater(self, vin, data, spin):
+    async def setClimater(self, vin, data, action):
         """Execute climatisation actions."""
+
+        action = "start" if action else "stop"
+
         try:
-            # Only get security token if auxiliary heater is to be started
-            if data.get("action", {}).get("settings", {}).get("heaterSource", None) == "auxiliary":
-                self._session_headers["X-securityToken"] = await self.get_sec_token(vin=vin, spin=spin, action="rclima")
-            response = await self.dataCall(
-                f"fs-car/bs/climatisation/v1/{BRAND}/{self._session_country}/vehicles/$vin/climater/actions",
-                vin,
-                json=data,
+            response_raw = await self.post(
+                f"{BASE_API}/vehicle/v1/vehicles/{vin}/climatisation/{action}", json=data, return_raw=True
             )
-            self._session_headers.pop("X-securityToken", None)
-            if not response:
-                raise Exception("Invalid or no response")
-            elif response == 429:
-                return dict({"id": None, "state": "Throttled", "rate_limit_remaining": 0})
-            else:
-                request_id = response.get("action", {}).get("actionId", 0)
-                request_state = response.get("action", {}).get("actionState", "unknown")
-                remaining = response.get("rate_limit_remaining", -1)
-                _LOGGER.debug(
-                    f'Request for climater action returned with state "{request_state}", request id: {request_id},'
-                    f" remaining requests: {remaining}"
-                )
-                return dict({"id": str(request_id), "state": request_state, "rate_limit_remaining": remaining})
-        except:
-            self._session_headers.pop("X-securityToken", None)
-            raise
+            return await self._handle_action_result(response_raw)
+
+        except Exception as e:
+            raise Exception("Unknown error during setClimater") from e
 
     async def setWindowHeater(self, vin, action):
         """Execute window heating actions."""
