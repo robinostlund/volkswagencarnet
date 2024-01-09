@@ -782,25 +782,23 @@ class Vehicle:
         """Return when vehicle was last connected to connect servers in local time."""
         # this field is only a dirty hack, because there is no overarching information for the car anymore,
         # only information per service, so we just use the one for odometer
-        last_connected_utc = self.attrs.get("measurements").get("odometerStatus").get("carCapturedTimestamp")[0]
-        last_connected = last_connected_utc.replace(tzinfo=timezone.utc).astimezone(tz=None)
-        return last_connected.strftime("%Y-%m-%d %H:%M:%S")
+        last_connected_time = "Unknown"
+        last_connected_time_path = f"{Services.MEASUREMENTS}.odometerStatus.value.carCapturedTimestamp"
+        if is_valid_path(self.attrs, last_connected_time_path):
+            last_connected_time_utc = find_path(self.attrs, last_connected_time_path)
+            last_connected_time = last_connected_time_utc.replace(tzinfo=timezone.utc).astimezone(tz=None)
+            return last_connected_time.strftime("%Y-%m-%d %H:%M:%S")
+        return last_connected_time
 
     @property
     def last_connected_last_updated(self) -> datetime:
         """Return attribute last updated timestamp."""
-        return (
-            self.attrs.get("StoredVehicleDataResponse")
-            .get("vehicleData")
-            .get("data")[0]
-            .get("field")[0]
-            .get("BACKEND_RECEIVED_TIMESTAMP")
-        )
+        return self.attrs.get(Services.MEASUREMENTS).get("odometerStatus").get("value").get("carCapturedTimestamp")
 
     @property
     def is_last_connected_supported(self) -> bool:
         """Return if when vehicle was last connected to connect servers is supported."""
-        return is_valid_path(self.attrs, "StoredVehicleDataResponse.vehicleData.data.0.field.0.tsCarSentUtc")
+        return is_valid_path(self.attrs, f"{Services.MEASUREMENTS}.odometerStatus.value.carCapturedTimestamp")
 
     # Service information
     @property
