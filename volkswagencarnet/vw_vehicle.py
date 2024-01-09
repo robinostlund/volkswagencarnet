@@ -2673,3 +2673,23 @@ class Vehicle:
     def is_api_token_status_supported(self):
         """Parkingposition API status is always supported."""
         return True
+
+    @property
+    def last_data_refresh(self) -> bool:
+        """Check when services were refreshed successfully for the last time."""
+        last_data_refresh_time = "Unknown"
+        last_data_refresh_path = "refreshTimestamp"
+        if is_valid_path(self.attrs, last_data_refresh_path):
+            last_data_refresh_time = find_path(self.attrs, last_data_refresh_path)
+            return last_data_refresh_time.strftime("%Y-%m-%d %H:%M:%S")
+        return last_data_refresh_time
+
+    @property
+    def last_data_refresh_last_updated(self) -> datetime:
+        """Return attribute last updated timestamp."""
+        return datetime.now()
+
+    @property
+    def is_last_data_refresh_supported(self):
+        """Last data refresh is always supported."""
+        return True

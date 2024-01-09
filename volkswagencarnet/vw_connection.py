@@ -615,6 +615,9 @@ class Connection:
                         f"Did not receive return data for requested service {service}. (This is expected for several service/car combinations)"
                     )
 
+            if response:
+                response.update({"refreshTimestamp": datetime.now()})
+
             return response
 
         except Exception as error:

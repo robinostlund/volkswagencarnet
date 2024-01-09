@@ -1030,6 +1030,12 @@ def create_instruments():
             icon="mdi:api",
             unit="",
         ),
+        Sensor(
+            attr="last_data_refresh",
+            name="Last data refresh",
+            icon="mdi:clock",
+            unit="",
+        ),
         BinarySensor(attr="external_power", name="External power", device_class=VWDeviceClass.POWER),
         BinarySensor(attr="energy_flow", name="Energy flow", device_class=VWDeviceClass.POWER),
         BinarySensor(
