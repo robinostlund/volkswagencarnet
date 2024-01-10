@@ -183,13 +183,6 @@ class Vehicle:
                 self.get_vehicle(),
                 self.get_parkingposition(),
                 self.get_trip_last()
-                #     self.get_preheater(),
-                #     self.get_climater(),
-                #     self.get_trip_statistic(),
-                #     self.get_position(),
-                #     self.get_statusreport(),
-                #     self.get_charger(),
-                #     self.get_timerprogramming(),
                 #     return_exceptions=True,
             )
             await asyncio.gather(self.get_service_status())
@@ -229,101 +222,6 @@ class Vehicle:
         if data:
             self._states.update({Services.SERVICE_STATUS: data})
 
-    async def get_realcardata(self):
-        """Fetch realcardata."""
-        data = await self._connection.getRealCarData(self.vin)
-        if data:
-            self._states.update(data)
-
-    async def get_preheater(self):
-        """Fetch pre-heater data if function is enabled."""
-        if self._services.get("rheating_v1", {}).get("active", False):
-            if not await self.expired("rheating_v1"):
-                data = await self._connection.getPreHeater(self.vin)
-                if data:
-                    self._states.update(data)
-                else:
-                    _LOGGER.debug("Could not fetch preheater data")
-        else:
-            self._requests.pop("preheater", None)
-
-    async def get_climater(self):
-        """Fetch climater data if function is enabled."""
-        if self._services.get("rclima_v1", {}).get("active", False):
-            if not await self.expired("rclima_v1"):
-                data = await self._connection.getClimater(self.vin)
-                if data:
-                    self._states.update(data)
-                else:
-                    _LOGGER.debug("Could not fetch climater data")
-        else:
-            self._requests.pop("climatisation", None)
-
-    async def get_trip_statistic(self):
-        """Fetch trip data if function is enabled."""
-        if self._services.get("trip_statistic_v1", {}).get("active", False):
-            if not await self.expired("trip_statistic_v1"):
-                data = await self._connection.getTripStatistics(self.vin)
-                if data:
-                    self._states.update(data)
-                else:
-                    _LOGGER.debug("Could not fetch trip statistics")
-
-    async def get_position(self):
-        """Fetch position data if function is enabled."""
-        if self._services.get("carfinder_v1", {}).get("active", False):
-            if not await self.expired("carfinder_v1"):
-                data = await self._connection.getPosition(self.vin)
-                if data:
-                    # Reset requests remaining to 15 if parking time has been updated
-                    if data.get("findCarResponse", {}).get("parkingTimeUTC", None) is not None:
-                        try:
-                            new_time = data.get("findCarResponse").get("parkingTimeUTC")
-                            old_time = self.attrs.get("findCarResponse", {}).get("parkingTimeUTC", None)
-                            if old_time is None or new_time > old_time:
-                                _LOGGER.debug(f"Detected new parking time: {new_time}")
-                                self.requests_remaining = -1 if old_time is None else 15
-                                self.requests_remaining_last_updated = datetime.utcnow()
-                        except Exception as e:
-                            _LOGGER.warning(f"Failed to parse parking time: {e}")
-                    self._states.update(data)
-                else:
-                    _LOGGER.debug("Could not fetch any positional data")
-
-    async def get_statusreport(self):
-        """Fetch status data if function is enabled."""
-        if self._services.get("statusreport_v1", {}).get("active", False):
-            if not await self.expired("statusreport_v1"):
-                data = await self._connection.getVehicleStatusData(self.vin)
-                if data:
-                    self._states.update(data)
-                else:
-                    _LOGGER.debug("Could not fetch status report")
-
-    async def get_charger(self):
-        """Fetch charger data if function is enabled."""
-        if self._services.get("rbatterycharge_v1", {}).get("active", False):
-            if not await self.expired("rbatterycharge_v1"):
-                data = await self._connection.getCharger(self.vin)
-                if data:
-                    self._states.update(data)
-                else:
-                    _LOGGER.debug("Could not fetch charger data")
-        else:
-            self._requests.pop("charger", None)
-
-    async def get_timerprogramming(self) -> None:
-        """Fetch timer data if function is enabled."""
-        if self._services.get("timerprogramming_v1", {}).get("active", False):
-            if not await self.expired("timerprogramming_v1"):
-                data = await self._connection.getTimers(self.vin)
-                if data:
-                    self._states.update({"timer": data})
-                else:
-                    _LOGGER.debug("Could not fetch timers")
-        else:
-            self._requests.pop("departuretimer", None)
-
     async def wait_for_request(self, section, request, retry_count=36, action=""):
         """Update status of outstanding requests."""
         retry_count -= 1
@@ -360,67 +258,11 @@ class Vehicle:
 
     async def set_charge_min_level(self, level: int):
         """Set the desired minimum charge level for departure schedules."""
-        if self.is_schedule_min_charge_level_supported:
-            if (0 <= level <= 100) and level % 10 == 0:
-                if self._in_progress("departuretimer"):
-                    return False
-                try:
-                    self._requests["latest"] = "Departuretimer"
-                    response = await self._connection.setChargeMinLevel(self.vin, level)
-                    return await self._handle_response(
-                        response=response, topic="departuretimer", error_msg="Failed to set minimum charge level"
-                    )
-                except Exception as error:
-                    _LOGGER.warning(f"Failed to set minimum charge level - {error}")
-                    self._requests["departuretimer"] = {"status": "Exception", "timestamp": datetime.now()}
-                    raise Exception(f"Failed to set minimum charge level - {error}")
-            else:
-                raise Exception("Level must be 0, 10, ..., 100")
-        else:
-            _LOGGER.error("Cannot set minimum level")
-            raise Exception("Cannot set minimum level")
-
-    # Need to figure out a way to implement this...
-    # async def set_departure_timer_heater_source(self, source: str):
-    #     """Set the heater source to use."""
-    #     if self.is_timer_basic_settings_supported:
-    #         if source not in ["auxiliary", "electric"]:
-    #             raise ValueError(f"Source '{source}' not supported.")
-    #         try:
-    #             self._requests["latest"] = "Departuretimer"
-    #             response = await self._connection.setHeaterSource(self.vin, source)
-    #             return await self._handle_response(
-    #                 response=response, topic="departuretimer", error_msg="Failed to set heater source"
-    #             )
-    #         except Exception as error:
-    #             _LOGGER.warning(f"Failed to set heater source - {error}")
-    #             self._requests["departuretimer"] = {"status": "Exception"}
-    #             raise Exception(f"Failed to set heater source - {error}")
+        raise Exception("Should have to be re-implemented")
 
     async def set_charger(self, action) -> bool:
         """Charging actions."""
-        if not self._services.get("charging", False):
-            _LOGGER.info("Remote start/stop of charger is not supported.")
-            raise Exception("Remote start/stop of charger is not supported.")
-        if self._in_progress("batterycharge"):
-            return False
-        if action in ["start", "stop"]:
-            data = {"action": {"type": action}}
-        elif action.get("action", {}).get("type", "") == "setSettings":
-            data = action
-        else:
-            _LOGGER.error(f"Invalid charger action: {action}. Must be either start or stop")
-            raise Exception(f"Invalid charger action: {action}. Must be either start or stop")
-        try:
-            self._requests["latest"] = "Charger"
-            response = await self._connection.setCharger(self.vin, data)
-            return await self._handle_response(
-                response=response, topic="batterycharge", error_msg=f"Failed to {action} charging"
-            )
-        except Exception as error:
-            _LOGGER.warning(f"Failed to {action} charging - {error}")
-            self._requests["batterycharge"] = {"status": "Exception", "timestamp": datetime.now()}
-            raise Exception(f"Failed to {action} charging - {error}")
+        raise Exception("Should have to be re-implemented")
 
     # Climatisation electric/auxiliary/windows (CLIMATISATION)
     async def set_climatisation_temp(self, temperature=20):
@@ -511,32 +353,7 @@ class Vehicle:
     # Parking heater heating/ventilation (RS)
     async def set_pheater(self, mode, spin):
         """Set the mode for the parking heater."""
-        if not self.is_pheater_heating_supported:
-            _LOGGER.error("No parking heater support.")
-            raise Exception("No parking heater support.")
-        if self._in_progress("preheater"):
-            return False
-        if mode not in ["heating", "ventilation", "off"]:
-            _LOGGER.error(f"{mode} is an invalid action for parking heater")
-            raise Exception(f"{mode} is an invalid action for parking heater")
-        if mode == "off":
-            data = {"performAction": {"quickstop": {"active": False}}}
-        else:
-            data = {
-                "performAction": {
-                    "quickstart": {"climatisationDuration": self.pheater_duration, "startMode": mode, "active": True}
-                }
-            }
-        try:
-            self._requests["latest"] = "Preheater"
-            response = await self._connection.setPreHeater(self.vin, data, spin)
-            return await self._handle_response(
-                response=response, topic="preheater", error_msg=f"Failed to set parking heater to {mode}"
-            )
-        except Exception as error:
-            _LOGGER.warning(f"Failed to set parking heater mode to {mode} - {error}")
-            self._requests["preheater"] = {"status": "Exception", "timestamp": datetime.now()}
-        raise Exception("Pre-heater action failed")
+        raise Exception("Should have to be re-implemented")
 
     # Lock (RLU)
     async def set_lock(self, action, spin):
@@ -564,39 +381,11 @@ class Vehicle:
     # Refresh vehicle data (VSR)
     async def set_refresh(self):
         """Wake up vehicle and update status data."""
-        if not self._services.get("statusreport_v1", {}).get("active", False):
-            _LOGGER.info("Data refresh is not supported.")
-            raise Exception("Data refresh is not supported.")
-        if self._in_progress("refresh", unknown_offset=-5):
-            return False
-        try:
-            self._requests["latest"] = "Refresh"
-            response = await self._connection.setRefresh(self.vin)
-            return await self._handle_response(
-                response=response, topic="refresh", error_msg="Failed to request vehicle update"
-            )
-        except Exception as error:
-            _LOGGER.warning(f"Failed to execute data refresh - {error}")
-            self._requests["refresh"] = {"status": "Exception", "timestamp": datetime.now()}
-        raise Exception("Data refresh failed")
+        raise Exception("Should have to be re-implemented")
 
     async def set_schedule(self, data: TimerData) -> bool:
         """Store schedule."""
-        if not self._services.get("timerprogramming_v1", False):
-            _LOGGER.info("Remote control of timer functions is not supported.")
-            raise Exception("Remote control of timer functions is not supported.")
-        if self._in_progress("departuretimer"):
-            return False
-        try:
-            self._requests["latest"] = "Departuretimer"
-            response = await self._connection.setTimersAndProfiles(self.vin, data.timersAndProfiles)
-            return await self._handle_response(
-                response=response, topic="departuretimer", error_msg="Failed to execute timer request"
-            )
-        except Exception as error:
-            _LOGGER.warning(f"Failed to execute timer request - {error}")
-            self._requests["departuretimer"] = {"status": "Exception", "timestamp": datetime.now()}
-        raise Exception("Timer action failed")
+        raise Exception("Should have to be re-implemented")
 
     # Vehicle class helpers #
     # Vehicle info
