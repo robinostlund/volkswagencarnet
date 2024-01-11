@@ -656,6 +656,20 @@ class Connection:
             _LOGGER.warning(f"Could not fetch last trip data, error: {error}")
         return False
 
+    async def wakeUpVehicle(self, vin):
+        """Wake up vehicle to send updated data to VW Backend."""
+        if not await self.validate_tokens:
+            return False
+        try:
+            response = await self.post(
+                    f"{BASE_API}/vehicle/v1/vehicles/{vin}/vehiclewakeuptrigger", json={}, return_raw=True
+                )
+            return response
+
+        except Exception as error:
+            _LOGGER.warning(f"Could not refresh the data, error: {error}")
+        return False
+
     async def get_request_status(self, vin, sectionId, requestId, actionId=""):
         """Return status of a request ID for a given section ID."""
         if self.logged_in is False:

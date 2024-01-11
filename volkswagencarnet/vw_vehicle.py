@@ -19,12 +19,7 @@ from .vw_utilities import find_path, is_valid_path
 #
 # Model Year (unclear, seems to only be available via the web API, language dependent and with separate authentication)
 
-
 BACKEND_RECEIVED_TIMESTAMP = "BACKEND_RECEIVED_TIMESTAMP"
-
-LOCKED_STATE = 2
-
-CLOSED_STATE = 3
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -32,10 +27,6 @@ ENGINE_TYPE_ELECTRIC = "electric"
 ENGINE_TYPE_DIESEL = "diesel"
 ENGINE_TYPE_GASOLINE = "gasoline"
 ENGINE_TYPE_COMBUSTION = [ENGINE_TYPE_DIESEL, ENGINE_TYPE_GASOLINE]
-
-UNSUPPORTED = 0
-NO_VALUE = -1
-
 
 class Vehicle:
     """Vehicle contains the state of sensors and methods for interacting with the car."""
@@ -222,7 +213,7 @@ class Vehicle:
         if data:
             self._states.update({Services.SERVICE_STATUS: data})
 
-    async def wait_for_request(self, section, request, retry_count=36, action=""):
+    async def wait_for_request(self, section, request, retry_count=18, action=""):
         """Update status of outstanding requests."""
         retry_count -= 1
         if retry_count == 0:
@@ -233,12 +224,31 @@ class Vehicle:
             _LOGGER.debug(f"Request ID {request}: {status}")
             self._requests["state"] = status
             if status == "In Progress":
-                await asyncio.sleep(5)
+                await asyncio.sleep(10)
                 return await self.wait_for_request(section, request, retry_count, action)
             else:
                 return status
         except Exception as error:
             _LOGGER.warning(f"Exception encountered while waiting for request status: {error}")
+            return "Exception"
+
+    async def wait_for_data_refresh(self, retry_count=18):
+        """Update status of outstanding requests."""
+        retry_count -= 1
+        if retry_count == 0:
+            _LOGGER.info(f"Timeout while waiting for data refresh.")
+            return "Timeout"
+        try:
+            await self.get_selectivestatus([Services.MEASUREMENTS])
+            last_connect_time = datetime.strptime(self.last_connected, '%Y-%m-%d %H:%M:%S')
+            refresh_trigger_time = self._requests.get("refresh", {}).get("timestamp")
+            if last_connect_time < refresh_trigger_time:
+                await asyncio.sleep(10)
+                return await self.wait_for_data_refresh(retry_count)
+            else:
+                return "successful"
+        except Exception as error:
+            _LOGGER.warning(f"Exception encountered while waiting for data refresh: {error}")
             return "Exception"
 
     # Data set functions
@@ -381,7 +391,34 @@ class Vehicle:
     # Refresh vehicle data (VSR)
     async def set_refresh(self):
         """Wake up vehicle and update status data."""
-        raise Exception("Should have to be re-implemented")
+        if self._in_progress("refresh", unknown_offset=-5):
+            return False
+        try:
+            self._requests["latest"] = "Refresh"
+            response = await self._connection.wakeUpVehicle(self.vin)
+            if response:
+                if response.status == 204:
+                    self._requests["state"] = "in_progress"
+                    self._requests["refresh"] = {
+                        "timestamp": datetime.now(),
+                        "status": "in_progress",
+                        "id": 0,
+                    }
+                    status = await self.wait_for_data_refresh()
+                elif response.status == 429:
+                    status = "Throttled"
+                    _LOGGER.debug(f"Server side throttled. Try again later.")
+                else:
+                    _LOGGER.debug(f"Unable to refresh the data. Incorrect response code: {response.status}")
+                self._requests["state"] = status
+                self._requests["refresh"] = {"status": status, "timestamp": datetime.now()}
+                return True
+            else:
+                _LOGGER.debug(f"Unable to refresh the data.")
+        except Exception as error:
+            _LOGGER.warning(f"Failed to execute data refresh - {error}")
+            self._requests["refresh"] = {"status": "Exception", "timestamp": datetime.now()}
+        raise Exception("Data refresh failed")
 
     async def set_schedule(self, data: TimerData) -> bool:
         """Store schedule."""
