@@ -28,6 +28,7 @@ ENGINE_TYPE_DIESEL = "diesel"
 ENGINE_TYPE_GASOLINE = "gasoline"
 ENGINE_TYPE_COMBUSTION = [ENGINE_TYPE_DIESEL, ENGINE_TYPE_GASOLINE]
 
+
 class Vehicle:
     """Vehicle contains the state of sensors and methods for interacting with the car."""
 
