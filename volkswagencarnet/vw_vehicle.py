@@ -240,7 +240,7 @@ class Vehicle:
             return "Timeout"
         try:
             await self.get_selectivestatus([Services.MEASUREMENTS])
-            last_connect_time = datetime.strptime(self.last_connected, '%Y-%m-%d %H:%M:%S')
+            last_connect_time = datetime.strptime(self.last_connected, "%Y-%m-%d %H:%M:%S")
             refresh_trigger_time = self._requests.get("refresh", {}).get("timestamp")
             if last_connect_time < refresh_trigger_time:
                 await asyncio.sleep(10)

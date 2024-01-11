@@ -662,8 +662,8 @@ class Connection:
             return False
         try:
             response = await self.post(
-                    f"{BASE_API}/vehicle/v1/vehicles/{vin}/vehiclewakeuptrigger", json={}, return_raw=True
-                )
+                f"{BASE_API}/vehicle/v1/vehicles/{vin}/vehiclewakeuptrigger", json={}, return_raw=True
+            )
             return response
 
         except Exception as error:
