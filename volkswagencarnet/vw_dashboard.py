@@ -26,6 +26,7 @@ class Instrument:
         attr: str,
         name: str,
         icon: Optional[str] = None,
+        entity_type: Optional[str] = None,
         device_class: Optional[str] = None,
         state_class: Optional[str] = None,
     ):
@@ -34,6 +35,7 @@ class Instrument:
         self.component = component
         self.name = name
         self.icon = icon
+        self.entity_type = entity_type
         self.device_class = device_class
         self.state_class = state_class
         self.callback = None
@@ -124,12 +126,13 @@ class Sensor(Instrument):
         name: str,
         icon: Optional[str],
         unit: Optional[str],
+        entity_type: Optional[str] = None,
         device_class: Optional[str] = None,
         state_class: Optional[str] = None,
     ):
         """Init."""
         super().__init__(
-            component="sensor", attr=attr, name=name, icon=icon, device_class=device_class, state_class=state_class
+            component="sensor", attr=attr, name=name, icon=icon, entity_type=entity_type, device_class=device_class, state_class=state_class
         )
         self.unit = unit
         self.convert = False
@@ -196,8 +199,8 @@ class Sensor(Instrument):
 
 
 class BinarySensor(Instrument):
-    def __init__(self, attr, name, device_class, icon="", reverse_state=False):
-        super().__init__(component="binary_sensor", attr=attr, name=name, icon=icon)
+    def __init__(self, attr, name, device_class, icon="", entity_type=None, reverse_state=False):
+        super().__init__(component="binary_sensor", attr=attr, name=name, icon=icon, entity_type=entity_type)
         self.device_class = device_class
         self.reverse_state = reverse_state
 
@@ -244,8 +247,8 @@ class BinarySensor(Instrument):
 class Switch(Instrument):
     """Switch instrument."""
 
-    def __init__(self, attr, name, icon):
-        super().__init__(component="switch", attr=attr, name=name, icon=icon)
+    def __init__(self, attr, name, icon, entity_type=None):
+        super().__init__(component="switch", attr=attr, name=name, icon=icon, entity_type=entity_type)
 
     @property
     def is_mutable(self):
@@ -649,7 +652,7 @@ class WindowHeater(Switch):
 class BatteryClimatisation(Switch):
     def __init__(self):
         super().__init__(
-            attr="climatisation_without_external_power", name="Climatisation from battery", icon="mdi:power-plug"
+            attr="climatisation_without_external_power", name="Climatisation from battery", icon="mdi:power-plug", entity_type="config"
         )
 
     @property
@@ -744,7 +747,7 @@ class RequestResults(Sensor):
 
     def __init__(self):
         """Init."""
-        super().__init__(attr="request_results", name="Request results", icon="mdi:chat-alert", unit="")
+        super().__init__(attr="request_results", name="Request results", icon="mdi:chat-alert", unit="", entity_type="diag")
 
     @property
     def state(self) -> Any:
@@ -852,6 +855,7 @@ def create_instruments():
             name="Last connected",
             icon="mdi:clock",
             unit="",
+            entity_type="diag",
         ),
         Sensor(
             attr="parking_time",
@@ -993,48 +997,56 @@ def create_instruments():
             name="Requests remaining",
             icon="mdi:chat-alert",
             unit="",
+            entity_type="diag",
         ),
         Sensor(
             attr="api_vehicles_status",
             name="API vehicles",
             icon="mdi:api",
             unit="",
+            entity_type="diag",
         ),
         Sensor(
             attr="api_capabilities_status",
             name="API capabilities",
             icon="mdi:api",
             unit="",
+            entity_type="diag",
         ),
         Sensor(
             attr="api_trips_status",
             name="API trips",
             icon="mdi:api",
             unit="",
+            entity_type="diag",
         ),
         Sensor(
             attr="api_selectivestatus_status",
             name="API selectivestatus",
             icon="mdi:api",
             unit="",
+            entity_type="diag",
         ),
         Sensor(
             attr="api_parkingposition_status",
             name="API parkingposition",
             icon="mdi:api",
             unit="",
+            entity_type="diag",
         ),
         Sensor(
             attr="api_token_status",
             name="API token",
             icon="mdi:api",
             unit="",
+            entity_type="diag",
         ),
         Sensor(
             attr="last_data_refresh",
             name="Last data refresh",
             icon="mdi:clock",
             unit="",
+            entity_type="diag",
         ),
         BinarySensor(attr="external_power", name="External power", device_class=VWDeviceClass.POWER),
         BinarySensor(attr="energy_flow", name="Energy flow", device_class=VWDeviceClass.POWER),
@@ -1125,7 +1137,7 @@ def create_instruments():
             reverse_state=True,
         ),
         BinarySensor(attr="vehicle_moving", name="Vehicle Moving", device_class=VWDeviceClass.MOVING),
-        BinarySensor(attr="request_in_progress", name="Request in progress", device_class=VWDeviceClass.CONNECTIVITY),
+        BinarySensor(attr="request_in_progress", name="Request in progress", device_class=VWDeviceClass.CONNECTIVITY, entity_type="diag"),
     ]
 
 
