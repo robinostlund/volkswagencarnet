@@ -132,7 +132,13 @@ class Sensor(Instrument):
     ):
         """Init."""
         super().__init__(
-            component="sensor", attr=attr, name=name, icon=icon, entity_type=entity_type, device_class=device_class, state_class=state_class
+            component="sensor",
+            attr=attr,
+            name=name,
+            icon=icon,
+            entity_type=entity_type,
+            device_class=device_class,
+            state_class=state_class,
         )
         self.unit = unit
         self.convert = False
@@ -652,7 +658,10 @@ class WindowHeater(Switch):
 class BatteryClimatisation(Switch):
     def __init__(self):
         super().__init__(
-            attr="climatisation_without_external_power", name="Climatisation from battery", icon="mdi:power-plug", entity_type="config"
+            attr="climatisation_without_external_power",
+            name="Climatisation from battery",
+            icon="mdi:power-plug",
+            entity_type="config",
         )
 
     @property
@@ -747,7 +756,9 @@ class RequestResults(Sensor):
 
     def __init__(self):
         """Init."""
-        super().__init__(attr="request_results", name="Request results", icon="mdi:chat-alert", unit="", entity_type="diag")
+        super().__init__(
+            attr="request_results", name="Request results", icon="mdi:chat-alert", unit="", entity_type="diag"
+        )
 
     @property
     def state(self) -> Any:
@@ -1137,7 +1148,12 @@ def create_instruments():
             reverse_state=True,
         ),
         BinarySensor(attr="vehicle_moving", name="Vehicle Moving", device_class=VWDeviceClass.MOVING),
-        BinarySensor(attr="request_in_progress", name="Request in progress", device_class=VWDeviceClass.CONNECTIVITY, entity_type="diag"),
+        BinarySensor(
+            attr="request_in_progress",
+            name="Request in progress",
+            device_class=VWDeviceClass.CONNECTIVITY,
+            entity_type="diag",
+        ),
     ]
 
 
