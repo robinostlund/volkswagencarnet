@@ -1483,6 +1483,8 @@ class Vehicle:
         windows = find_path(self.attrs, "access.accessStatus.value.windows")
         for window in windows:
             if window["name"] == "sunRoof":
+                if not any(valid_status in window["status"] for valid_status in P.VALID_WINDOW_STATUS):
+                    return None
                 return "closed" in window["status"]
         return False
 
@@ -1511,6 +1513,8 @@ class Vehicle:
         windows = find_path(self.attrs, "access.accessStatus.value.windows")
         for window in windows:
             if window["name"] == "roofCover":
+                if not any(valid_status in window["status"] for valid_status in P.VALID_WINDOW_STATUS):
+                    return None
                 return "closed" in window["status"]
         return False
 
@@ -1657,6 +1661,8 @@ class Vehicle:
         doors = find_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.doors")
         for door in doors:
             if door["name"] == "bonnet":
+                if not any(valid_status in door["status"] for valid_status in P.VALID_DOOR_STATUS):
+                    return None
                 return "closed" in door["status"]
         return False
 
