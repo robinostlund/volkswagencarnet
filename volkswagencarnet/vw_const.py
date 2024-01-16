@@ -109,8 +109,8 @@ class VehicleStatusParameter:
 
     OUTSIDE_TEMPERATURE = "0x0301020001"
 
-    VALID_DOOR_STATUS = ["opened", "closed"]
-    VALID_WINDOW_STATUS = ["opened", "closed"]
+    VALID_DOOR_STATUS = ["open", "closed"]
+    VALID_WINDOW_STATUS = ["open", "closed"]
 
 
 class Services:
