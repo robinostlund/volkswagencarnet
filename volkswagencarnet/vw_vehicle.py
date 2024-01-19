@@ -614,7 +614,7 @@ class Vehicle:
         if is_valid_path(self.attrs, last_connected_time_path):
             last_connected_time_utc = find_path(self.attrs, last_connected_time_path)
             if type(last_connected_time_utc) == str:
-                last_connected_time_utc = datetime.strptime(last_connected_time_utc, '%Y-%m-%dT%H:%M:%S.%fZ').replace(
+                last_connected_time_utc = datetime.strptime(last_connected_time_utc, "%Y-%m-%dT%H:%M:%S.%fZ").replace(
                     microsecond=0
                 )
             last_connected_time = last_connected_time_utc.replace(tzinfo=timezone.utc).astimezone(tz=None)
