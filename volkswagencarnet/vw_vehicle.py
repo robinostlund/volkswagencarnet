@@ -613,6 +613,8 @@ class Vehicle:
         last_connected_time_path = f"{Services.MEASUREMENTS}.odometerStatus.value.carCapturedTimestamp"
         if is_valid_path(self.attrs, last_connected_time_path):
             last_connected_time_utc = find_path(self.attrs, last_connected_time_path)
+            if type(last_connected_time_utc) == str:
+                last_connected_time_utc = datetime.strptime(last_connected_time_utc, '%Y-%m-%dT%H:%M:%S.%fZ').replace(microsecond=0)
             last_connected_time = last_connected_time_utc.replace(tzinfo=timezone.utc).astimezone(tz=None)
             return last_connected_time.strftime("%Y-%m-%d %H:%M:%S")
         return last_connected_time
@@ -679,7 +681,7 @@ class Vehicle:
 
         :return:
         """
-        return is_valid_path(self.attrs, "vehicleHealthInspection.maintenanceStatus.value.carCapturedTimestamp")
+        return is_valid_path(self.attrs, "vehicleHealthInspection.maintenanceStatus.value.inspectionDue_km")
 
     @property
     def oil_inspection(self):
@@ -2475,8 +2477,10 @@ class Vehicle:
 
     @property
     def is_api_trips_status_supported(self):
-        """Trips API status is always supported."""
-        return True
+        """Check if Trips API status is supported."""
+        if self._services.get(Services.TRIP_STATISTICS, {}).get("active", False):
+            return True
+        return False
 
     @property
     def api_selectivestatus_status(self) -> bool:
@@ -2505,8 +2509,10 @@ class Vehicle:
 
     @property
     def is_api_parkingposition_status_supported(self):
-        """Parkingposition API status is always supported."""
-        return True
+        """Check if Parkingposition API status is supported."""
+        if self._services.get(Services.PARKING_POSITION, {}).get("active", False):
+            return True
+        return False
 
     @property
     def api_token_status(self) -> bool:
