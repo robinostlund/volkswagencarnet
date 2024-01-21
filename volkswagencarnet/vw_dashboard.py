@@ -906,6 +906,18 @@ def create_instruments():
             unit="",
         ),
         Sensor(
+            attr="charging_power",
+            name="Charging Power",
+            icon="mdi:transmission-tower",
+            unit="kW",
+        ),
+        Sensor(
+            attr="charging_rate",
+            name="Charging Rate",
+            icon="mdi:ev-station",
+            unit="km/h",
+        ),
+        Sensor(
             attr="climatisation_target_temperature",
             name="Climatisation target temperature",
             icon="mdi:thermometer",

@@ -760,6 +760,36 @@ class Vehicle:
         return is_valid_path(self.attrs, f"{Services.CHARGING}.chargingStatus.value.chargingState")
 
     @property
+    def charging_power(self) -> bool:
+        """Return charging state."""
+        return find_path(self.attrs, f"{Services.CHARGING}.chargingStatus.value.chargePower_kW")
+
+    @property
+    def charging_power_last_updated(self) -> datetime:
+        """Return attribute last updated timestamp."""
+        return find_path(self.attrs, f"{Services.CHARGING}.chargingStatus.value.carCapturedTimestamp")
+
+    @property
+    def is_charging_power_supported(self) -> bool:
+        """Return true if charging is supported."""
+        return is_valid_path(self.attrs, f"{Services.CHARGING}.chargingStatus.value.chargePower_kW")
+
+    @property
+    def charging_rate(self) -> bool:
+        """Return charging state."""
+        return find_path(self.attrs, f"{Services.CHARGING}.chargingStatus.value.chargeRate_kmph")
+
+    @property
+    def charging_rate_last_updated(self) -> datetime:
+        """Return attribute last updated timestamp."""
+        return find_path(self.attrs, f"{Services.CHARGING}.chargingStatus.value.carCapturedTimestamp")
+
+    @property
+    def is_charging_rate_supported(self) -> bool:
+        """Return true if charging is supported."""
+        return is_valid_path(self.attrs, f"{Services.CHARGING}.chargingStatus.value.chargeRate_kmph")
+
+    @property
     def battery_level(self) -> int:
         """Return battery level."""
         return int(find_path(self.attrs, f"{Services.CHARGING}.batteryStatus.value.currentSOC_pct"))
@@ -1506,7 +1536,7 @@ class Vehicle:
                 if window["name"] == "sunRoof" and "unsupported" not in window["status"]:
                     return True
         return False
-    
+
     @property
     def sunroof_rear_closed(self) -> bool:
         """
