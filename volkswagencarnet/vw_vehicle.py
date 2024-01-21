@@ -760,8 +760,8 @@ class Vehicle:
         return is_valid_path(self.attrs, f"{Services.CHARGING}.chargingStatus.value.chargingState")
 
     @property
-    def charging_power(self) -> bool:
-        """Return charging state."""
+    def charging_power(self) -> int:
+        """Return charging power."""
         return find_path(self.attrs, f"{Services.CHARGING}.chargingStatus.value.chargePower_kW")
 
     @property
@@ -771,12 +771,12 @@ class Vehicle:
 
     @property
     def is_charging_power_supported(self) -> bool:
-        """Return true if charging is supported."""
+        """Return true if charging power is supported."""
         return is_valid_path(self.attrs, f"{Services.CHARGING}.chargingStatus.value.chargePower_kW")
 
     @property
-    def charging_rate(self) -> bool:
-        """Return charging state."""
+    def charging_rate(self) -> int:
+        """Return charging rate."""
         return find_path(self.attrs, f"{Services.CHARGING}.chargingStatus.value.chargeRate_kmph")
 
     @property
@@ -786,8 +786,28 @@ class Vehicle:
 
     @property
     def is_charging_rate_supported(self) -> bool:
-        """Return true if charging is supported."""
+        """Return true if charging rate is supported."""
         return is_valid_path(self.attrs, f"{Services.CHARGING}.chargingStatus.value.chargeRate_kmph")
+
+    @property
+    def charger_type(self) -> str:
+        """Return charger type."""
+        charger_type = find_path(self.attrs, f"{Services.CHARGING}.chargingStatus.value.chargeRate_kmph")
+        if charger_type == "ac":
+            return "AC"
+        elif charger_type == "dc":
+            return "DC"
+        return "Unknown"
+
+    @property
+    def charger_type_last_updated(self) -> datetime:
+        """Return attribute last updated timestamp."""
+        return find_path(self.attrs, f"{Services.CHARGING}.chargingStatus.value.carCapturedTimestamp")
+
+    @property
+    def is_charger_type_supported(self) -> bool:
+        """Return true if charger type is supported."""
+        return is_valid_path(self.attrs, f"{Services.CHARGING}.chargingStatus.value.chargeType")
 
     @property
     def battery_level(self) -> int:

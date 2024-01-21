@@ -918,6 +918,12 @@ def create_instruments():
             unit="km/h",
         ),
         Sensor(
+            attr="charger_type",
+            name="Charger Type",
+            icon="mdi:ev-plug-type1",
+            unit="",
+        ),
+        Sensor(
             attr="climatisation_target_temperature",
             name="Climatisation target temperature",
             icon="mdi:thermometer",
