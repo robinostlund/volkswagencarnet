@@ -1118,7 +1118,10 @@ def create_instruments():
             attr="sunroof_closed", name="Sunroof closed", device_class=VWDeviceClass.WINDOW, reverse_state=True
         ),
         BinarySensor(
-            attr="sunroof_rear_closed", name="Sunroof Rear closed", device_class=VWDeviceClass.WINDOW, reverse_state=True
+            attr="sunroof_rear_closed",
+            name="Sunroof Rear closed",
+            device_class=VWDeviceClass.WINDOW,
+            reverse_state=True,
         ),
         BinarySensor(
             attr="roof_cover_closed", name="Roof cover closed", device_class=VWDeviceClass.WINDOW, reverse_state=True
