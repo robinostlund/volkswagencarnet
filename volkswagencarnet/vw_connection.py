@@ -22,7 +22,6 @@ from json import dumps as to_json
 from urllib.parse import urljoin, parse_qs, urlparse
 
 from volkswagencarnet.vw_exceptions import AuthenticationException
-from volkswagencarnet.vw_timer import TimerData, TimersAndProfiles
 from .vw_const import (
     BRAND,
     COUNTRY,

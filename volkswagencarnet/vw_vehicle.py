@@ -237,7 +237,7 @@ class Vehicle:
         """Update status of outstanding requests."""
         retry_count -= 1
         if retry_count == 0:
-            _LOGGER.info(f"Timeout while waiting for data refresh.")
+            _LOGGER.info("Timeout while waiting for data refresh.")
             return "Timeout"
         try:
             await self.get_selectivestatus([Services.MEASUREMENTS])
@@ -295,7 +295,7 @@ class Vehicle:
     async def set_window_heating(self, action="stop"):
         """Turn on/off window heater."""
         if self.is_window_heater_supported:
-            if not action in ["start", "stop"]:
+            if action not in ["start", "stop"]:
                 _LOGGER.error(f'Window heater action "{action}" is not supported.')
                 raise Exception(f'Window heater action "{action}" is not supported.')
             response = await self._connection.setWindowHeater(self.vin, (action == "start"))
@@ -374,7 +374,7 @@ class Vehicle:
             raise Exception("Remote lock/unlock is not supported.")
         if self._in_progress("lock", unknown_offset=-5):
             return False
-        if not action in ["lock", "unlock"]:
+        if action not in ["lock", "unlock"]:
             _LOGGER.error(f"Invalid lock action: {action}")
             raise Exception(f"Invalid lock action: {action}")
 
@@ -408,14 +408,14 @@ class Vehicle:
                     status = await self.wait_for_data_refresh()
                 elif response.status == 429:
                     status = "Throttled"
-                    _LOGGER.debug(f"Server side throttled. Try again later.")
+                    _LOGGER.debug("Server side throttled. Try again later.")
                 else:
                     _LOGGER.debug(f"Unable to refresh the data. Incorrect response code: {response.status}")
                 self._requests["state"] = status
                 self._requests["refresh"] = {"status": status, "timestamp": datetime.now()}
                 return True
             else:
-                _LOGGER.debug(f"Unable to refresh the data.")
+                _LOGGER.debug("Unable to refresh the data.")
         except Exception as error:
             _LOGGER.warning(f"Failed to execute data refresh - {error}")
             self._requests["refresh"] = {"status": "Exception", "timestamp": datetime.now()}
@@ -599,9 +599,7 @@ class Vehicle:
     @property
     def is_parking_light_supported(self) -> bool:
         """Return true if parking light is supported."""
-        return self.attrs.get(Services.VEHICLE_LIGHTS, False) and "lights" in self.attrs.get(
-            Services.VEHICLE_LIGHTS
-        ).get("lightsStatus").get("value")
+        return self.attrs.get(Services.VEHICLE_LIGHTS, False) and is_valid_path(self.attrs, f"{Services.VEHICLE_LIGHTS}.lightsStatus.value.lights")
 
     # Connection status
     @property
@@ -613,7 +611,7 @@ class Vehicle:
         last_connected_time_path = f"{Services.MEASUREMENTS}.odometerStatus.value.carCapturedTimestamp"
         if is_valid_path(self.attrs, last_connected_time_path):
             last_connected_time_utc = find_path(self.attrs, last_connected_time_path)
-            if type(last_connected_time_utc) == str:
+            if type(last_connected_time_utc) is str:
                 last_connected_time_utc = datetime.strptime(last_connected_time_utc, "%Y-%m-%dT%H:%M:%S.%fZ").replace(
                     microsecond=0
                 )
