@@ -1506,6 +1506,36 @@ class Vehicle:
                 if window["name"] == "sunRoof" and "unsupported" not in window["status"]:
                     return True
         return False
+    
+    @property
+    def sunroof_rear_closed(self) -> bool:
+        """
+        Return sunroof rear closed state.
+
+        :return:
+        """
+        windows = find_path(self.attrs, "access.accessStatus.value.windows")
+        for window in windows:
+            if window["name"] == "sunRoofRear":
+                if not any(valid_status in window["status"] for valid_status in P.VALID_WINDOW_STATUS):
+                    return None
+                return "closed" in window["status"]
+        return False
+
+    @property
+    def sunroof_rear_closed_last_updated(self) -> datetime:
+        """Return attribute last updated timestamp."""
+        return find_path(self.attrs, "access.accessStatus.value.carCapturedTimestamp")
+
+    @property
+    def is_sunroof_rear_closed_supported(self) -> bool:
+        """Return true if supported."""
+        if is_valid_path(self.attrs, "access.accessStatus.value.windows"):
+            windows = find_path(self.attrs, "access.accessStatus.value.windows")
+            for window in windows:
+                if window["name"] == "sunRoofRear" and "unsupported" not in window["status"]:
+                    return True
+        return False
 
     @property
     def roof_cover_closed(self) -> bool:
