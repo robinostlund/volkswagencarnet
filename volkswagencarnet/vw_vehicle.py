@@ -599,7 +599,9 @@ class Vehicle:
     @property
     def is_parking_light_supported(self) -> bool:
         """Return true if parking light is supported."""
-        return self.attrs.get(Services.VEHICLE_LIGHTS, False) and is_valid_path(self.attrs, f"{Services.VEHICLE_LIGHTS}.lightsStatus.value.lights")
+        return self.attrs.get(Services.VEHICLE_LIGHTS, False) and is_valid_path(
+            self.attrs, f"{Services.VEHICLE_LIGHTS}.lightsStatus.value.lights"
+        )
 
     # Connection status
     @property
