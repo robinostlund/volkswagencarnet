@@ -792,7 +792,7 @@ class Vehicle:
     @property
     def charger_type(self) -> str:
         """Return charger type."""
-        charger_type = find_path(self.attrs, f"{Services.CHARGING}.chargingStatus.value.chargeRate_kmph")
+        charger_type = find_path(self.attrs, f"{Services.CHARGING}.chargingStatus.value.chargeType")
         if charger_type == "ac":
             return "AC"
         elif charger_type == "dc":
@@ -823,6 +823,21 @@ class Vehicle:
     def is_battery_level_supported(self) -> bool:
         """Return true if battery level is supported."""
         return is_valid_path(self.attrs, f"{Services.CHARGING}.batteryStatus.value.currentSOC_pct")
+
+    @property
+    def battery_target_charge_level(self) -> int:
+        """Return target charge level."""
+        return find_path(self.attrs, f"{Services.CHARGING}.chargingSettings.value.targetSOC_pct")
+
+    @property
+    def battery_target_charge_level_last_updated(self) -> datetime:
+        """Return attribute last updated timestamp."""
+        return find_path(self.attrs, f"{Services.CHARGING}.chargingSettings.value.carCapturedTimestamp")
+
+    @property
+    def is_battery_target_charge_level_supported(self) -> bool:
+        """Return true if target charge level is supported."""
+        return is_valid_path(self.attrs, f"{Services.CHARGING}.chargingSettings.value.targetSOC_pct")
 
     @property
     def charge_max_ampere(self) -> str | int:

@@ -826,6 +826,12 @@ def create_instruments():
             state_class=VWStateClass.MEASUREMENT,
         ),
         Sensor(
+            attr="battery_target_charge_level",
+            name="Battery target charge level",
+            icon="mdi:battery-arrow-up",
+            unit="%",
+        ),
+        Sensor(
             attr="adblue_level",
             name="Adblue level",
             icon="mdi:fuel",
