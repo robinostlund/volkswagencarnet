@@ -525,7 +525,11 @@ class ElectricClimatisation(Switch):
 
 class AuxiliaryClimatisation(Switch):
     def __init__(self):
-        super().__init__(attr="auxiliary_climatisation", name="Auxiliary Climatisation", icon="mdi:radiator")
+        super().__init__(
+            attr="auxiliary_climatisation",
+            name="Auxiliary Climatisation",
+            icon="mdi:radiator",
+            entity_type="config",)
         self.spin = ""
 
     def configurate(self, **config):
