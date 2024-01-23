@@ -1324,7 +1324,9 @@ class Vehicle:
     @property
     def is_window_heater_supported(self) -> bool:
         """Return true if vehicle has heater."""
-        return self.is_window_heater_front_supported
+        # return self.is_window_heater_front_supported
+        # CURRENTLY NOT SUPPORTED
+        return False
 
     # Parking heater, "legacy" auxiliary climatisation
     @property
