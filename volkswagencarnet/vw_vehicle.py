@@ -1256,7 +1256,7 @@ class Vehicle:
         """Return true if vehicle has auxiliary climatisation."""
         # return (
         #    is_valid_path(self.attrs, "climatisation.climatisationSettings.value.heaterSource")
-        #    or is_valid_path(self.attrs, "climatisation.climatisationSettings.value.climatizationAtUnlock") 
+        #    or is_valid_path(self.attrs, "climatisation.climatisationSettings.value.climatizationAtUnlock")
         # )
         # CURRENTLY NOT SUPPORTED
         return False
