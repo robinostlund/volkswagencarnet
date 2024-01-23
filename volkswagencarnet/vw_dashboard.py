@@ -529,7 +529,8 @@ class AuxiliaryClimatisation(Switch):
             attr="auxiliary_climatisation",
             name="Auxiliary Climatisation",
             icon="mdi:radiator",
-            entity_type="config",)
+            entity_type="config",
+        )
         self.spin = ""
 
     def configurate(self, **config):

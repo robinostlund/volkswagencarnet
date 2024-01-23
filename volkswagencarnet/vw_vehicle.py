@@ -760,7 +760,7 @@ class Vehicle:
     @property
     def is_charging_supported(self) -> bool:
         """Return true if charging is supported."""
-        #return is_valid_path(self.attrs, f"{Services.CHARGING}.chargingStatus.value.chargingState")
+        # return is_valid_path(self.attrs, f"{Services.CHARGING}.chargingStatus.value.chargingState")
         # CURRENTLY NOT SUPPORTED
         return False
 
@@ -1179,7 +1179,7 @@ class Vehicle:
     @property
     def is_climatisation_without_external_power_supported(self) -> bool:
         """Return true if climatisation on battery power is supported."""
-        #return is_valid_path(self.attrs, "climatisation.climatisationSettings.value.climatisationWithoutExternalPower")
+        # return is_valid_path(self.attrs, "climatisation.climatisationSettings.value.climatisationWithoutExternalPower")
         # CURRENTLY NOT SUPPORTED
         return False
 
@@ -1234,7 +1234,7 @@ class Vehicle:
     @property
     def is_electric_climatisation_supported(self) -> bool:
         """Return true if vehicle has climater."""
-        #return self.is_climatisation_supported
+        # return self.is_climatisation_supported
         # CURRENTLY NOT SUPPORTED
         return False
 
@@ -1254,13 +1254,12 @@ class Vehicle:
     @property
     def is_auxiliary_climatisation_supported(self) -> bool:
         """Return true if vehicle has auxiliary climatisation."""
-        #return (
+        # return (
         #    is_valid_path(self.attrs, "climatisation.climatisationSettings.value.heaterSource")
         #    or is_valid_path(self.attrs, "climatisation.climatisationSettings.value.climatizationAtUnlock") 
-        #)
+        # )
         # CURRENTLY NOT SUPPORTED
         return False
-
 
     @property
     def is_climatisation_supported(self) -> bool:
@@ -2069,21 +2068,21 @@ class Vehicle:
     @property
     def is_departure_timer1_supported(self) -> bool:
         """Check if timer 1 is supported."""
-        #return self.is_schedule_supported(1)
+        # return self.is_schedule_supported(1)
         # CURRENTLY NOT SUPPORTED
         return False
 
     @property
     def is_departure_timer2_supported(self) -> bool:
         """Check if timer 2is supported."""
-        #return self.is_schedule_supported(2)
+        # return self.is_schedule_supported(2)
         # CURRENTLY NOT SUPPORTED
         return False
 
     @property
     def is_departure_timer3_supported(self) -> bool:
         """Check if timer 3 is supported."""
-        #return self.is_schedule_supported(3)
+        # return self.is_schedule_supported(3)
         # CURRENTLY NOT SUPPORTED
         return False
 
@@ -2093,8 +2092,8 @@ class Vehicle:
 
         :return:
         """
-        #timer: TimerData = self.attrs.get("timer", None)
-        #return timer.has_schedule(id)
+        # timer: TimerData = self.attrs.get("timer", None)
+        # return timer.has_schedule(id)
         # CURRENTLY NOT SUPPORTED
         return False
 
