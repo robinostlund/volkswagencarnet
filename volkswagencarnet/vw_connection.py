@@ -16,13 +16,12 @@ import asyncio
 import jwt
 import logging
 from aiohttp import ClientSession, ClientTimeout, client_exceptions
-from aiohttp.hdrs import METH_GET, METH_POST
+from aiohttp.hdrs import METH_GET, METH_POST, METH_PUT
 from bs4 import BeautifulSoup
 from json import dumps as to_json
 from urllib.parse import urljoin, parse_qs, urlparse
 
 from volkswagencarnet.vw_exceptions import AuthenticationException
-from volkswagencarnet.vw_timer import TimerData, TimersAndProfiles
 from .vw_const import (
     BRAND,
     COUNTRY,
@@ -358,6 +357,21 @@ class Connection:
         self._session_headers["Authorization"] = "Bearer " + self._session_tokens[client]["access_token"]
         return True
 
+    async def _handle_action_result(self, response_raw):
+        response = await response_raw.json(loads=json_loads)
+        if not response:
+            raise Exception("Invalid or no response")
+        elif response == 429:
+            return dict({"id": None, "state": "Throttled", "rate_limit_remaining": 0})
+        else:
+            request_id = response.get("data", {}).get("requestID", 0)
+            remaining = response_raw.headers.get("Vcf-Remaining-Calls")
+            _LOGGER.debug(
+                f"Request for window heating returned with request id: {request_id},"
+                f" remaining requests: {remaining}"
+            )
+            return dict({"id": str(request_id), "rate_limit_remaining": remaining})
+
     async def terminate(self):
         """Log out from connect services."""
         _LOGGER.info("Initiating logout")
@@ -487,6 +501,22 @@ class Connection:
             else:
                 raise
 
+    async def put(self, url, vin="", tries=0, return_raw=False, **data):
+        """Perform a put query."""
+        try:
+            if data:
+                return await self._request(METH_PUT, self._make_url(url, vin), return_raw=return_raw, **data)
+            else:
+                return await self._request(METH_PUT, self._make_url(url, vin), return_raw=return_raw)
+        except client_exceptions.ClientResponseError as error:
+            if error.status == 429 and tries < MAX_RETRIES_ON_RATE_LIMIT:
+                delay = randint(1, 3 + tries * 2)
+                _LOGGER.debug(f"Server side throttled. Waiting {delay}, try {tries + 1}")
+                await asyncio.sleep(delay)
+                return await self.post(url, vin, tries + 1, return_raw=return_raw, **data)
+            else:
+                raise
+
     # Construct URL from request, home region and variables
     def _make_url(self, ref, vin=""):
         # TODO after verifying that we don't need home region handling anymore, this method should be completely removed
@@ -527,29 +557,6 @@ class Connection:
             _LOGGER.warning(f"Could not update information: {error}")
         return False
 
-    # Data collect functions #
-    async def getHomeRegion(self, vin):
-        """Get API requests base url for VIN."""
-        if not await self.validate_tokens:
-            return False
-        try:
-            # TODO: handle multiple home regions! (no examples available currently)
-            return True
-            response = await self.get(
-                "https://mal-1a.prd.ece.vwg-connect.com/api/cs/vds/v1/vehicles/$vin/homeRegion", vin
-            )
-            self._session_auth_ref_urls[vin] = (
-                response["homeRegion"]["baseUri"]["content"].split("/api")[0].replace("mal-", "fal-")
-                if response["homeRegion"]["baseUri"]["content"] != "https://mal-1a.prd.ece.vwg-connect.com/api"
-                else "https://msg.volkswagen.de"
-            )
-            self._session_spin_ref_urls[vin] = response["homeRegion"]["baseUri"]["content"].split("/api")[0]
-            return response["homeRegion"]["baseUri"]["content"]
-        except Exception as error:
-            _LOGGER.debug(f"Could not get homeregion, error {error}")
-            self._session_logged_in = False
-        return False
-
     async def getOperationList(self, vin):
         """Collect operationlist for VIN, supported/licensed functions."""
         if not await self.validate_tokens:
@@ -583,6 +590,9 @@ class Connection:
                     _LOGGER.debug(
                         f"Did not receive return data for requested service {service}. (This is expected for several service/car combinations)"
                     )
+
+            if response:
+                response.update({"refreshTimestamp": datetime.now()})
 
             return response
 
@@ -645,181 +655,21 @@ class Connection:
             _LOGGER.warning(f"Could not fetch last trip data, error: {error}")
         return False
 
-    async def getRealCarData(self, vin):
-        """Get car information from customer profile, VIN, nickname, etc."""
+    async def wakeUpVehicle(self, vin):
+        """Wake up vehicle to send updated data to VW Backend."""
         if not await self.validate_tokens:
             return False
         try:
-            _LOGGER.debug("Attempting extraction of subject from identity token.")
-            atoken = self._session_tokens["identity"]["access_token"]
-            subject = jwt.decode(atoken, options={"verify_signature": False}, algorithms=JWT_ALGORITHMS).get(
-                "sub", None
+            response = await self.post(
+                f"{BASE_API}/vehicle/v1/vehicles/{vin}/vehiclewakeuptrigger", json={}, return_raw=True
             )
-            self._session_headers["Accept"] = "application/json"
-            response = await self.get(f"https://customer-profile.vwgroup.io/v1/customers/{subject}/realCarData")
-            if response.get("realCars", {}):
-                data = {
-                    "carData": next(
-                        item for item in response.get("realCars", []) if item["vehicleIdentificationNumber"] == vin
-                    )
-                }
-                return data
-            elif response.get("status_code", {}):
-                _LOGGER.warning(f'Could not fetch realCarData, HTTP status code: {response.get("status_code")}')
-            else:
-                _LOGGER.info("Unhandled error while trying to fetch realcar data")
+            return response
+
         except Exception as error:
-            _LOGGER.warning(f"Could not fetch realCarData, error: {error}")
+            _LOGGER.warning(f"Could not refresh the data, error: {error}")
         return False
 
-    async def getVehicleStatusData(self, vin):
-        """Get stored vehicle data response."""
-        try:
-            response = await self.get(f"fs-car/bs/vsr/v1/{BRAND}/{self._session_country}/vehicles/$vin/status", vin=vin)
-            if (
-                response.get("StoredVehicleDataResponse", {})
-                .get("vehicleData", {})
-                .get("data", {})[0]
-                .get("field", {})[0]
-            ):
-                data = {
-                    "StoredVehicleDataResponse": response.get("StoredVehicleDataResponse", {}),
-                    "StoredVehicleDataResponseParsed": {
-                        e["id"]: e if "value" in e else ""
-                        for f in [s["field"] for s in response["StoredVehicleDataResponse"]["vehicleData"]["data"]]
-                        for e in f
-                    },
-                }
-                return data
-            elif response.get("status_code", {}):
-                _LOGGER.warning(
-                    f'Could not fetch vehicle status report, HTTP status code: {response.get("status_code")}'
-                )
-            else:
-                _LOGGER.info("Unhandled error while trying to fetch status data")
-        except Exception as error:
-            _LOGGER.warning(f"Could not fetch StoredVehicleDataResponse, error: {error}")
-        return False
-
-    async def getTripStatistics(self, vin):
-        """Get short term trip statistics."""
-        if not await self.validate_tokens:
-            return False
-        try:
-            response = await self.get(
-                f"fs-car/bs/tripstatistics/v1/{BRAND}/{self._session_country}/vehicles/$vin/tripdata/shortTerm?newest",
-                vin=vin,
-            )
-            if response.get("tripData", {}):
-                data = {"tripstatistics": response.get("tripData", {})}
-                return data
-            elif response.get("status_code", {}):
-                _LOGGER.warning(f'Could not fetch trip statistics, HTTP status code: {response.get("status_code")}')
-            else:
-                _LOGGER.info("Unhandled error while trying to fetch trip statistics")
-        except Exception as error:
-            _LOGGER.warning(f"Could not fetch trip statistics, error: {error}")
-        return False
-
-    async def getPosition(self, vin):
-        """Get position data."""
-        if not await self.validate_tokens:
-            return False
-        try:
-            response = await self.get(
-                f"fs-car/bs/cf/v1/{BRAND}/{self._session_country}/vehicles/$vin/position", vin=vin
-            )
-            if response.get("findCarResponse", {}):
-                data = {"findCarResponse": response.get("findCarResponse", {}), "isMoving": False}
-                return data
-            elif response.get("status_code", {}):
-                if response.get("status_code", 0) == 204:
-                    _LOGGER.debug("Seems car is moving, HTTP 204 received from position")
-                    data = {"isMoving": True, "rate_limit_remaining": 15}
-                    return data
-                else:
-                    _LOGGER.warning(f'Could not fetch position, HTTP status code: {response.get("status_code")}')
-            else:
-                _LOGGER.info("Unhandled error while trying to fetch positional data")
-        except Exception as error:
-            _LOGGER.warning(f"Could not fetch position, error: {error}")
-        return False
-
-    async def getTimers(self, vin) -> TimerData | None:
-        """Get departure timers."""
-        if not await self.validate_tokens:
-            return None
-        try:
-            response = await self.get(
-                f"fs-car/bs/departuretimer/v1/{BRAND}/{self._session_country}/vehicles/$vin/timer", vin=vin
-            )
-            timer = TimerData(**(response.get("timer", {})))
-            if timer.valid:
-                return timer
-            elif response.get("status_code", {}):
-                _LOGGER.warning(f'Could not fetch timers, HTTP status code: {response.get("status_code")}')
-            else:
-                _LOGGER.info("Unknown error while trying to fetch data for departure timers")
-        except Exception as error:
-            _LOGGER.warning(f"Could not fetch timers, error: {error}")
-        return None
-
-    async def getClimater(self, vin):
-        """Get climatisation data."""
-        if not await self.validate_tokens:
-            return False
-        try:
-            response = await self.get(
-                f"fs-car/bs/climatisation/v1/{BRAND}/{self._session_country}/vehicles/$vin/climater", vin=vin
-            )
-            if response.get("climater", {}):
-                data = {"climater": response.get("climater", {})}
-                return data
-            elif response.get("status_code", {}):
-                _LOGGER.warning(f'Could not fetch climatisation, HTTP status code: {response.get("status_code")}')
-            else:
-                _LOGGER.info("Unhandled error while trying to fetch climatisation data")
-        except Exception as error:
-            _LOGGER.warning(f"Could not fetch climatisation, error: {error}")
-        return False
-
-    async def getCharger(self, vin):
-        """Get charger data."""
-        if not await self.validate_tokens:
-            return False
-        try:
-            response = await self.get(
-                f"fs-car/bs/batterycharge/v1/{BRAND}/{self._session_country}/vehicles/$vin/charger", vin=vin
-            )
-            if response.get("charger", {}):
-                data = {"charger": response.get("charger", {})}
-                return data
-            elif response.get("status_code", {}):
-                _LOGGER.warning(f'Could not fetch pre-heating, HTTP status code: {response.get("status_code")}')
-            else:
-                _LOGGER.info("Unhandled error while trying to fetch charger data")
-        except Exception as error:
-            _LOGGER.warning(f"Could not fetch charger, error: {error}")
-        return False
-
-    async def getPreHeater(self, vin):
-        """Get parking heater data."""
-        if not await self.validate_tokens:
-            return False
-        try:
-            response = await self.get(f"fs-car/bs/rs/v1/{BRAND}/{self._session_country}/vehicles/$vin/status", vin=vin)
-            if response.get("statusResponse", {}):
-                data = {"heating": response.get("statusResponse", {})}
-                return data
-            elif response.get("status_code", {}):
-                _LOGGER.warning(f'Could not fetch pre-heating, HTTP status code: {response.get("status_code")}')
-            else:
-                _LOGGER.info("Unhandled error while trying to fetch pre-heating data")
-        except Exception as error:
-            _LOGGER.warning(f"Could not fetch pre-heating, error: {error}")
-        return False
-
-    async def get_request_status(self, vin, sectionId, requestId):
+    async def get_request_status(self, vin, sectionId, requestId, actionId=""):
         """Return status of a request ID for a given section ID."""
         if self.logged_in is False:
             if not await self.doLogin():
@@ -831,43 +681,30 @@ class Connection:
                 if not await self.doLogin():
                     _LOGGER.warning(f"Login for {BRAND} account failed!")
                     raise Exception(f"Login for {BRAND} account failed")
-            if sectionId == "climatisation":
-                url = (
-                    f"fs-car/bs/$sectionId/v1/{BRAND}/{self._session_country}/vehicles/$vin/climater/actions/$requestId"
-                )
-            elif sectionId == "batterycharge":
-                url = (
-                    f"fs-car/bs/$sectionId/v1/{BRAND}/{self._session_country}/vehicles/$vin/charger/actions/$requestId"
-                )
-            elif sectionId == "departuretimer":
-                url = f"fs-car/bs/$sectionId/v1/{BRAND}/{self._session_country}/vehicles/$vin/timer/actions/$requestId"
-            elif sectionId in ["vsr", "refresh"]:
-                url = f"fs-car/bs/vsr/v1/{BRAND}/{self._session_country}/vehicles/$vin/requests/$requestId/jobstatus"
-            else:
-                url = (
-                    f"fs-car/bs/$sectionId/v1/{BRAND}/{self._session_country}/vehicles/$vin/requests/$requestId/status"
-                )
-            url = re.sub("\\$sectionId", sectionId, url)
-            url = re.sub("\\$requestId", requestId, url)
 
-            response = await self.get(url, vin)
-            # Pre-heater, ???
-            if response.get("requestStatusResponse", {}).get("status", False):
-                result = response.get("requestStatusResponse", {}).get("status", False)
-            # For electric charging, climatisation and departure timers
-            elif response.get("action", {}).get("actionState", False):
-                result = response.get("action", {}).get("actionState", False)
-            else:
-                result = "Unknown"
+            # usually, the action is named like the section ("access" -> "accessStatus"), but sometimes not ("climatisation" -> "windowHeatingStatus")
+            if actionId == "":
+                actionId = sectionId
+
+            response = await self.getSelectiveStatus(vin, [sectionId])
+
+            requests = response.get(sectionId, {}).get(f"{actionId}Status", {}).get("requests", [])
+            result = None
+            for request in requests:
+                if request.get("requestId", "") == requestId:
+                    result = request.get("status")
+
             # Translate status messages to meaningful info
-            if result == "request_in_progress" or result == "queued" or result == "fetched":
-                status = "In progress"
+            if result == "in_progress" or result == "queued" or result == "fetched":
+                status = "In Progress"
             elif result == "request_fail" or result == "failed":
                 status = "Failed"
             elif result == "unfetched":
                 status = "No response"
-            elif result == "request_successful" or result == "succeeded":
+            elif result == "request_successful" or result == "successful":
                 status = "Success"
+            elif result == "fail_ignition_on":
+                status = "Failed because ignition is on"
             else:
                 status = result
             return status
@@ -883,9 +720,11 @@ class Connection:
             raise Exception("Couldn't determine S-PIN state.")
 
         if remainingTries < 3:
-            raise Exception("Remaining tries for S-PIN is < 3. Bailing out for security reasons. " +
-                            "To resume operation, please make sure the correct S-PIN has been set in the integration " +
-                            "and then use the correct S-PIN once via the Volkswagen app.")
+            raise Exception(
+                "Remaining tries for S-PIN is < 3. Bailing out for security reasons. "
+                + "To resume operation, please make sure the correct S-PIN has been set in the integration "
+                + "and then use the correct S-PIN once via the Volkswagen app."
+            )
 
         return True
 
@@ -927,211 +766,33 @@ class Connection:
             _LOGGER.error(f"Could not generate security token (maybe wrong SPIN?), error: {error}")
             raise
 
-    # Data set functions #
-    async def dataCall(self, query, vin="", **data):
-        """Execute actions through VW-Group API."""
-        if self.logged_in is False:
-            if not await self.doLogin():
-                _LOGGER.warning(f"Login for {BRAND} account failed!")
-                raise Exception(f"Login for {BRAND} account failed")
-        try:
-            if not await self.validate_tokens:
-                _LOGGER.info(f"Session expired. Initiating new login for {BRAND} account.")
-                if not await self.doLogin():
-                    _LOGGER.warning(f"Login for {BRAND} account failed!")
-                    raise Exception(f"Login for {BRAND} account failed")
-            response = await self.post(query, vin=vin, **data)
-            _LOGGER.debug(f"Data call returned: {response}")
-            return response
-        except client_exceptions.ClientResponseError as error:
-            if error.status == 401:
-                _LOGGER.error("Unauthorized")
-                self._session_logged_in = False
-            elif error.status == 400:
-                _LOGGER.error("Bad request")
-            elif error.status == 429:
-                _LOGGER.warning(
-                    "Too many requests. Further requests can only be made after the end of next trip in order to"
-                    " protect your vehicles battery."
-                )
-                return 429
-            elif error.status == 500:
-                _LOGGER.error("Internal server error, server might be temporarily unavailable")
-            elif error.status == 502:
-                _LOGGER.error("Bad gateway, this function may not be implemented for this vehicle")
-            else:
-                _LOGGER.error(f"Unhandled HTTP exception: {error}")
-            # return False
-        except Exception as error:
-            _LOGGER.error(f"Failure to execute: {error}")
-        return False
-
-    async def setRefresh(self, vin):
-        """Force vehicle data update."""
-        try:
-            response = await self.dataCall(
-                f"fs-car/bs/vsr/v1/{BRAND}/{self._session_country}/vehicles/$vin/requests", vin, data=None
-            )
-            if not response:
-                raise Exception("Invalid or no response")
-            elif response == 429:
-                return dict({"id": None, "state": "Throttled", "rate_limit_remaining": 0})
-            else:
-                request_id = response.get("CurrentVehicleDataResponse", {}).get("requestId", 0)
-                request_state = response.get("CurrentVehicleDataResponse", {}).get("requestState", "queued")
-                remaining = response.get("rate_limit_remaining", -1)
-                _LOGGER.debug(
-                    f'Request to refresh data returned with state "{request_state}", request id: {request_id},'
-                    f" remaining requests: {remaining}"
-                )
-                return dict({"id": str(request_id), "state": request_state, "rate_limit_remaining": remaining})
-        except:
-            raise
-
-    async def setCharger(self, vin, data) -> dict[str, str | int | None]:
-        """Start/Stop charger."""
-        try:
-            response = await self.dataCall(
-                f"fs-car/bs/batterycharge/v1/{BRAND}/{self._session_country}/vehicles/$vin/charger/actions",
-                vin,
-                json=data,
-            )
-            if not response:
-                raise Exception("Invalid or no response")
-            elif response == 429:
-                return dict({"id": None, "state": "Throttled", "rate_limit_remaining": 0})
-            else:
-                request_id = response.get("action", {}).get("actionId", 0)
-                request_state = response.get("action", {}).get("actionState", "unknown")
-                remaining = response.get("rate_limit_remaining", -1)
-                _LOGGER.debug(
-                    f'Request for charger action returned with state "{request_state}", request id: {request_id},'
-                    f" remaining requests: {remaining}"
-                )
-                return dict({"id": str(request_id), "state": request_state, "rate_limit_remaining": remaining})
-        except:
-            raise
-
-    async def setClimater(self, vin, data, spin):
+    async def setClimater(self, vin, data, action):
         """Execute climatisation actions."""
+
+        action = "start" if action else "stop"
+
         try:
-            # Only get security token if auxiliary heater is to be started
-            if data.get("action", {}).get("settings", {}).get("heaterSource", None) == "auxiliary":
-                self._session_headers["X-securityToken"] = await self.get_sec_token(vin=vin, spin=spin, action="rclima")
-            response = await self.dataCall(
-                f"fs-car/bs/climatisation/v1/{BRAND}/{self._session_country}/vehicles/$vin/climater/actions",
-                vin,
-                json=data,
+            response_raw = await self.post(
+                f"{BASE_API}/vehicle/v1/vehicles/{vin}/climatisation/{action}", json=data, return_raw=True
             )
-            self._session_headers.pop("X-securityToken", None)
-            if not response:
-                raise Exception("Invalid or no response")
-            elif response == 429:
-                return dict({"id": None, "state": "Throttled", "rate_limit_remaining": 0})
-            else:
-                request_id = response.get("action", {}).get("actionId", 0)
-                request_state = response.get("action", {}).get("actionState", "unknown")
-                remaining = response.get("rate_limit_remaining", -1)
-                _LOGGER.debug(
-                    f'Request for climater action returned with state "{request_state}", request id: {request_id},'
-                    f" remaining requests: {remaining}"
-                )
-                return dict({"id": str(request_id), "state": request_state, "rate_limit_remaining": remaining})
-        except:
-            self._session_headers.pop("X-securityToken", None)
-            raise
+            return await self._handle_action_result(response_raw)
 
-    async def setPreHeater(self, vin, data, spin):
-        """Petrol/diesel parking heater actions."""
-        content_type = None
+        except Exception as e:
+            raise Exception("Unknown error during setClimater") from e
+
+    async def setWindowHeater(self, vin, action):
+        """Execute window heating actions."""
+
+        action = "start" if action else "stop"
+
         try:
-            if "Content-Type" in self._session_headers:
-                content_type = self._session_headers["Content-Type"]
-            else:
-                content_type = ""
-            self._session_headers["Content-Type"] = "application/vnd.vwg.mbb.RemoteStandheizung_v2_0_2+json"
-            if "quickstop" not in data:
-                self._session_headers["x-mbbSecToken"] = await self.get_sec_token(vin=vin, spin=spin, action="heating")
-            response = await self.dataCall(
-                f"fs-car/bs/rs/v1/{BRAND}/{self._session_country}/vehicles/$vin/action", vin=vin, json=data
+            response_raw = await self.post(
+                f"{BASE_API}/vehicle/v1/vehicles/{vin}/windowheating/{action}", json={}, return_raw=True
             )
-            # Clean up headers
-            self._session_headers.pop("x-mbbSecToken", None)
-            self._session_headers.pop("Content-Type", None)
-            if content_type:
-                self._session_headers["Content-Type"] = content_type
+            return await self._handle_action_result(response_raw)
 
-            if not response:
-                raise Exception("Invalid or no response")
-            elif response == 429:
-                return dict({"id": None, "state": "Throttled", "rate_limit_remaining": 0})
-            else:
-                request_id = response.get("performActionResponse", {}).get("requestId", 0)
-                remaining = response.get("rate_limit_remaining", -1)
-                _LOGGER.debug(
-                    f"Request for parking heater is queued with request id: {request_id}, remaining requests:"
-                    f" {remaining}"
-                )
-                return dict({"id": str(request_id), "state": None, "rate_limit_remaining": remaining})
-        except Exception:
-            self._session_headers.pop("x-mbbSecToken", None)
-            self._session_headers.pop("Content-Type", None)
-            if content_type:
-                self._session_headers["Content-Type"] = content_type
-            raise
-
-    async def setTimersAndProfiles(self, vin, data: TimersAndProfiles):
-        """Set schedules."""
-        return await self._setDepartureTimer(vin, data, "setTimersAndProfiles")
-
-    async def setChargeMinLevel(self, vin: str, limit: int):
-        """Set schedules."""
-        data: TimerData | None = await self.getTimers(vin)
-        if data is None or data.timersAndProfiles is None or data.timersAndProfiles.timerBasicSetting is None:
-            raise Exception("No existing timer data?")
-        data.timersAndProfiles.timerBasicSetting.set_charge_min_limit(limit)
-        return await self._setDepartureTimer(vin, data.timersAndProfiles, "setChargeMinLimit")
-
-    # Not working :/
-    # async def setHeaterSource(self, vin: str, source: str):
-    #     """Set heater source for departure timers."""
-    #     data: Optional[TimerData] = await self.getTimers(vin)
-    #     if data is None:
-    #         raise Exception("No existing timer data?")
-    #     data.timersAndProfiles.timerBasicSetting.set_heater_source(source)
-    #     return await self._setDepartureTimer(vin, data.timersAndProfiles, "setHeaterSource")
-
-    async def _setDepartureTimer(self, vin, data: TimersAndProfiles, action: str):
-        """Set schedules."""
-        try:
-            response = await self.dataCall(
-                f"fs-car/bs/departuretimer/v1/{BRAND}/{self._session_country}/vehicles/$vin/timer/actions",
-                vin=vin,
-                json={
-                    "action": {
-                        "timersAndProfiles": data.json_updated["timer"],
-                        "type": action,
-                    }
-                },
-            )
-
-            self._session_headers.pop("X-securityToken", None)
-            if not response:
-                raise Exception("Invalid or no response")
-            elif response == 429:
-                return dict({"id": None, "state": "Throttled", "rate_limit_remaining": 0})
-            else:
-                request_id = response.get("action", {}).get("actionId", 0)
-                request_state = response.get("action", {}).get("actionState", "unknown")
-                remaining = response.get("rate_limit_remaining", -1)
-                _LOGGER.debug(
-                    f'Request for timer action returned with state "{request_state}", request id: {request_id},'
-                    f" remaining requests: {remaining}"
-                )
-                return dict({"id": str(request_id), "state": request_state, "rate_limit_remaining": remaining})
-        except:
-            self._session_headers.pop("X-securityToken", None)
-            raise
+        except Exception as e:
+            raise Exception("Unknown error during setWindowHeater") from e
 
     async def setLock(self, vin, lock, spin):
         """Remote lock and unlock actions."""
@@ -1140,21 +801,11 @@ class Connection:
         action = "lock" if lock else "unlock"
 
         try:
-            response_raw = await self.post(f"{BASE_API}/vehicle/v1/vehicles/{vin}/access/{action}", json={"spin":spin}, return_raw=True)
+            response_raw = await self.post(
+                f"{BASE_API}/vehicle/v1/vehicles/{vin}/access/{action}", json={"spin": spin}, return_raw=True
+            )
+            return await self._handle_action_result(response_raw)
 
-            response = await response_raw.json(loads=json_loads)
-            if not response:
-                raise Exception("Invalid or no response")
-            elif response == 429:
-                return dict({"id": None, "state": "Throttled", "rate_limit_remaining": 0})
-            else:
-                request_id = response.get("data", {}).get("requestID", 0)
-                remaining = response_raw.headers.get("Vcf-Remaining-Calls")
-                _LOGGER.debug(
-                    f'Request for lock action returned with request id: {request_id},'
-                    f" remaining requests: {remaining}"
-                )
-                return dict({"id": str(request_id), "rate_limit_remaining": remaining})
         except Exception as e:
             raise Exception("Unknown error during setLock") from e
 
