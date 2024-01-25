@@ -10,7 +10,7 @@ from json import dumps as to_json
 from typing import Any
 
 from volkswagencarnet.vw_timer import TimerData, Timer, BasicSettings
-from .vw_const import VehicleStatusParameter as P
+from .vw_const import VehicleStatusParameter as P, Services
 from .vw_utilities import find_path, is_valid_path
 
 # TODO
@@ -19,12 +19,7 @@ from .vw_utilities import find_path, is_valid_path
 #
 # Model Year (unclear, seems to only be available via the web API, language dependent and with separate authentication)
 
-
 BACKEND_RECEIVED_TIMESTAMP = "BACKEND_RECEIVED_TIMESTAMP"
-
-LOCKED_STATE = 2
-
-CLOSED_STATE = 3
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -32,9 +27,6 @@ ENGINE_TYPE_ELECTRIC = "electric"
 ENGINE_TYPE_DIESEL = "diesel"
 ENGINE_TYPE_GASOLINE = "gasoline"
 ENGINE_TYPE_COMBUSTION = [ENGINE_TYPE_DIESEL, ENGINE_TYPE_GASOLINE]
-
-UNSUPPORTED = 0
-NO_VALUE = -1
 
 
 class Vehicle:
@@ -64,11 +56,13 @@ class Vehicle:
         # API Endpoints that might be enabled for car (that we support)
         self._services: dict[str, dict[str, Any]] = {
             # TODO needs a complete rework...
-            "access": {"active": False},
-            "tripStatistics": {"active": False},
-            "measurements": {"active": False},
-            "honkAndFlash": {"active": False},
-            "parkingPosition": {"active": False}
+            Services.ACCESS: {"active": False},
+            Services.TRIP_STATISTICS: {"active": False},
+            Services.MEASUREMENTS: {"active": False},
+            Services.HONK_AND_FLASH: {"active": False},
+            Services.PARKING_POSITION: {"active": False},
+            Services.CLIMATISATION: {"active": False},
+            Services.CHARGING: {"active": False}
             # "rheating_v1": {"active": False},
             # "rclima_v1": {"active": False},
             # "statusreport_v1": {"active": False},
@@ -97,8 +91,8 @@ class Vehicle:
         """Handle errors in response and get requests remaining."""
         if not response:
             self._requests[topic] = {"status": "Failed", "timestamp": datetime.now()}
-            _LOGGER.error(error_msg if error_msg is not None else "Failed to perform {topic} action")
-            raise Exception(error_msg if error_msg is not None else "Failed to perform {topic} action")
+            _LOGGER.error(error_msg if error_msg is not None else f"Failed to perform {topic} action")
+            raise Exception(error_msg if error_msg is not None else f"Failed to perform {topic} action")
         else:
             remaining = response.get("rate_limit_remaining", -1)
             if remaining != -1:
@@ -113,7 +107,12 @@ class Vehicle:
                 status = "Throttled"
                 _LOGGER.warning(f"Request throttled ({topic}")
             else:
-                status = await self.wait_for_request(topic, response.get("id", 0))
+                if "." in topic:
+                    (sectionId, actionId) = topic.split(".")
+                else:
+                    actionId = ""
+                    sectionId = topic
+                status = await self.wait_for_request(section=sectionId, request=response.get("id", 0), action=actionId)
             self._requests[topic] = {"status": status, "timestamp": datetime.now()}
         return True
 
@@ -163,26 +162,19 @@ class Vehicle:
                 # to be checked if we should still do it for UI purposes
                 self.get_selectivestatus(
                     [
-                        "access",
-                        "fuelStatus",
-                        "vehicleLights",
-                        "vehicleHealthInspection",
-                        "measurements",
-                        "charging",
-                        "climatisation",
-                        "automation",
+                        Services.ACCESS,
+                        Services.FUEL_STATUS,
+                        Services.VEHICLE_LIGHTS,
+                        Services.VEHICLE_HEALTH_INSPECTION,
+                        Services.MEASUREMENTS,
+                        Services.CHARGING,
+                        Services.CLIMATISATION,
+                        Services.AUTOMATION,
                     ]
                 ),
                 self.get_vehicle(),
                 self.get_parkingposition(),
                 self.get_trip_last()
-                #     self.get_preheater(),
-                #     self.get_climater(),
-                #     self.get_trip_statistic(),
-                #     self.get_position(),
-                #     self.get_statusreport(),
-                #     self.get_charger(),
-                #     self.get_timerprogramming(),
                 #     return_exceptions=True,
             )
             await asyncio.gather(self.get_service_status())
@@ -204,14 +196,14 @@ class Vehicle:
 
     async def get_parkingposition(self):
         """Fetch parking position if supported."""
-        if self._services.get("parkingPosition", {}).get("active", False):
+        if self._services.get(Services.PARKING_POSITION, {}).get("active", False):
             data = await self._connection.getParkingPosition(self.vin)
             if data:
                 self._states.update(data)
 
     async def get_trip_last(self):
         """Fetch last trip statistics if supported."""
-        if self._services.get("tripStatistics", {}).get("active", False):
+        if self._services.get(Services.TRIP_STATISTICS, {}).get("active", False):
             data = await self._connection.getTripLast(self.vin)
             if data:
                 self._states.update(data)
@@ -220,121 +212,44 @@ class Vehicle:
         """Fetch service status."""
         data = await self._connection.get_service_status()
         if data:
-            self._states.update({"service_status": data})
+            self._states.update({Services.SERVICE_STATUS: data})
 
-    async def get_realcardata(self):
-        """Fetch realcardata."""
-        data = await self._connection.getRealCarData(self.vin)
-        if data:
-            self._states.update(data)
-
-    async def get_preheater(self):
-        """Fetch pre-heater data if function is enabled."""
-        if self._services.get("rheating_v1", {}).get("active", False):
-            if not await self.expired("rheating_v1"):
-                data = await self._connection.getPreHeater(self.vin)
-                if data:
-                    self._states.update(data)
-                else:
-                    _LOGGER.debug("Could not fetch preheater data")
-        else:
-            self._requests.pop("preheater", None)
-
-    async def get_climater(self):
-        """Fetch climater data if function is enabled."""
-        if self._services.get("rclima_v1", {}).get("active", False):
-            if not await self.expired("rclima_v1"):
-                data = await self._connection.getClimater(self.vin)
-                if data:
-                    self._states.update(data)
-                else:
-                    _LOGGER.debug("Could not fetch climater data")
-        else:
-            self._requests.pop("climatisation", None)
-
-    async def get_trip_statistic(self):
-        """Fetch trip data if function is enabled."""
-        if self._services.get("trip_statistic_v1", {}).get("active", False):
-            if not await self.expired("trip_statistic_v1"):
-                data = await self._connection.getTripStatistics(self.vin)
-                if data:
-                    self._states.update(data)
-                else:
-                    _LOGGER.debug("Could not fetch trip statistics")
-
-    async def get_position(self):
-        """Fetch position data if function is enabled."""
-        if self._services.get("carfinder_v1", {}).get("active", False):
-            if not await self.expired("carfinder_v1"):
-                data = await self._connection.getPosition(self.vin)
-                if data:
-                    # Reset requests remaining to 15 if parking time has been updated
-                    if data.get("findCarResponse", {}).get("parkingTimeUTC", None) is not None:
-                        try:
-                            new_time = data.get("findCarResponse").get("parkingTimeUTC")
-                            old_time = self.attrs.get("findCarResponse", {}).get("parkingTimeUTC", None)
-                            if old_time is None or new_time > old_time:
-                                _LOGGER.debug(f"Detected new parking time: {new_time}")
-                                self.requests_remaining = -1 if old_time is None else 15
-                                self.requests_remaining_last_updated = datetime.utcnow()
-                        except Exception as e:
-                            _LOGGER.warning(f"Failed to parse parking time: {e}")
-                    self._states.update(data)
-                else:
-                    _LOGGER.debug("Could not fetch any positional data")
-
-    async def get_statusreport(self):
-        """Fetch status data if function is enabled."""
-        if self._services.get("statusreport_v1", {}).get("active", False):
-            if not await self.expired("statusreport_v1"):
-                data = await self._connection.getVehicleStatusData(self.vin)
-                if data:
-                    self._states.update(data)
-                else:
-                    _LOGGER.debug("Could not fetch status report")
-
-    async def get_charger(self):
-        """Fetch charger data if function is enabled."""
-        if self._services.get("rbatterycharge_v1", {}).get("active", False):
-            if not await self.expired("rbatterycharge_v1"):
-                data = await self._connection.getCharger(self.vin)
-                if data:
-                    self._states.update(data)
-                else:
-                    _LOGGER.debug("Could not fetch charger data")
-        else:
-            self._requests.pop("charger", None)
-
-    async def get_timerprogramming(self) -> None:
-        """Fetch timer data if function is enabled."""
-        if self._services.get("timerprogramming_v1", {}).get("active", False):
-            if not await self.expired("timerprogramming_v1"):
-                data = await self._connection.getTimers(self.vin)
-                if data:
-                    self._states.update({"timer": data})
-                else:
-                    _LOGGER.debug("Could not fetch timers")
-        else:
-            self._requests.pop("departuretimer", None)
-
-    async def wait_for_request(self, section, request, retry_count=36):
+    async def wait_for_request(self, section, request, retry_count=18, action=""):
         """Update status of outstanding requests."""
         retry_count -= 1
         if retry_count == 0:
             _LOGGER.info(f"Timeout while waiting for result of {request.requestId}.")
             return "Timeout"
         try:
-            status = await self._connection.get_request_status(self.vin, section, request)
+            status = await self._connection.get_request_status(self.vin, section, request, action)
             _LOGGER.debug(f"Request ID {request}: {status}")
-            if status == "In progress":
-                self._requests["state"] = "In progress"
-                await asyncio.sleep(5)
-                return await self.wait_for_request(section, request)
+            self._requests["state"] = status
+            if status == "In Progress":
+                await asyncio.sleep(10)
+                return await self.wait_for_request(section, request, retry_count, action)
             else:
-                self._requests["state"] = status
                 return status
         except Exception as error:
             _LOGGER.warning(f"Exception encountered while waiting for request status: {error}")
+            return "Exception"
+
+    async def wait_for_data_refresh(self, retry_count=18):
+        """Update status of outstanding requests."""
+        retry_count -= 1
+        if retry_count == 0:
+            _LOGGER.info("Timeout while waiting for data refresh.")
+            return "Timeout"
+        try:
+            await self.get_selectivestatus([Services.MEASUREMENTS])
+            last_connect_time = datetime.strptime(self.last_connected, "%Y-%m-%d %H:%M:%S")
+            refresh_trigger_time = self._requests.get("refresh", {}).get("timestamp")
+            if last_connect_time < refresh_trigger_time:
+                await asyncio.sleep(10)
+                return await self.wait_for_data_refresh(retry_count)
+            else:
+                return "successful"
+        except Exception as error:
+            _LOGGER.warning(f"Exception encountered while waiting for data refresh: {error}")
             return "Exception"
 
     # Data set functions
@@ -354,67 +269,11 @@ class Vehicle:
 
     async def set_charge_min_level(self, level: int):
         """Set the desired minimum charge level for departure schedules."""
-        if self.is_schedule_min_charge_level_supported:
-            if (0 <= level <= 100) and level % 10 == 0:
-                if self._in_progress("departuretimer"):
-                    return False
-                try:
-                    self._requests["latest"] = "Departuretimer"
-                    response = await self._connection.setChargeMinLevel(self.vin, level)
-                    return await self._handle_response(
-                        response=response, topic="departuretimer", error_msg="Failed to set minimum charge level"
-                    )
-                except Exception as error:
-                    _LOGGER.warning(f"Failed to set minimum charge level - {error}")
-                    self._requests["departuretimer"] = {"status": "Exception", "timestamp": datetime.now()}
-                    raise Exception(f"Failed to set minimum charge level - {error}")
-            else:
-                raise Exception("Level must be 0, 10, ..., 100")
-        else:
-            _LOGGER.error("Cannot set minimum level")
-            raise Exception("Cannot set minimum level")
-
-    # Need to figure out a way to implement this...
-    # async def set_departure_timer_heater_source(self, source: str):
-    #     """Set the heater source to use."""
-    #     if self.is_timer_basic_settings_supported:
-    #         if source not in ["auxiliary", "electric"]:
-    #             raise ValueError(f"Source '{source}' not supported.")
-    #         try:
-    #             self._requests["latest"] = "Departuretimer"
-    #             response = await self._connection.setHeaterSource(self.vin, source)
-    #             return await self._handle_response(
-    #                 response=response, topic="departuretimer", error_msg="Failed to set heater source"
-    #             )
-    #         except Exception as error:
-    #             _LOGGER.warning(f"Failed to set heater source - {error}")
-    #             self._requests["departuretimer"] = {"status": "Exception"}
-    #             raise Exception(f"Failed to set heater source - {error}")
+        raise Exception("Should have to be re-implemented")
 
     async def set_charger(self, action) -> bool:
         """Charging actions."""
-        if not self._services.get("charging", False):
-            _LOGGER.info("Remote start/stop of charger is not supported.")
-            raise Exception("Remote start/stop of charger is not supported.")
-        if self._in_progress("batterycharge"):
-            return False
-        if action in ["start", "stop"]:
-            data = {"action": {"type": action}}
-        elif action.get("action", {}).get("type", "") == "setSettings":
-            data = action
-        else:
-            _LOGGER.error(f"Invalid charger action: {action}. Must be either start or stop")
-            raise Exception(f"Invalid charger action: {action}. Must be either start or stop")
-        try:
-            self._requests["latest"] = "Charger"
-            response = await self._connection.setCharger(self.vin, data)
-            return await self._handle_response(
-                response=response, topic="batterycharge", error_msg=f"Failed to {action} charging"
-            )
-        except Exception as error:
-            _LOGGER.warning(f"Failed to {action} charging - {error}")
-            self._requests["batterycharge"] = {"status": "Exception", "timestamp": datetime.now()}
-            raise Exception(f"Failed to {action} charging - {error}")
+        raise Exception("Should have to be re-implemented")
 
     # Climatisation electric/auxiliary/windows (CLIMATISATION)
     async def set_climatisation_temp(self, temperature=20):
@@ -436,12 +295,13 @@ class Vehicle:
     async def set_window_heating(self, action="stop"):
         """Turn on/off window heater."""
         if self.is_window_heater_supported:
-            if action in ["start", "stop"]:
-                data = {"action": {"type": action + "WindowHeating"}}
-            else:
+            if action not in ["start", "stop"]:
                 _LOGGER.error(f'Window heater action "{action}" is not supported.')
                 raise Exception(f'Window heater action "{action}" is not supported.')
-            return await self.set_climater(data)
+            response = await self._connection.setWindowHeater(self.vin, (action == "start"))
+            return await self._handle_response(
+                response=response, topic="climatisation.windowHeating", error_msg=f"Failed to {action} window heating"
+            )
         else:
             _LOGGER.error("No climatisation support.")
             raise Exception("No climatisation support.")
@@ -459,28 +319,26 @@ class Vehicle:
             _LOGGER.error("No climatisation support.")
             raise Exception("No climatisation support.")
 
-    async def set_climatisation(self, mode="off", spin=False):
+    async def set_climatisation(self, action="stop"):
         """Turn on/off climatisation with electric/auxiliary heater."""
         if self.is_electric_climatisation_supported:
-            if mode in ["electric", "auxiliary"]:
-                target_temp = int((self.climatisation_target_temperature + 273) * 10)
-                without_hv_power = self.climatisation_without_external_power
+            if action == "start":
                 data = {
-                    "action": {
-                        "settings": {
-                            "climatisationWithoutHVpower": without_hv_power,
-                            "targetTemperature": target_temp,
-                            "heaterSource": mode,
-                        },
-                        "type": "startClimatisation",
-                    }
+                    "climatisationWithoutExternalPower": self.climatisation_without_external_power,
+                    "targetTemperature": self.climatisation_target_temperature,
+                    "targetTemperatureUnit": "celsius",
                 }
-            elif mode == "off":
-                data = {"action": {"type": "stopClimatisation"}}
+            elif action == "stop":
+                data = {}
             else:
-                _LOGGER.error(f"Invalid climatisation type: {mode}")
-                raise Exception(f"Invalid climatisation type: {mode}")
-            return await self.set_climater(data, spin)
+                _LOGGER.error(f"Invalid climatisation action: {action}")
+                raise Exception(f"Invalid climatisation action: {action}")
+            response = await self._connection.setClimater(self.vin, data, (action == "start"))
+            return await self._handle_response(
+                response=response,
+                topic="climatisation",
+                error_msg=f"Failed to {action} climatisation with electric/auxiliary heater.",
+            )
         else:
             _LOGGER.error("No climatisation support.")
             raise Exception("No climatisation support.")
@@ -506,49 +364,26 @@ class Vehicle:
     # Parking heater heating/ventilation (RS)
     async def set_pheater(self, mode, spin):
         """Set the mode for the parking heater."""
-        if not self.is_pheater_heating_supported:
-            _LOGGER.error("No parking heater support.")
-            raise Exception("No parking heater support.")
-        if self._in_progress("preheater"):
-            return False
-        if mode not in ["heating", "ventilation", "off"]:
-            _LOGGER.error(f"{mode} is an invalid action for parking heater")
-            raise Exception(f"{mode} is an invalid action for parking heater")
-        if mode == "off":
-            data = {"performAction": {"quickstop": {"active": False}}}
-        else:
-            data = {
-                "performAction": {
-                    "quickstart": {"climatisationDuration": self.pheater_duration, "startMode": mode, "active": True}
-                }
-            }
-        try:
-            self._requests["latest"] = "Preheater"
-            response = await self._connection.setPreHeater(self.vin, data, spin)
-            return await self._handle_response(
-                response=response, topic="preheater", error_msg=f"Failed to set parking heater to {mode}"
-            )
-        except Exception as error:
-            _LOGGER.warning(f"Failed to set parking heater mode to {mode} - {error}")
-            self._requests["preheater"] = {"status": "Exception", "timestamp": datetime.now()}
-        raise Exception("Pre-heater action failed")
+        raise Exception("Should have to be re-implemented")
 
     # Lock (RLU)
     async def set_lock(self, action, spin):
         """Remote lock and unlock actions."""
-        if not self._services.get("access", {}).get("active", False):
+        if not self._services.get(Services.ACCESS, {}).get("active", False):
             _LOGGER.info("Remote lock/unlock is not supported.")
             raise Exception("Remote lock/unlock is not supported.")
         if self._in_progress("lock", unknown_offset=-5):
             return False
-        if not action in ["lock", "unlock"]:
+        if action not in ["lock", "unlock"]:
             _LOGGER.error(f"Invalid lock action: {action}")
             raise Exception(f"Invalid lock action: {action}")
 
         try:
             self._requests["latest"] = "Lock"
             response = await self._connection.setLock(self.vin, (action == "lock"), spin)
-            return await self._handle_response(response=response, topic="lock", error_msg=f"Failed to {action} vehicle")
+            return await self._handle_response(
+                response=response, topic="access", error_msg=f"Failed to {action} vehicle"
+            )
         except Exception as error:
             _LOGGER.warning(f"Failed to {action} vehicle - {error}")
             self._requests["lock"] = {"status": "Exception", "timestamp": datetime.now()}
@@ -557,17 +392,30 @@ class Vehicle:
     # Refresh vehicle data (VSR)
     async def set_refresh(self):
         """Wake up vehicle and update status data."""
-        if not self._services.get("statusreport_v1", {}).get("active", False):
-            _LOGGER.info("Data refresh is not supported.")
-            raise Exception("Data refresh is not supported.")
         if self._in_progress("refresh", unknown_offset=-5):
             return False
         try:
             self._requests["latest"] = "Refresh"
-            response = await self._connection.setRefresh(self.vin)
-            return await self._handle_response(
-                response=response, topic="refresh", error_msg="Failed to request vehicle update"
-            )
+            response = await self._connection.wakeUpVehicle(self.vin)
+            if response:
+                if response.status == 204:
+                    self._requests["state"] = "in_progress"
+                    self._requests["refresh"] = {
+                        "timestamp": datetime.now(),
+                        "status": "in_progress",
+                        "id": 0,
+                    }
+                    status = await self.wait_for_data_refresh()
+                elif response.status == 429:
+                    status = "Throttled"
+                    _LOGGER.debug("Server side throttled. Try again later.")
+                else:
+                    _LOGGER.debug(f"Unable to refresh the data. Incorrect response code: {response.status}")
+                self._requests["state"] = status
+                self._requests["refresh"] = {"status": status, "timestamp": datetime.now()}
+                return True
+            else:
+                _LOGGER.debug("Unable to refresh the data.")
         except Exception as error:
             _LOGGER.warning(f"Failed to execute data refresh - {error}")
             self._requests["refresh"] = {"status": "Exception", "timestamp": datetime.now()}
@@ -575,21 +423,7 @@ class Vehicle:
 
     async def set_schedule(self, data: TimerData) -> bool:
         """Store schedule."""
-        if not self._services.get("timerprogramming_v1", False):
-            _LOGGER.info("Remote control of timer functions is not supported.")
-            raise Exception("Remote control of timer functions is not supported.")
-        if self._in_progress("departuretimer"):
-            return False
-        try:
-            self._requests["latest"] = "Departuretimer"
-            response = await self._connection.setTimersAndProfiles(self.vin, data.timersAndProfiles)
-            return await self._handle_response(
-                response=response, topic="departuretimer", error_msg="Failed to execute timer request"
-            )
-        except Exception as error:
-            _LOGGER.warning(f"Failed to execute timer request - {error}")
-            self._requests["departuretimer"] = {"status": "Exception", "timestamp": datetime.now()}
-        raise Exception("Timer action failed")
+        raise Exception("Should have to be re-implemented")
 
     # Vehicle class helpers #
     # Vehicle info
@@ -750,7 +584,7 @@ class Vehicle:
     @property
     def parking_light(self) -> bool:
         """Return true if parking light is on."""
-        lights = self.attrs.get("vehicleLights").get("lightsStatus").get("value").get("lights")
+        lights = self.attrs.get(Services.VEHICLE_LIGHTS).get("lightsStatus").get("value").get("lights")
         lights_on_count = 0
         for light in lights:
             if light["status"] == "on":
@@ -760,14 +594,14 @@ class Vehicle:
     @property
     def parking_light_last_updated(self) -> datetime:
         """Return attribute last updated timestamp."""
-        return self.attrs.get("vehicleLights").get("lightsStatus").get("value").get("carCapturedTimestamp")
+        return self.attrs.get(Services.VEHICLE_LIGHTS).get("lightsStatus").get("value").get("carCapturedTimestamp")
 
     @property
     def is_parking_light_supported(self) -> bool:
         """Return true if parking light is supported."""
-        return self.attrs.get("vehicleLights", False) and "lights" in self.attrs.get("vehicleLights").get(
-            "lightsStatus"
-        ).get("value")
+        return self.attrs.get(Services.VEHICLE_LIGHTS, False) and is_valid_path(
+            self.attrs, f"{Services.VEHICLE_LIGHTS}.lightsStatus.value.lights"
+        )
 
     # Connection status
     @property
@@ -775,41 +609,46 @@ class Vehicle:
         """Return when vehicle was last connected to connect servers in local time."""
         # this field is only a dirty hack, because there is no overarching information for the car anymore,
         # only information per service, so we just use the one for odometer
-        last_connected_utc = self.attrs.get("measurements").get("odometerStatus").get("carCapturedTimestamp")[0]
-        last_connected = last_connected_utc.replace(tzinfo=timezone.utc).astimezone(tz=None)
-        return last_connected.strftime("%Y-%m-%d %H:%M:%S")
+        last_connected_time = "Unknown"
+        last_connected_time_utc = None
+        if self.is_battery_level_supported:
+            last_connected_time_utc = self.battery_level_last_updated
+        elif self.is_distance_supported:
+            last_connected_time_utc = self.distance_last_updated
+        if last_connected_time_utc is not None:
+            if type(last_connected_time_utc) is str:
+                last_connected_time_utc = datetime.strptime(last_connected_time_utc, "%Y-%m-%dT%H:%M:%S.%fZ").replace(
+                    microsecond=0
+                )
+            last_connected_time = last_connected_time_utc.replace(tzinfo=timezone.utc).astimezone(tz=None)
+            return last_connected_time.strftime("%Y-%m-%d %H:%M:%S")
+        return last_connected_time
 
     @property
     def last_connected_last_updated(self) -> datetime:
         """Return attribute last updated timestamp."""
-        return (
-            self.attrs.get("StoredVehicleDataResponse")
-            .get("vehicleData")
-            .get("data")[0]
-            .get("field")[0]
-            .get("BACKEND_RECEIVED_TIMESTAMP")
-        )
+        return self.attrs.get(Services.MEASUREMENTS).get("odometerStatus").get("value").get("carCapturedTimestamp")
 
     @property
     def is_last_connected_supported(self) -> bool:
         """Return if when vehicle was last connected to connect servers is supported."""
-        return is_valid_path(self.attrs, "StoredVehicleDataResponse.vehicleData.data.0.field.0.tsCarSentUtc")
+        return is_valid_path(self.attrs, f"{Services.MEASUREMENTS}.odometerStatus.value.carCapturedTimestamp")
 
     # Service information
     @property
     def distance(self) -> int | None:
         """Return vehicle odometer."""
-        return find_path(self.attrs, "measurements.odometerStatus.value.odometer")
+        return find_path(self.attrs, f"{Services.MEASUREMENTS}.odometerStatus.value.odometer")
 
     @property
     def distance_last_updated(self) -> datetime:
         """Return last updated timestamp."""
-        return find_path(self.attrs, "measurements.odometerStatus.value.carCapturedTimestamp")
+        return find_path(self.attrs, f"{Services.MEASUREMENTS}.odometerStatus.value.carCapturedTimestamp")
 
     @property
     def is_distance_supported(self) -> bool:
         """Return true if odometer is supported."""
-        return is_valid_path(self.attrs, "measurements.odometerStatus.value.odometer")
+        return is_valid_path(self.attrs, f"{Services.MEASUREMENTS}.odometerStatus.value.odometer")
 
     @property
     def service_inspection(self):
@@ -847,7 +686,7 @@ class Vehicle:
 
         :return:
         """
-        return is_valid_path(self.attrs, "vehicleHealthInspection.maintenanceStatus.value.carCapturedTimestamp")
+        return is_valid_path(self.attrs, "vehicleHealthInspection.maintenanceStatus.value.inspectionDue_km")
 
     @property
     def oil_inspection(self):
@@ -894,128 +733,199 @@ class Vehicle:
     @property
     def adblue_level(self) -> int:
         """Return adblue level."""
-        return int(find_path(self.attrs, "measurements.rangeStatus.value.adBlueRange"))
+        return int(find_path(self.attrs, f"{Services.MEASUREMENTS}.rangeStatus.value.adBlueRange"))
 
     @property
     def adblue_level_last_updated(self) -> datetime:
         """Return attribute last updated timestamp."""
-        return find_path(self.attrs, "measurements.rangeStatus.value.carCapturedTimestamp")
+        return find_path(self.attrs, f"{Services.MEASUREMENTS}.rangeStatus.value.carCapturedTimestamp")
 
     @property
     def is_adblue_level_supported(self) -> bool:
         """Return true if adblue level is supported."""
-        return is_valid_path(self.attrs, "measurements.rangeStatus.value.adBlueRange")
+        return is_valid_path(self.attrs, f"{Services.MEASUREMENTS}.rangeStatus.value.adBlueRange")
 
     # Charger related states for EV and PHEV
     @property
     def charging(self) -> bool:
         """Return charging state."""
-        cstate = find_path(self.attrs, "charging.chargingStatus.value.chargingState")
+        cstate = find_path(self.attrs, f"{Services.CHARGING}.chargingStatus.value.chargingState")
         return cstate == "charging"
 
     @property
     def charging_last_updated(self) -> datetime:
         """Return attribute last updated timestamp."""
-        return find_path(self.attrs, "charging.chargingStatus.value.carCapturedTimestamp")
+        return find_path(self.attrs, f"{Services.CHARGING}.chargingStatus.value.carCapturedTimestamp")
 
     @property
     def is_charging_supported(self) -> bool:
         """Return true if charging is supported."""
-        return is_valid_path(self.attrs, "charging.chargingStatus.value.chargingState")
+        # return is_valid_path(self.attrs, f"{Services.CHARGING}.chargingStatus.value.chargingState")
+        # CURRENTLY NOT SUPPORTED
+        return False
+
+    @property
+    def charging_power(self) -> int:
+        """Return charging power."""
+        return find_path(self.attrs, f"{Services.CHARGING}.chargingStatus.value.chargePower_kW")
+
+    @property
+    def charging_power_last_updated(self) -> datetime:
+        """Return attribute last updated timestamp."""
+        return find_path(self.attrs, f"{Services.CHARGING}.chargingStatus.value.carCapturedTimestamp")
+
+    @property
+    def is_charging_power_supported(self) -> bool:
+        """Return true if charging power is supported."""
+        return is_valid_path(self.attrs, f"{Services.CHARGING}.chargingStatus.value.chargePower_kW")
+
+    @property
+    def charging_rate(self) -> int:
+        """Return charging rate."""
+        return find_path(self.attrs, f"{Services.CHARGING}.chargingStatus.value.chargeRate_kmph")
+
+    @property
+    def charging_rate_last_updated(self) -> datetime:
+        """Return attribute last updated timestamp."""
+        return find_path(self.attrs, f"{Services.CHARGING}.chargingStatus.value.carCapturedTimestamp")
+
+    @property
+    def is_charging_rate_supported(self) -> bool:
+        """Return true if charging rate is supported."""
+        return is_valid_path(self.attrs, f"{Services.CHARGING}.chargingStatus.value.chargeRate_kmph")
+
+    @property
+    def charger_type(self) -> str:
+        """Return charger type."""
+        charger_type = find_path(self.attrs, f"{Services.CHARGING}.chargingStatus.value.chargeType")
+        if charger_type == "ac":
+            return "AC"
+        elif charger_type == "dc":
+            return "DC"
+        return "Unknown"
+
+    @property
+    def charger_type_last_updated(self) -> datetime:
+        """Return attribute last updated timestamp."""
+        return find_path(self.attrs, f"{Services.CHARGING}.chargingStatus.value.carCapturedTimestamp")
+
+    @property
+    def is_charger_type_supported(self) -> bool:
+        """Return true if charger type is supported."""
+        return is_valid_path(self.attrs, f"{Services.CHARGING}.chargingStatus.value.chargeType")
 
     @property
     def battery_level(self) -> int:
         """Return battery level."""
-        return int(find_path(self.attrs, "charging.batteryStatus.value.currentSOC_pct"))
+        return int(find_path(self.attrs, f"{Services.CHARGING}.batteryStatus.value.currentSOC_pct"))
 
     @property
     def battery_level_last_updated(self) -> datetime:
         """Return attribute last updated timestamp."""
-        return find_path(self.attrs, "charging.batteryStatus.value.carCapturedTimestamp")
+        return find_path(self.attrs, f"{Services.CHARGING}.batteryStatus.value.carCapturedTimestamp")
 
     @property
     def is_battery_level_supported(self) -> bool:
         """Return true if battery level is supported."""
-        return is_valid_path(self.attrs, "charging.batteryStatus.value.currentSOC_pct")
+        return is_valid_path(self.attrs, f"{Services.CHARGING}.batteryStatus.value.currentSOC_pct")
+
+    @property
+    def battery_target_charge_level(self) -> int:
+        """Return target charge level."""
+        return find_path(self.attrs, f"{Services.CHARGING}.chargingSettings.value.targetSOC_pct")
+
+    @property
+    def battery_target_charge_level_last_updated(self) -> datetime:
+        """Return attribute last updated timestamp."""
+        return find_path(self.attrs, f"{Services.CHARGING}.chargingSettings.value.carCapturedTimestamp")
+
+    @property
+    def is_battery_target_charge_level_supported(self) -> bool:
+        """Return true if target charge level is supported."""
+        return is_valid_path(self.attrs, f"{Services.CHARGING}.chargingSettings.value.targetSOC_pct")
 
     @property
     def charge_max_ampere(self) -> str | int:
         """Return charger max ampere setting."""
-        value = find_path(self.attrs, "charging.chargingSettings.value.maxChargeCurrentAC")
+        value = find_path(self.attrs, f"{Services.CHARGING}.chargingSettings.value.maxChargeCurrentAC")
         return value
 
     @property
     def charge_max_ampere_last_updated(self) -> datetime:
         """Return charger max ampere last updated."""
-        return find_path(self.attrs, "charging.chargingSettings.value.carCapturedTimestamp")
+        return find_path(self.attrs, f"{Services.CHARGING}.chargingSettings.value.carCapturedTimestamp")
 
     @property
     def is_charge_max_ampere_supported(self) -> bool:
         """Return true if Charger Max Ampere is supported."""
-        return is_valid_path(self.attrs, "charging.chargingSettings.value.maxChargeCurrentAC")
+        return is_valid_path(self.attrs, f"{Services.CHARGING}.chargingSettings.value.maxChargeCurrentAC")
 
     @property
     def charging_cable_locked(self) -> bool:
         """Return plug locked state."""
-        response = find_path(self.attrs, "charging.plugStatus.value.plugLockState")
+        response = find_path(self.attrs, f"{Services.CHARGING}.plugStatus.value.plugLockState")
         return response == "locked"
 
     @property
     def charging_cable_locked_last_updated(self) -> datetime:
         """Return plug locked state."""
-        return find_path(self.attrs, "charging.plugStatus.value.carCapturedTimestamp")
+        return find_path(self.attrs, f"{Services.CHARGING}.plugStatus.value.carCapturedTimestamp")
 
     @property
     def is_charging_cable_locked_supported(self) -> bool:
         """Return true if plug locked state is supported."""
-        return is_valid_path(self.attrs, "charging.plugStatus.value.plugLockState")
+        return is_valid_path(self.attrs, f"{Services.CHARGING}.plugStatus.value.plugLockState")
 
     @property
     def charging_cable_connected(self) -> bool:
         """Return plug connected state."""
-        response = find_path(self.attrs, "charging.plugStatus.value.plugConnectionState")
+        response = find_path(self.attrs, f"{Services.CHARGING}.plugStatus.value.plugConnectionState")
         return response == "connected"
 
     @property
     def charging_cable_connected_last_updated(self) -> datetime:
         """Return plug connected state last updated."""
-        return find_path(self.attrs, "charging.plugStatus.value.carCapturedTimestamp")
+        return find_path(self.attrs, f"{Services.CHARGING}.plugStatus.value.carCapturedTimestamp")
 
     @property
     def is_charging_cable_connected_supported(self) -> bool:
         """Return true if supported."""
-        return is_valid_path(self.attrs, "charging.plugStatus.value.plugConnectionState")
+        return is_valid_path(self.attrs, f"{Services.CHARGING}.plugStatus.value.plugConnectionState")
 
     @property
     def charging_time_left(self) -> int:
         """Return minutes to charging complete."""
-        return int(find_path(self.attrs, "charging.chargingStatus.value.remainingChargingTimeToComplete_min"))
+        return int(
+            find_path(self.attrs, f"{Services.CHARGING}.chargingStatus.value.remainingChargingTimeToComplete_min")
+        )
 
     @property
     def charging_time_left_last_updated(self) -> datetime:
         """Return minutes to charging complete last updated."""
-        return find_path(self.attrs, "charging.chargingStatus.value.carCapturedTimestamp")
+        return find_path(self.attrs, f"{Services.CHARGING}.chargingStatus.value.carCapturedTimestamp")
 
     @property
     def is_charging_time_left_supported(self) -> bool:
         """Return true if charging is supported."""
-        return is_valid_path(self.attrs, "charging.chargingStatus.value.remainingChargingTimeToComplete_min")
+        return is_valid_path(
+            self.attrs, f"{Services.CHARGING}.chargingStatus.value.remainingChargingTimeToComplete_min"
+        )
 
     @property
     def external_power(self) -> bool:
         """Return true if external power is connected."""
-        check = find_path(self.attrs, "charging.plugStatus.value.externalPower")
+        check = find_path(self.attrs, f"{Services.CHARGING}.plugStatus.value.externalPower")
         return check in ["stationConnected", "available", "ready"]
 
     @property
     def external_power_last_updated(self) -> datetime:
         """Return external power last updated."""
-        return find_path(self.attrs, "charging.plugStatus.value.carCapturedTimestamp")
+        return find_path(self.attrs, f"{Services.CHARGING}.plugStatus.value.carCapturedTimestamp")
 
     @property
     def is_external_power_supported(self) -> bool:
         """External power supported."""
-        return is_valid_path(self.attrs, "charging.plugStatus.value.externalPower")
+        return is_valid_path(self.attrs, f"{Services.CHARGING}.plugStatus.value.externalPower")
 
     @property
     def energy_flow(self):
@@ -1122,12 +1032,12 @@ class Vehicle:
 
         :return:
         """
-        return int(find_path(self.attrs, "measurements.rangeStatus.value.electricRange"))
+        return int(find_path(self.attrs, f"{Services.MEASUREMENTS}.rangeStatus.value.electricRange"))
 
     @property
     def electric_range_last_updated(self) -> datetime:
         """Return electric range last updated."""
-        return find_path(self.attrs, "measurements.rangeStatus.value.carCapturedTimestamp")
+        return find_path(self.attrs, f"{Services.MEASUREMENTS}.rangeStatus.value.carCapturedTimestamp")
 
     @property
     def is_electric_range_supported(self) -> bool:
@@ -1136,7 +1046,7 @@ class Vehicle:
 
         :return:
         """
-        return is_valid_path(self.attrs, "measurements.rangeStatus.value.electricRange")
+        return is_valid_path(self.attrs, f"{Services.MEASUREMENTS}.rangeStatus.value.electricRange")
 
     @property
     def combustion_range(self) -> int:
@@ -1145,8 +1055,8 @@ class Vehicle:
 
         :return:
         """
-        DIESEL_RANGE = "measurements.rangeStatus.value.dieselRange"
-        GASOLINE_RANGE = "measurements.rangeStatus.value.gasolineRange"
+        DIESEL_RANGE = f"{Services.MEASUREMENTS}.rangeStatus.value.dieselRange"
+        GASOLINE_RANGE = f"{Services.MEASUREMENTS}.rangeStatus.value.gasolineRange"
         if is_valid_path(self.attrs, DIESEL_RANGE):
             return int(find_path(self.attrs, DIESEL_RANGE))
         if is_valid_path(self.attrs, GASOLINE_RANGE):
@@ -1156,7 +1066,7 @@ class Vehicle:
     @property
     def combustion_range_last_updated(self) -> datetime | None:
         """Return combustion engine range last updated."""
-        return find_path(self.attrs, "measurements.rangeStatus.value.carCapturedTimestamp")
+        return find_path(self.attrs, f"{Services.MEASUREMENTS}.rangeStatus.value.carCapturedTimestamp")
 
     @property
     def is_combustion_range_supported(self) -> bool:
@@ -1165,8 +1075,8 @@ class Vehicle:
 
         :return:
         """
-        return is_valid_path(self.attrs, "measurements.rangeStatus.value.dieselRange") or is_valid_path(
-            self.attrs, "measurements.rangeStatus.value.gasolineRange"
+        return is_valid_path(self.attrs, f"{Services.MEASUREMENTS}.rangeStatus.value.dieselRange") or is_valid_path(
+            self.attrs, f"{Services.MEASUREMENTS}.rangeStatus.value.gasolineRange"
         )
 
     @property
@@ -1176,12 +1086,12 @@ class Vehicle:
 
         :return:
         """
-        return int(find_path(self.attrs, "measurements.rangeStatus.value.totalRange_km"))
+        return int(find_path(self.attrs, f"{Services.MEASUREMENTS}.rangeStatus.value.totalRange_km"))
 
     @property
     def combined_range_last_updated(self) -> datetime | None:
         """Return combined range last updated."""
-        return find_path(self.attrs, "measurements.rangeStatus.value.carCapturedTimestamp")
+        return find_path(self.attrs, f"{Services.MEASUREMENTS}.rangeStatus.value.carCapturedTimestamp")
 
     @property
     def is_combined_range_supported(self) -> bool:
@@ -1190,7 +1100,7 @@ class Vehicle:
 
         :return:
         """
-        if is_valid_path(self.attrs, "measurements.rangeStatus.value.totalRange_km"):
+        if is_valid_path(self.attrs, f"{Services.MEASUREMENTS}.rangeStatus.value.totalRange_km"):
             return self.is_electric_range_supported and self.is_combustion_range_supported
         return False
 
@@ -1202,22 +1112,30 @@ class Vehicle:
         :return:
         """
         fuel_level_pct = ""
-        if is_valid_path(self.attrs, "fuelStatus.rangeStatus.value.primaryEngine.currentFuelLevel_pct"):
-            fuel_level_pct = find_path(self.attrs, "fuelStatus.rangeStatus.value.primaryEngine.currentFuelLevel_pct")
+        if is_valid_path(self.attrs, f"{Services.FUEL_STATUS}.rangeStatus.value.primaryEngine.currentFuelLevel_pct"):
+            fuel_level_pct = find_path(
+                self.attrs, f"{Services.FUEL_STATUS}.rangeStatus.value.primaryEngine.currentFuelLevel_pct"
+            )
 
-        if is_valid_path(self.attrs, "measurements.fuelLevelStatus.value.currentFuelLevel_pct"):
-            fuel_level_pct = find_path(self.attrs, "measurements.fuelLevelStatus.value.currentFuelLevel_pct")
+        if is_valid_path(self.attrs, f"{Services.MEASUREMENTS}.fuelLevelStatus.value.currentFuelLevel_pct"):
+            fuel_level_pct = find_path(
+                self.attrs, f"{Services.MEASUREMENTS}.fuelLevelStatus.value.currentFuelLevel_pct"
+            )
         return int(fuel_level_pct)
 
     @property
     def fuel_level_last_updated(self) -> datetime:
         """Return fuel level last updated."""
         fuel_level_lastupdated = ""
-        if is_valid_path(self.attrs, "fuelStatus.rangeStatus.value.carCapturedTimestamp"):
-            fuel_level_lastupdated = find_path(self.attrs, "fuelStatus.rangeStatus.value.carCapturedTimestamp")
+        if is_valid_path(self.attrs, f"{Services.FUEL_STATUS}.rangeStatus.value.carCapturedTimestamp"):
+            fuel_level_lastupdated = find_path(
+                self.attrs, f"{Services.FUEL_STATUS}.rangeStatus.value.carCapturedTimestamp"
+            )
 
-        if is_valid_path(self.attrs, "measurements.fuelLevelStatus.value.carCapturedTimestamp"):
-            fuel_level_lastupdated = find_path(self.attrs, "measurements.fuelLevelStatus.value.carCapturedTimestamp")
+        if is_valid_path(self.attrs, f"{Services.MEASUREMENTS}.fuelLevelStatus.value.carCapturedTimestamp"):
+            fuel_level_lastupdated = find_path(
+                self.attrs, f"{Services.MEASUREMENTS}.fuelLevelStatus.value.carCapturedTimestamp"
+            )
         return fuel_level_lastupdated
 
     @property
@@ -1227,9 +1145,9 @@ class Vehicle:
 
         :return:
         """
-        return is_valid_path(self.attrs, "measurements.fuelLevelStatus.value.currentFuelLevel_pct") or is_valid_path(
-            self.attrs, "fuelStatus.rangeStatus.value.primaryEngine.currentFuelLevel_pct"
-        )
+        return is_valid_path(
+            self.attrs, f"{Services.MEASUREMENTS}.fuelLevelStatus.value.currentFuelLevel_pct"
+        ) or is_valid_path(self.attrs, f"{Services.FUEL_STATUS}.rangeStatus.value.primaryEngine.currentFuelLevel_pct")
 
     # Climatisation settings
     @property
@@ -1261,7 +1179,9 @@ class Vehicle:
     @property
     def is_climatisation_without_external_power_supported(self) -> bool:
         """Return true if climatisation on battery power is supported."""
-        return is_valid_path(self.attrs, "climatisation.climatisationSettings.value.climatisationWithoutExternalPower")
+        # return is_valid_path(self.attrs, "climatisation.climatisationSettings.value.climatisationWithoutExternalPower")
+        # CURRENTLY NOT SUPPORTED
+        return False
 
     @property
     def outside_temperature(self) -> float | bool:  # FIXME should probably be Optional[float] instead
@@ -1293,36 +1213,30 @@ class Vehicle:
     @property
     def electric_climatisation(self) -> bool:
         """Return status of climatisation."""
-        # TODO not found yet
-        climatisation_type = (
-            self.attrs.get("climater", {}).get("settings", {}).get("heaterSource", {}).get("content", "")
-        )
         status = (
-            self.attrs.get("climater", {})
-            .get("status", {})
-            .get("climatisationStatusData", {})
-            .get("climatisationState", {})
-            .get("content", "")
+            self.attrs.get("climatisation", {})
+            .get("climatisationStatus", {})
+            .get("value", {})
+            .get("climatisationState", "")
         )
-        return status in ["heating", "on"] and climatisation_type == "electric"
+        return status in ["heating", "on"]
 
     @property
     def electric_climatisation_last_updated(self) -> datetime:
         """Return status of climatisation last updated."""
-        # TODO not found yet
         return (
-            self.attrs.get("climater", {})
-            .get("status", {})
-            .get("climatisationStatusData", {})
-            .get("climatisationState", {})
-            .get(BACKEND_RECEIVED_TIMESTAMP)
+            self.attrs.get("climatisation", {})
+            .get("climatisationStatus", {})
+            .get("value", {})
+            .get("carCapturedTimestamp")
         )
 
     @property
     def is_electric_climatisation_supported(self) -> bool:
         """Return true if vehicle has climater."""
-        # TODO not found yet
-        return self.is_climatisation_supported
+        # return self.is_climatisation_supported
+        # CURRENTLY NOT SUPPORTED
+        return False
 
     @property
     def auxiliary_climatisation(self) -> bool:
@@ -1330,6 +1244,7 @@ class Vehicle:
         climatisation_state = find_path(self.attrs, "climatisation.climatisationStatus.value.climatisationState")
         if climatisation_state in ["heating", "heatingAuxiliary", "on"]:
             return True
+        return False
 
     @property
     def auxiliary_climatisation_last_updated(self) -> datetime:
@@ -1339,7 +1254,12 @@ class Vehicle:
     @property
     def is_auxiliary_climatisation_supported(self) -> bool:
         """Return true if vehicle has auxiliary climatisation."""
-        return is_valid_path(self.attrs, "climatisation.climatisationStatus.value.climatisationState")
+        # return (
+        #    is_valid_path(self.attrs, "climatisation.climatisationSettings.value.heaterSource")
+        #    or is_valid_path(self.attrs, "climatisation.climatisationSettings.value.climatizationAtUnlock")
+        # )
+        # CURRENTLY NOT SUPPORTED
+        return False
 
     @property
     def is_climatisation_supported(self) -> bool:
@@ -1404,7 +1324,9 @@ class Vehicle:
     @property
     def is_window_heater_supported(self) -> bool:
         """Return true if vehicle has heater."""
-        return self.is_window_heater_front_supported
+        # return self.is_window_heater_front_supported
+        # CURRENTLY NOT SUPPORTED
+        return False
 
     # Parking heater, "legacy" auxiliary climatisation
     @property
@@ -1526,6 +1448,8 @@ class Vehicle:
         windows = find_path(self.attrs, "access.accessStatus.value.windows")
         for window in windows:
             if window["name"] == "frontLeft":
+                if not any(valid_status in window["status"] for valid_status in P.VALID_WINDOW_STATUS):
+                    return None
                 return "closed" in window["status"]
         return False
 
@@ -1554,6 +1478,8 @@ class Vehicle:
         windows = find_path(self.attrs, "access.accessStatus.value.windows")
         for window in windows:
             if window["name"] == "frontRight":
+                if not any(valid_status in window["status"] for valid_status in P.VALID_WINDOW_STATUS):
+                    return None
                 return "closed" in window["status"]
         return False
 
@@ -1582,6 +1508,8 @@ class Vehicle:
         windows = find_path(self.attrs, "access.accessStatus.value.windows")
         for window in windows:
             if window["name"] == "rearLeft":
+                if not any(valid_status in window["status"] for valid_status in P.VALID_WINDOW_STATUS):
+                    return None
                 return "closed" in window["status"]
         return False
 
@@ -1610,6 +1538,8 @@ class Vehicle:
         windows = find_path(self.attrs, "access.accessStatus.value.windows")
         for window in windows:
             if window["name"] == "rearRight":
+                if not any(valid_status in window["status"] for valid_status in P.VALID_WINDOW_STATUS):
+                    return None
                 return "closed" in window["status"]
         return False
 
@@ -1638,6 +1568,8 @@ class Vehicle:
         windows = find_path(self.attrs, "access.accessStatus.value.windows")
         for window in windows:
             if window["name"] == "sunRoof":
+                if not any(valid_status in window["status"] for valid_status in P.VALID_WINDOW_STATUS):
+                    return None
                 return "closed" in window["status"]
         return False
 
@@ -1657,6 +1589,36 @@ class Vehicle:
         return False
 
     @property
+    def sunroof_rear_closed(self) -> bool:
+        """
+        Return sunroof rear closed state.
+
+        :return:
+        """
+        windows = find_path(self.attrs, "access.accessStatus.value.windows")
+        for window in windows:
+            if window["name"] == "sunRoofRear":
+                if not any(valid_status in window["status"] for valid_status in P.VALID_WINDOW_STATUS):
+                    return None
+                return "closed" in window["status"]
+        return False
+
+    @property
+    def sunroof_rear_closed_last_updated(self) -> datetime:
+        """Return attribute last updated timestamp."""
+        return find_path(self.attrs, "access.accessStatus.value.carCapturedTimestamp")
+
+    @property
+    def is_sunroof_rear_closed_supported(self) -> bool:
+        """Return true if supported."""
+        if is_valid_path(self.attrs, "access.accessStatus.value.windows"):
+            windows = find_path(self.attrs, "access.accessStatus.value.windows")
+            for window in windows:
+                if window["name"] == "sunRoofRear" and "unsupported" not in window["status"]:
+                    return True
+        return False
+
+    @property
     def roof_cover_closed(self) -> bool:
         """
         Return roof cover closed state.
@@ -1666,6 +1628,8 @@ class Vehicle:
         windows = find_path(self.attrs, "access.accessStatus.value.windows")
         for window in windows:
             if window["name"] == "roofCover":
+                if not any(valid_status in window["status"] for valid_status in P.VALID_WINDOW_STATUS):
+                    return None
                 return "closed" in window["status"]
         return False
 
@@ -1717,9 +1681,9 @@ class Vehicle:
         :return:
         """
         # First check that the service is actually enabled
-        if not self._services.get("access", {}).get("active", False):
+        if not self._services.get(Services.ACCESS, {}).get("active", False):
             return False
-        return is_valid_path(self.attrs, "access.accessStatus.value.doorLockStatus")
+        return is_valid_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.doorLockStatus")
 
     @property
     def is_door_locked_sensor_supported(self) -> bool:
@@ -1729,9 +1693,9 @@ class Vehicle:
         :return:
         """
         # Use real lock if the service is actually enabled
-        if self._services.get("access", {}).get("active", False):
+        if self._services.get(Services.ACCESS, {}).get("active", False):
             return False
-        return is_valid_path(self.attrs, "access.accessStatus.value.doorLockStatus")
+        return is_valid_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.doorLockStatus")
 
     @property
     def trunk_locked(self) -> bool:
@@ -1740,7 +1704,7 @@ class Vehicle:
 
         :return:
         """
-        doors = find_path(self.attrs, "access.accessStatus.value.doors")
+        doors = find_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.doors")
         for door in doors:
             if door["name"] == "trunk":
                 return "locked" in door["status"]
@@ -1749,7 +1713,7 @@ class Vehicle:
     @property
     def trunk_locked_last_updated(self) -> datetime:
         """Return attribute last updated timestamp."""
-        return find_path(self.attrs, "access.accessStatus.value.carCapturedTimestamp")
+        return find_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.carCapturedTimestamp")
 
     @property
     def is_trunk_locked_supported(self) -> bool:
@@ -1758,10 +1722,10 @@ class Vehicle:
 
         :return:
         """
-        if not self._services.get("access", {}).get("active", False):
+        if not self._services.get(Services.ACCESS, {}).get("active", False):
             return False
-        if is_valid_path(self.attrs, "access.accessStatus.value.doors"):
-            doors = find_path(self.attrs, "access.accessStatus.value.doors")
+        if is_valid_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.doors"):
+            doors = find_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.doors")
             for door in doors:
                 if door["name"] == "trunk" and "unsupported" not in door["status"]:
                     return True
@@ -1774,7 +1738,7 @@ class Vehicle:
 
         :return:
         """
-        doors = find_path(self.attrs, "access.accessStatus.value.doors")
+        doors = find_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.doors")
         for door in doors:
             if door["name"] == "trunk":
                 return "locked" in door["status"]
@@ -1783,7 +1747,7 @@ class Vehicle:
     @property
     def trunk_locked_sensor_last_updated(self) -> datetime:
         """Return attribute last updated timestamp."""
-        return find_path(self.attrs, "access.accessStatus.value.carCapturedTimestamp")
+        return find_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.carCapturedTimestamp")
 
     @property
     def is_trunk_locked_sensor_supported(self) -> bool:
@@ -1792,10 +1756,10 @@ class Vehicle:
 
         :return:
         """
-        if self._services.get("access", {}).get("active", False):
+        if self._services.get(Services.ACCESS, {}).get("active", False):
             return False
-        if is_valid_path(self.attrs, "access.accessStatus.value.doors"):
-            doors = find_path(self.attrs, "access.accessStatus.value.doors")
+        if is_valid_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.doors"):
+            doors = find_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.doors")
             for door in doors:
                 if door["name"] == "trunk" and "unsupported" not in door["status"]:
                     return True
@@ -1809,22 +1773,24 @@ class Vehicle:
 
         :return:
         """
-        doors = find_path(self.attrs, "access.accessStatus.value.doors")
+        doors = find_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.doors")
         for door in doors:
             if door["name"] == "bonnet":
+                if not any(valid_status in door["status"] for valid_status in P.VALID_DOOR_STATUS):
+                    return None
                 return "closed" in door["status"]
         return False
 
     @property
     def hood_closed_last_updated(self) -> datetime:
         """Return attribute last updated timestamp."""
-        return find_path(self.attrs, "access.accessStatus.value.carCapturedTimestamp")
+        return find_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.carCapturedTimestamp")
 
     @property
     def is_hood_closed_supported(self) -> bool:
         """Return true if supported."""
-        if is_valid_path(self.attrs, "access.accessStatus.value.doors"):
-            doors = find_path(self.attrs, "access.accessStatus.value.doors")
+        if is_valid_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.doors"):
+            doors = find_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.doors")
             for door in doors:
                 if door["name"] == "bonnet" and "unsupported" not in door["status"]:
                     return True
@@ -1837,22 +1803,24 @@ class Vehicle:
 
         :return:
         """
-        doors = find_path(self.attrs, "access.accessStatus.value.doors")
+        doors = find_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.doors")
         for door in doors:
             if door["name"] == "frontLeft":
+                if not any(valid_status in door["status"] for valid_status in P.VALID_DOOR_STATUS):
+                    return None
                 return "closed" in door["status"]
         return False
 
     @property
     def door_closed_left_front_last_updated(self) -> datetime:
         """Return attribute last updated timestamp."""
-        return find_path(self.attrs, "access.accessStatus.value.carCapturedTimestamp")
+        return find_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.carCapturedTimestamp")
 
     @property
     def is_door_closed_left_front_supported(self) -> bool:
         """Return true if supported."""
-        if is_valid_path(self.attrs, "access.accessStatus.value.doors"):
-            doors = find_path(self.attrs, "access.accessStatus.value.doors")
+        if is_valid_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.doors"):
+            doors = find_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.doors")
             for door in doors:
                 if door["name"] == "frontLeft" and "unsupported" not in door["status"]:
                     return True
@@ -1865,22 +1833,24 @@ class Vehicle:
 
         :return:
         """
-        doors = find_path(self.attrs, "access.accessStatus.value.doors")
+        doors = find_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.doors")
         for door in doors:
             if door["name"] == "frontRight":
+                if not any(valid_status in door["status"] for valid_status in P.VALID_DOOR_STATUS):
+                    return None
                 return "closed" in door["status"]
         return False
 
     @property
     def door_closed_right_front_last_updated(self) -> datetime:
         """Return attribute last updated timestamp."""
-        return find_path(self.attrs, "access.accessStatus.value.carCapturedTimestamp")
+        return find_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.carCapturedTimestamp")
 
     @property
     def is_door_closed_right_front_supported(self) -> bool:
         """Return true if supported."""
-        if is_valid_path(self.attrs, "access.accessStatus.value.doors"):
-            doors = find_path(self.attrs, "access.accessStatus.value.doors")
+        if is_valid_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.doors"):
+            doors = find_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.doors")
             for door in doors:
                 if door["name"] == "frontRight" and "unsupported" not in door["status"]:
                     return True
@@ -1893,22 +1863,24 @@ class Vehicle:
 
         :return:
         """
-        doors = find_path(self.attrs, "access.accessStatus.value.doors")
+        doors = find_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.doors")
         for door in doors:
             if door["name"] == "rearLeft":
+                if not any(valid_status in door["status"] for valid_status in P.VALID_DOOR_STATUS):
+                    return None
                 return "closed" in door["status"]
         return False
 
     @property
     def door_closed_left_back_last_updated(self) -> datetime:
         """Return attribute last updated timestamp."""
-        return find_path(self.attrs, "access.accessStatus.value.carCapturedTimestamp")
+        return find_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.carCapturedTimestamp")
 
     @property
     def is_door_closed_left_back_supported(self) -> bool:
         """Return true if supported."""
-        if is_valid_path(self.attrs, "access.accessStatus.value.doors"):
-            doors = find_path(self.attrs, "access.accessStatus.value.doors")
+        if is_valid_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.doors"):
+            doors = find_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.doors")
             for door in doors:
                 if door["name"] == "rearLeft" and "unsupported" not in door["status"]:
                     return True
@@ -1921,22 +1893,24 @@ class Vehicle:
 
         :return:
         """
-        doors = find_path(self.attrs, "access.accessStatus.value.doors")
+        doors = find_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.doors")
         for door in doors:
             if door["name"] == "rearRight":
+                if not any(valid_status in door["status"] for valid_status in P.VALID_DOOR_STATUS):
+                    return None
                 return "closed" in door["status"]
         return False
 
     @property
     def door_closed_right_back_last_updated(self) -> datetime:
         """Return attribute last updated timestamp."""
-        return find_path(self.attrs, "access.accessStatus.value.carCapturedTimestamp")
+        return find_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.carCapturedTimestamp")
 
     @property
     def is_door_closed_right_back_supported(self) -> bool:
         """Return true if supported."""
-        if is_valid_path(self.attrs, "access.accessStatus.value.doors"):
-            doors = find_path(self.attrs, "access.accessStatus.value.doors")
+        if is_valid_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.doors"):
+            doors = find_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.doors")
             for door in doors:
                 if door["name"] == "rearRight" and "unsupported" not in door["status"]:
                     return True
@@ -1949,7 +1923,7 @@ class Vehicle:
 
         :return:
         """
-        doors = find_path(self.attrs, "access.accessStatus.value.doors")
+        doors = find_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.doors")
         for door in doors:
             if door["name"] == "trunk":
                 return "closed" in door["status"]
@@ -1958,13 +1932,13 @@ class Vehicle:
     @property
     def trunk_closed_last_updated(self) -> datetime:
         """Return attribute last updated timestamp."""
-        return find_path(self.attrs, "access.accessStatus.value.carCapturedTimestamp")
+        return find_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.carCapturedTimestamp")
 
     @property
     def is_trunk_closed_supported(self) -> bool:
         """Return true if supported."""
-        if is_valid_path(self.attrs, "access.accessStatus.value.doors"):
-            doors = find_path(self.attrs, "access.accessStatus.value.doors")
+        if is_valid_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.doors"):
+            doors = find_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.doors")
             for door in doors:
                 if door["name"] == "trunk" and "unsupported" not in door["status"]:
                     return True
@@ -2096,17 +2070,23 @@ class Vehicle:
     @property
     def is_departure_timer1_supported(self) -> bool:
         """Check if timer 1 is supported."""
-        return self.is_schedule_supported(1)
+        # return self.is_schedule_supported(1)
+        # CURRENTLY NOT SUPPORTED
+        return False
 
     @property
     def is_departure_timer2_supported(self) -> bool:
         """Check if timer 2is supported."""
-        return self.is_schedule_supported(2)
+        # return self.is_schedule_supported(2)
+        # CURRENTLY NOT SUPPORTED
+        return False
 
     @property
     def is_departure_timer3_supported(self) -> bool:
         """Check if timer 3 is supported."""
-        return self.is_schedule_supported(3)
+        # return self.is_schedule_supported(3)
+        # CURRENTLY NOT SUPPORTED
+        return False
 
     def is_schedule_supported(self, id: str | int) -> bool:
         """
@@ -2114,8 +2094,10 @@ class Vehicle:
 
         :return:
         """
-        timer: TimerData = self.attrs.get("timer", None)
-        return timer.has_schedule(id)
+        # timer: TimerData = self.attrs.get("timer", None)
+        # return timer.has_schedule(id)
+        # CURRENTLY NOT SUPPORTED
+        return False
 
     # Trip data
     @property
@@ -2125,7 +2107,7 @@ class Vehicle:
 
         :return:
         """
-        return self.attrs.get("trip_last", {})
+        return self.attrs.get(Services.TRIP_LAST, {})
 
     @property
     def trip_last_average_speed(self):
@@ -2134,12 +2116,12 @@ class Vehicle:
 
         :return:
         """
-        return find_path(self.attrs, "trip_last.averageSpeed_kmph")
+        return find_path(self.attrs, f"{Services.TRIP_LAST}.averageSpeed_kmph")
 
     @property
     def trip_last_average_speed_last_updated(self) -> datetime:
         """Return last updated timestamp."""
-        return find_path(self.attrs, "trip_last.tripEndTimestamp")
+        return find_path(self.attrs, f"{Services.TRIP_LAST}.tripEndTimestamp")
 
     @property
     def is_trip_last_average_speed_supported(self) -> bool:
@@ -2148,8 +2130,8 @@ class Vehicle:
 
         :return:
         """
-        return is_valid_path(self.attrs, "trip_last.averageSpeed_kmph") and type(
-            find_path(self.attrs, "trip_last.averageSpeed_kmph")
+        return is_valid_path(self.attrs, f"{Services.TRIP_LAST}.averageSpeed_kmph") and type(
+            find_path(self.attrs, f"{Services.TRIP_LAST}.averageSpeed_kmph")
         ) in (float, int)
 
     @property
@@ -2159,12 +2141,12 @@ class Vehicle:
 
         :return:
         """
-        return float(find_path(self.attrs, "trip_last.averageElectricConsumption"))
+        return float(find_path(self.attrs, f"{Services.TRIP_LAST}.averageElectricConsumption"))
 
     @property
     def trip_last_average_electric_engine_consumption_last_updated(self) -> datetime:
         """Return last updated timestamp."""
-        return find_path(self.attrs, "trip_last.tripEndTimestamp")
+        return find_path(self.attrs, f"{Services.TRIP_LAST}.tripEndTimestamp")
 
     @property
     def is_trip_last_average_electric_engine_consumption_supported(self) -> bool:
@@ -2173,8 +2155,8 @@ class Vehicle:
 
         :return:
         """
-        return is_valid_path(self.attrs, "trip_last.averageElectricConsumption") and type(
-            find_path(self.attrs, "trip_last.averageElectricConsumption")
+        return is_valid_path(self.attrs, f"{Services.TRIP_LAST}.averageElectricConsumption") and type(
+            find_path(self.attrs, f"{Services.TRIP_LAST}.averageElectricConsumption")
         ) in (float, int)
 
     @property
@@ -2184,12 +2166,12 @@ class Vehicle:
 
         :return:
         """
-        return float(find_path(self.attrs, "trip_last.averageFuelConsumption"))
+        return float(find_path(self.attrs, f"{Services.TRIP_LAST}.averageFuelConsumption"))
 
     @property
     def trip_last_average_fuel_consumption_last_updated(self) -> datetime:
         """Return last updated timestamp."""
-        return find_path(self.attrs, "trip_last.tripEndTimestamp")
+        return find_path(self.attrs, f"{Services.TRIP_LAST}.tripEndTimestamp")
 
     @property
     def is_trip_last_average_fuel_consumption_supported(self) -> bool:
@@ -2198,8 +2180,8 @@ class Vehicle:
 
         :return:
         """
-        return is_valid_path(self.attrs, "trip_last.averageFuelConsumption") and type(
-            find_path(self.attrs, "trip_last.averageFuelConsumption")
+        return is_valid_path(self.attrs, f"{Services.TRIP_LAST}.averageFuelConsumption") and type(
+            find_path(self.attrs, f"{Services.TRIP_LAST}.averageFuelConsumption")
         ) in (float, int)
 
     @property
@@ -2215,7 +2197,7 @@ class Vehicle:
     @property
     def trip_last_average_auxillary_consumption_last_updated(self) -> datetime:
         """Return last updated timestamp."""
-        return find_path(self.attrs, "trip_last.tripEndTimestamp")
+        return find_path(self.attrs, f"{Services.TRIP_LAST}.tripEndTimestamp")
 
     @property
     def is_trip_last_average_auxillary_consumption_supported(self) -> bool:
@@ -2224,8 +2206,8 @@ class Vehicle:
 
         :return:
         """
-        return is_valid_path(self.attrs, "trip_last.averageAuxiliaryConsumption") and type(
-            find_path(self.attrs, "trip_last.averageAuxiliaryConsumption")
+        return is_valid_path(self.attrs, f"{Services.TRIP_LAST}.averageAuxiliaryConsumption") and type(
+            find_path(self.attrs, f"{Services.TRIP_LAST}.averageAuxiliaryConsumption")
         ) in (float, int)
 
     @property
@@ -2241,7 +2223,7 @@ class Vehicle:
     @property
     def trip_last_average_aux_consumer_consumption_last_updated(self) -> datetime:
         """Return last updated timestamp."""
-        return find_path(self.attrs, "trip_last.tripEndTimestamp")
+        return find_path(self.attrs, f"{Services.TRIP_LAST}.tripEndTimestamp")
 
     @property
     def is_trip_last_average_aux_consumer_consumption_supported(self) -> bool:
@@ -2250,8 +2232,8 @@ class Vehicle:
 
         :return:
         """
-        return is_valid_path(self.attrs, "trip_last.averageAuxConsumerConsumption") and type(
-            find_path(self.attrs, "trip_last.averageAuxConsumerConsumption")
+        return is_valid_path(self.attrs, f"{Services.TRIP_LAST}.averageAuxConsumerConsumption") and type(
+            find_path(self.attrs, f"{Services.TRIP_LAST}.averageAuxConsumerConsumption")
         ) in (float, int)
 
     @property
@@ -2261,12 +2243,12 @@ class Vehicle:
 
         :return:
         """
-        return find_path(self.attrs, "trip_last.travelTime")
+        return find_path(self.attrs, f"{Services.TRIP_LAST}.travelTime")
 
     @property
     def trip_last_duration_last_updated(self) -> datetime:
         """Return last updated timestamp."""
-        return find_path(self.attrs, "trip_last.tripEndTimestamp")
+        return find_path(self.attrs, f"{Services.TRIP_LAST}.tripEndTimestamp")
 
     @property
     def is_trip_last_duration_supported(self) -> bool:
@@ -2275,8 +2257,8 @@ class Vehicle:
 
         :return:
         """
-        return is_valid_path(self.attrs, "trip_last.travelTime") and type(
-            find_path(self.attrs, "trip_last.travelTime")
+        return is_valid_path(self.attrs, f"{Services.TRIP_LAST}.travelTime") and type(
+            find_path(self.attrs, f"{Services.TRIP_LAST}.travelTime")
         ) in (float, int)
 
     @property
@@ -2286,12 +2268,12 @@ class Vehicle:
 
         :return:
         """
-        return find_path(self.attrs, "trip_last.mileage_km")
+        return find_path(self.attrs, f"{Services.TRIP_LAST}.mileage_km")
 
     @property
     def trip_last_length_last_updated(self) -> datetime:
         """Return last updated timestamp."""
-        return find_path(self.attrs, "trip_last.tripEndTimestamp")
+        return find_path(self.attrs, f"{Services.TRIP_LAST}.tripEndTimestamp")
 
     @property
     def is_trip_last_length_supported(self) -> bool:
@@ -2300,8 +2282,8 @@ class Vehicle:
 
         :return:
         """
-        return is_valid_path(self.attrs, "trip_last.mileage_km") and type(
-            find_path(self.attrs, "trip_last.mileage_km")
+        return is_valid_path(self.attrs, f"{Services.TRIP_LAST}.mileage_km") and type(
+            find_path(self.attrs, f"{Services.TRIP_LAST}.mileage_km")
         ) in (float, int)
 
     @property
@@ -2317,7 +2299,7 @@ class Vehicle:
     @property
     def trip_last_recuperation_last_updated(self) -> datetime:
         """Return last updated timestamp."""
-        return find_path(self.attrs, "trip_last.tripEndTimestamp")
+        return find_path(self.attrs, f"{Services.TRIP_LAST}.tripEndTimestamp")
 
     @property
     def is_trip_last_recuperation_supported(self) -> bool:
@@ -2342,7 +2324,7 @@ class Vehicle:
     @property
     def trip_last_average_recuperation_last_updated(self) -> datetime:
         """Return last updated timestamp."""
-        return find_path(self.attrs, "trip_last.tripEndTimestamp")
+        return find_path(self.attrs, f"{Services.TRIP_LAST}.tripEndTimestamp")
 
     @property
     def is_trip_last_average_recuperation_supported(self) -> bool:
@@ -2367,7 +2349,7 @@ class Vehicle:
     @property
     def trip_last_total_electric_consumption_last_updated(self) -> datetime:
         """Return last updated timestamp."""
-        return find_path(self.attrs, "trip_last.tripEndTimestamp")
+        return find_path(self.attrs, f"{Services.TRIP_LAST}.tripEndTimestamp")
 
     @property
     def is_trip_last_total_electric_consumption_supported(self) -> bool:
@@ -2535,34 +2517,38 @@ class Vehicle:
 
     def is_primary_drive_electric(self):
         """Check if primary engine is electric."""
-        return find_path(self.attrs, "measurements.fuelLevelStatus.value.primaryEngineType") == ENGINE_TYPE_ELECTRIC
+        return (
+            find_path(self.attrs, f"{Services.MEASUREMENTS}.fuelLevelStatus.value.primaryEngineType")
+            == ENGINE_TYPE_ELECTRIC
+        )
 
     def is_secondary_drive_electric(self):
         """Check if secondary engine is electric."""
         return (
-            is_valid_path(self.attrs, "measurements.fuelLevelStatus.value.primaryEngineType")
-            and find_path(self.attrs, "measurements.fuelLevelStatus.value.primaryEngineType") == ENGINE_TYPE_ELECTRIC
+            is_valid_path(self.attrs, f"{Services.MEASUREMENTS}.fuelLevelStatus.value.primaryEngineType")
+            and find_path(self.attrs, f"{Services.MEASUREMENTS}.fuelLevelStatus.value.primaryEngineType")
+            == ENGINE_TYPE_ELECTRIC
         )
 
     def is_primary_drive_combustion(self):
         """Check if primary engine is combustion."""
         engine_type = ""
-        if is_valid_path(self.attrs, "fuelStatus.rangeStatus.value.primaryEngine.type"):
-            engine_type = find_path(self.attrs, "fuelStatus.rangeStatus.value.primaryEngine.type")
+        if is_valid_path(self.attrs, f"{Services.FUEL_STATUS}.rangeStatus.value.primaryEngine.type"):
+            engine_type = find_path(self.attrs, f"{Services.FUEL_STATUS}.rangeStatus.value.primaryEngine.type")
 
-        if is_valid_path(self.attrs, "measurements.fuelLevelStatus.value.primaryEngineType"):
-            engine_type = find_path(self.attrs, "measurements.fuelLevelStatus.value.primaryEngineType")
+        if is_valid_path(self.attrs, f"{Services.MEASUREMENTS}.fuelLevelStatus.value.primaryEngineType"):
+            engine_type = find_path(self.attrs, f"{Services.MEASUREMENTS}.fuelLevelStatus.value.primaryEngineType")
 
         return engine_type in ENGINE_TYPE_COMBUSTION
 
     def is_secondary_drive_combustion(self):
         """Check if secondary engine is combustion."""
         engine_type = ""
-        if is_valid_path(self.attrs, "fuelStatus.rangeStatus.value.secondaryEngine.type"):
-            engine_type = find_path(self.attrs, "fuelStatus.rangeStatus.value.secondaryEngine.type")
+        if is_valid_path(self.attrs, f"{Services.FUEL_STATUS}.rangeStatus.value.secondaryEngine.type"):
+            engine_type = find_path(self.attrs, f"{Services.FUEL_STATUS}.rangeStatus.value.secondaryEngine.type")
 
-        if is_valid_path(self.attrs, "measurements.fuelLevelStatus.value.secondaryEngineType"):
-            engine_type = find_path(self.attrs, "measurements.fuelLevelStatus.value.secondaryEngineType")
+        if is_valid_path(self.attrs, f"{Services.MEASUREMENTS}.fuelLevelStatus.value.secondaryEngineType"):
+            engine_type = find_path(self.attrs, f"{Services.MEASUREMENTS}.fuelLevelStatus.value.secondaryEngineType")
 
         return engine_type in ENGINE_TYPE_COMBUSTION
 
@@ -2573,7 +2559,7 @@ class Vehicle:
     @property
     def api_vehicles_status(self) -> bool:
         """Check vehicles API status."""
-        return self.attrs.get("service_status", {}).get("vehicles", "Unknown")
+        return self.attrs.get(Services.SERVICE_STATUS, {}).get("vehicles", "Unknown")
 
     @property
     def api_vehicles_status_last_updated(self) -> datetime:
@@ -2588,7 +2574,7 @@ class Vehicle:
     @property
     def api_capabilities_status(self) -> bool:
         """Check capabilities API status."""
-        return self.attrs.get("service_status", {}).get("capabilities", "Unknown")
+        return self.attrs.get(Services.SERVICE_STATUS, {}).get("capabilities", "Unknown")
 
     @property
     def api_capabilities_status_last_updated(self) -> datetime:
@@ -2603,7 +2589,7 @@ class Vehicle:
     @property
     def api_trips_status(self) -> bool:
         """Check trips API status."""
-        return self.attrs.get("service_status", {}).get("trips", "Unknown")
+        return self.attrs.get(Services.SERVICE_STATUS, {}).get("trips", "Unknown")
 
     @property
     def api_trips_status_last_updated(self) -> datetime:
@@ -2612,13 +2598,15 @@ class Vehicle:
 
     @property
     def is_api_trips_status_supported(self):
-        """Trips API status is always supported."""
-        return True
+        """Check if Trips API status is supported."""
+        if self._services.get(Services.TRIP_STATISTICS, {}).get("active", False):
+            return True
+        return False
 
     @property
     def api_selectivestatus_status(self) -> bool:
         """Check selectivestatus API status."""
-        return self.attrs.get("service_status", {}).get("selectivestatus", "Unknown")
+        return self.attrs.get(Services.SERVICE_STATUS, {}).get("selectivestatus", "Unknown")
 
     @property
     def api_selectivestatus_status_last_updated(self) -> datetime:
@@ -2633,7 +2621,7 @@ class Vehicle:
     @property
     def api_parkingposition_status(self) -> bool:
         """Check parkingposition API status."""
-        return self.attrs.get("service_status", {}).get("parkingposition", "Unknown")
+        return self.attrs.get(Services.SERVICE_STATUS, {}).get("parkingposition", "Unknown")
 
     @property
     def api_parkingposition_status_last_updated(self) -> datetime:
@@ -2642,13 +2630,15 @@ class Vehicle:
 
     @property
     def is_api_parkingposition_status_supported(self):
-        """Parkingposition API status is always supported."""
-        return True
+        """Check if Parkingposition API status is supported."""
+        if self._services.get(Services.PARKING_POSITION, {}).get("active", False):
+            return True
+        return False
 
     @property
     def api_token_status(self) -> bool:
         """Check token API status."""
-        return self.attrs.get("service_status", {}).get("token", "Unknown")
+        return self.attrs.get(Services.SERVICE_STATUS, {}).get("token", "Unknown")
 
     @property
     def api_token_status_last_updated(self) -> datetime:
@@ -2658,4 +2648,24 @@ class Vehicle:
     @property
     def is_api_token_status_supported(self):
         """Parkingposition API status is always supported."""
+        return True
+
+    @property
+    def last_data_refresh(self) -> bool:
+        """Check when services were refreshed successfully for the last time."""
+        last_data_refresh_time = "Unknown"
+        last_data_refresh_path = "refreshTimestamp"
+        if is_valid_path(self.attrs, last_data_refresh_path):
+            last_data_refresh_time = find_path(self.attrs, last_data_refresh_path)
+            return last_data_refresh_time.strftime("%Y-%m-%d %H:%M:%S")
+        return last_data_refresh_time
+
+    @property
+    def last_data_refresh_last_updated(self) -> datetime:
+        """Return attribute last updated timestamp."""
+        return datetime.now()
+
+    @property
+    def is_last_data_refresh_supported(self):
+        """Last data refresh is always supported."""
         return True
