@@ -1,4 +1,5 @@
 """Utilities class tests."""
+
 from datetime import datetime, timezone, timedelta
 from json import JSONDecodeError
 from unittest import TestCase, mock

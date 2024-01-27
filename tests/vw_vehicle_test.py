@@ -1,4 +1,5 @@
 """Vehicle class tests."""
+
 import sys
 from datetime import datetime, timezone, timedelta
 

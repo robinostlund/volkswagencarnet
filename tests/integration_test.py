@@ -4,6 +4,7 @@ Integration tests.
 These tests use actual credentials, and should thus be used with care.
 Credentials have to be specified in credentials.py.
 """
+
 import logging
 
 import pytest

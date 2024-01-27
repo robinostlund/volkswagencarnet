@@ -1,4 +1,5 @@
 """Depature timer tests."""
+
 import copy
 import datetime
 from unittest import TestCase

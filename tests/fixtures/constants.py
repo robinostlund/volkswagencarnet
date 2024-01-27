@@ -1,4 +1,5 @@
 """Misc constants and other data for tests."""
+
 import os
 from pathlib import Path
 

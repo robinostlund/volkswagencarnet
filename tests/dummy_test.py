@@ -1,4 +1,5 @@
 """Dummy tests. Might be removed once there are proper ones."""
+
 import pytest
 from aiohttp import ClientSession
 

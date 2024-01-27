@@ -1,4 +1,5 @@
 """Misc tests for exception and their handling."""
+
 from unittest import TestCase
 
 from volkswagencarnet.vw_exceptions import AuthenticationException

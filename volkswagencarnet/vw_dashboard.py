@@ -1,4 +1,5 @@
 """Utilities for integration with Home Assistant."""
+
 # Thanks to molobrakos
 
 import logging
