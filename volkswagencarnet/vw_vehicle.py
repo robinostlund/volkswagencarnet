@@ -62,7 +62,8 @@ class Vehicle:
             Services.HONK_AND_FLASH: {"active": False},
             Services.PARKING_POSITION: {"active": False},
             Services.CLIMATISATION: {"active": False},
-            Services.CHARGING: {"active": False}
+            Services.CHARGING: {"active": False},
+            Services.PARAMETERS: {}
             # "rheating_v1": {"active": False},
             # "rclima_v1": {"active": False},
             # "statusreport_v1": {"active": False},
@@ -122,12 +123,16 @@ class Vehicle:
         """Discover vehicle and initial data."""
 
         _LOGGER.debug("Attempting discovery of supported API endpoints for vehicle.")
-        operation_list = await self._connection.getOperationList(self.vin)
-        if operation_list:
-            for service_id in operation_list.keys():
+        capabilities_response = await self._connection.getOperationList(self.vin)
+        parameters_list = capabilities_response.get("parameters", {})
+        capabilities_list = capabilities_response.get("capabilities", {})
+        if parameters_list:
+            self._services[Services.PARAMETERS].update(parameters_list)
+        if capabilities_list:
+            for service_id in capabilities_list.keys():
                 try:
                     if service_id in self._services.keys():
-                        service = operation_list[service_id]
+                        service = capabilities_list[service_id]
                         data = {}
                         service_name = service.get("id", None)
                         if service.get("isEnabled", False):
@@ -140,6 +145,10 @@ class Vehicle:
                                 for operation_id in service.get("operations", []).keys():
                                     operation = service.get("operations").get(operation_id)
                                     data["operations"].append(operation.get("id", None))
+                            if service.get("parameters", False):
+                                data.update({"parameters": []})
+                                for parameter in service.get("parameters", []):
+                                    data["parameters"].append(parameter)
                         else:
                             reason = service.get("status", "Unknown")
                             _LOGGER.debug(f"Service: {service_name} is disabled because of reason: {reason}")
@@ -1324,8 +1333,15 @@ class Vehicle:
     @property
     def is_window_heater_supported(self) -> bool:
         """Return true if vehicle has heater."""
-        # return self.is_window_heater_front_supported
-        # CURRENTLY NOT SUPPORTED
+        # ID models detection
+        if self._services.get(Services.PARAMETERS, {}).get("supportsStartWindowHeating", "false") == "true":
+            return True
+        # "Legacy" models detection
+        parameters = self._services.get(Services.CLIMATISATION, {}).get("parameters", None)
+        if parameters:
+            for parameter in parameters:
+                if parameter["key"] == "supportsStartWindowHeating" and parameter["value"] == "true":
+                    return True
         return False
 
     # Parking heater, "legacy" auxiliary climatisation

@@ -132,5 +132,6 @@ class Services:
     TRIP_STATISTICS = "tripStatistics"
 
     # internally used services names
+    PARAMETERS = "parameters"
     SERVICE_STATUS = "service_status"
     TRIP_LAST = "trip_last"

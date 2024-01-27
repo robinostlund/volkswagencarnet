@@ -564,7 +564,7 @@ class Connection:
         try:
             response = await self.get(f"{BASE_API}/vehicle/v1/vehicles/{vin}/capabilities", "")
             if response.get("capabilities", False):
-                data = response.get("capabilities", {})
+                data = response
             elif response.get("status_code", {}):
                 _LOGGER.warning(f'Could not fetch operation list, HTTP status code: {response.get("status_code")}')
                 data = response
