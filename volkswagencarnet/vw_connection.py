@@ -323,7 +323,7 @@ class Connection:
                 "client_id": CLIENT[client].get("CLIENT_ID"),
                 "grant_type": "authorization_code",
                 "code": jwt_auth_code,
-                "redirect_uri": APP_URI
+                "redirect_uri": APP_URI,
                 # "brand": BRAND,
             }
             _LOGGER.debug("Trying to fetch user identity tokens.")

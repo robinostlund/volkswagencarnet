@@ -63,7 +63,7 @@ class Vehicle:
             Services.PARKING_POSITION: {"active": False},
             Services.CLIMATISATION: {"active": False},
             Services.CHARGING: {"active": False},
-            Services.PARAMETERS: {}
+            Services.PARAMETERS: {},
             # "rheating_v1": {"active": False},
             # "rclima_v1": {"active": False},
             # "statusreport_v1": {"active": False},
@@ -183,7 +183,7 @@ class Vehicle:
                 ),
                 self.get_vehicle(),
                 self.get_parkingposition(),
-                self.get_trip_last()
+                self.get_trip_last(),
                 #     return_exceptions=True,
             )
             await asyncio.gather(self.get_service_status())
