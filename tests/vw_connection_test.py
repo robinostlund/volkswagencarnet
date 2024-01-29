@@ -1,4 +1,5 @@
 """Tests for main connection class."""
+
 import sys
 
 import aiohttp

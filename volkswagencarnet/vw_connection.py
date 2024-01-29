@@ -323,7 +323,7 @@ class Connection:
                 "client_id": CLIENT[client].get("CLIENT_ID"),
                 "grant_type": "authorization_code",
                 "code": jwt_auth_code,
-                "redirect_uri": APP_URI
+                "redirect_uri": APP_URI,
                 # "brand": BRAND,
             }
             _LOGGER.debug("Trying to fetch user identity tokens.")
@@ -564,7 +564,7 @@ class Connection:
         try:
             response = await self.get(f"{BASE_API}/vehicle/v1/vehicles/{vin}/capabilities", "")
             if response.get("capabilities", False):
-                data = response.get("capabilities", {})
+                data = response
             elif response.get("status_code", {}):
                 _LOGGER.warning(f'Could not fetch operation list, HTTP status code: {response.get("status_code")}')
                 data = response

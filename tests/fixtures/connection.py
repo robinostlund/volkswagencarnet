@@ -1,4 +1,5 @@
 """Session and connection related test fixtures."""
+
 import os
 
 import pytest
