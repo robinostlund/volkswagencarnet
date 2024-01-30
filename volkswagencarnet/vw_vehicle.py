@@ -281,8 +281,18 @@ class Vehicle:
         raise Exception("Should have to be re-implemented")
 
     async def set_charger(self, action) -> bool:
-        """Charging actions."""
-        raise Exception("Should have to be re-implemented")
+        """Turn on/off window charging."""
+        if self.is_charging_supported:
+            if action not in ["start", "stop"]:
+                _LOGGER.error(f'Charging action "{action}" is not supported.')
+                raise Exception(f'Charging action "{action}" is not supported.')
+            response = await self._connection.setCharging(self.vin, (action == "start"))
+            return await self._handle_response(
+                response=response, topic="charging", error_msg=f"Failed to {action} charging"
+            )
+        else:
+            _LOGGER.error("No charging support.")
+            raise Exception("No charging support.")
 
     # Climatisation electric/auxiliary/windows (CLIMATISATION)
     async def set_climatisation_temp(self, temperature=20):
@@ -769,9 +779,7 @@ class Vehicle:
     @property
     def is_charging_supported(self) -> bool:
         """Return true if charging is supported."""
-        # return is_valid_path(self.attrs, f"{Services.CHARGING}.chargingStatus.value.chargingState")
-        # CURRENTLY NOT SUPPORTED
-        return False
+        return is_valid_path(self.attrs, f"{Services.CHARGING}.chargingStatus.value.chargingState")
 
     @property
     def charging_power(self) -> int:
