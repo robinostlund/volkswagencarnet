@@ -8,7 +8,7 @@ import secrets
 import sys
 import time
 from base64 import b64encode, urlsafe_b64encode
-from datetime import timedelta, datetime
+from datetime import timedelta, datetime, timezone
 from random import random, randint
 from sys import version_info
 
@@ -592,7 +592,7 @@ class Connection:
                     )
 
             if response:
-                response.update({"refreshTimestamp": datetime.now()})
+                response.update({"refreshTimestamp": datetime.now(timezone.utc)})
 
             return response
 
