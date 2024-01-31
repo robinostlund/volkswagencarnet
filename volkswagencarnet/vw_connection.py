@@ -782,30 +782,35 @@ class Connection:
 
     async def setWindowHeater(self, vin, action):
         """Execute window heating actions."""
-
         action = "start" if action else "stop"
-
         try:
             response_raw = await self.post(
                 f"{BASE_API}/vehicle/v1/vehicles/{vin}/windowheating/{action}", json={}, return_raw=True
             )
             return await self._handle_action_result(response_raw)
-
         except Exception as e:
             raise Exception("Unknown error during setWindowHeater") from e
+
+    async def setCharging(self, vin, action):
+        """Execute charging actions."""
+        action = "start" if action else "stop"
+        try:
+            response_raw = await self.post(
+                f"{BASE_API}/vehicle/v1/vehicles/{vin}/charging/{action}", json={}, return_raw=True
+            )
+            return await self._handle_action_result(response_raw)
+        except Exception as e:
+            raise Exception("Unknown error during setCharging") from e
 
     async def setLock(self, vin, lock, spin):
         """Remote lock and unlock actions."""
         await self.check_spin_state()
-
         action = "lock" if lock else "unlock"
-
         try:
             response_raw = await self.post(
                 f"{BASE_API}/vehicle/v1/vehicles/{vin}/access/{action}", json={"spin": spin}, return_raw=True
             )
             return await self._handle_action_result(response_raw)
-
         except Exception as e:
             raise Exception("Unknown error during setLock") from e
 
