@@ -629,7 +629,11 @@ class Vehicle:
         # only information per service, so we just use the one for fuelStatus.rangeStatus with is covering
         # all vehicle types
         if type(self.combined_range_last_updated) is str:
-            return datetime.strptime(self.combined_range_last_updated, "%Y-%m-%dT%H:%M:%S.%fZ").replace(microsecond=0).replace(tzinfo=timezone.utc)
+            return (
+                datetime.strptime(self.combined_range_last_updated, "%Y-%m-%dT%H:%M:%S.%fZ")
+                .replace(microsecond=0)
+                .replace(tzinfo=timezone.utc)
+            )
         else:
             return self.combined_range_last_updated
         return None
