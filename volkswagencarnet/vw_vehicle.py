@@ -628,15 +628,17 @@ class Vehicle:
         # this field is only a dirty hack, because there is no overarching information for the car anymore,
         # only information per service, so we just use the one for fuelStatus.rangeStatus with is covering
         # all vehicle types
-        if type(self.combined_range_last_updated) is str:
-            return (
-                datetime.strptime(self.combined_range_last_updated, "%Y-%m-%dT%H:%M:%S.%fZ")
-                .replace(microsecond=0)
-                .replace(tzinfo=timezone.utc)
-            )
+        if self.combined_range_last_updated:
+            if type(self.combined_range_last_updated) is str:
+                return (
+                    datetime.strptime(self.combined_range_last_updated, "%Y-%m-%dT%H:%M:%S.%fZ")
+                    .replace(microsecond=0)
+                    .replace(tzinfo=timezone.utc)
+                )
+            else:
+                return self.combined_range_last_updated
         else:
-            return self.combined_range_last_updated
-        return None
+            return None
 
     @property
     def last_connected_last_updated(self) -> datetime:
