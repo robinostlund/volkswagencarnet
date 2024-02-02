@@ -60,6 +60,7 @@ class VWDeviceClass:
     PLUG = "plug"
     POWER = "power"
     TEMPERATURE = "temperature"
+    TIMESTAMP = "timestamp"
     WINDOW = "window"
 
 

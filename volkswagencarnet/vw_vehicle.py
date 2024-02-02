@@ -40,12 +40,12 @@ class Vehicle:
         self._discovered = False
         self._states = {}
         self._requests: dict[str, Any] = {
-            "departuretimer": {"status": "", "timestamp": datetime.now()},
-            "batterycharge": {"status": "", "timestamp": datetime.now()},
-            "climatisation": {"status": "", "timestamp": datetime.now()},
-            "refresh": {"status": "", "timestamp": datetime.now()},
-            "lock": {"status": "", "timestamp": datetime.now()},
-            "preheater": {"status": "", "timestamp": datetime.now()},
+            "departuretimer": {"status": "", "timestamp": datetime.now(timezone.utc)},
+            "batterycharge": {"status": "", "timestamp": datetime.now(timezone.utc)},
+            "climatisation": {"status": "", "timestamp": datetime.now(timezone.utc)},
+            "refresh": {"status": "", "timestamp": datetime.now(timezone.utc)},
+            "lock": {"status": "", "timestamp": datetime.now(timezone.utc)},
+            "preheater": {"status": "", "timestamp": datetime.now(timezone.utc)},
             "remaining": -1,
             "latest": "",
             "state": "",
@@ -79,9 +79,9 @@ class Vehicle:
         """Check if request is already in progress."""
         if self._requests.get(topic, {}).get("id", False):
             timestamp = self._requests.get(topic, {}).get(
-                "timestamp", datetime.now() - timedelta(minutes=unknown_offset)
+                "timestamp", datetime.now(timezone.utc) - timedelta(minutes=unknown_offset)
             )
-            if timestamp + timedelta(minutes=3) < datetime.now():
+            if timestamp + timedelta(minutes=3) < datetime.now(timezone.utc):
                 self._requests.get(topic, {}).pop("id")
             else:
                 _LOGGER.info(f"Action ({topic}) already in progress")
@@ -91,7 +91,7 @@ class Vehicle:
     async def _handle_response(self, response, topic: str, error_msg: str | None = None) -> bool:
         """Handle errors in response and get requests remaining."""
         if not response:
-            self._requests[topic] = {"status": "Failed", "timestamp": datetime.now()}
+            self._requests[topic] = {"status": "Failed", "timestamp": datetime.now(timezone.utc)}
             _LOGGER.error(error_msg if error_msg is not None else f"Failed to perform {topic} action")
             raise Exception(error_msg if error_msg is not None else f"Failed to perform {topic} action")
         else:
@@ -100,7 +100,7 @@ class Vehicle:
                 _LOGGER.info(f"{remaining} requests")
                 self._requests["remaining"] = remaining
             self._requests[topic] = {
-                "timestamp": datetime.now(),
+                "timestamp": datetime.now(timezone.utc),
                 "status": response.get("state", "Unknown"),
                 "id": response.get("id", 0),
             }
@@ -114,7 +114,7 @@ class Vehicle:
                     actionId = ""
                     sectionId = topic
                 status = await self.wait_for_request(section=sectionId, request=response.get("id", 0), action=actionId)
-            self._requests[topic] = {"status": status, "timestamp": datetime.now()}
+            self._requests[topic] = {"status": status, "timestamp": datetime.now(timezone.utc)}
         return True
 
     # API get and set functions #
@@ -250,9 +250,8 @@ class Vehicle:
             return "Timeout"
         try:
             await self.get_selectivestatus([Services.MEASUREMENTS])
-            last_connect_time = datetime.strptime(self.last_connected, "%Y-%m-%d %H:%M:%S")
             refresh_trigger_time = self._requests.get("refresh", {}).get("timestamp")
-            if last_connect_time < refresh_trigger_time:
+            if self.last_connected < refresh_trigger_time:
                 await asyncio.sleep(10)
                 return await self.wait_for_data_refresh(retry_count)
             else:
@@ -377,7 +376,7 @@ class Vehicle:
             )
         except Exception as error:
             _LOGGER.warning(f"Failed to execute climatisation request - {error}")
-            self._requests["climatisation"] = {"status": "Exception", "timestamp": datetime.now()}
+            self._requests["climatisation"] = {"status": "Exception", "timestamp": datetime.now(timezone.utc)}
         raise Exception("Climatisation action failed")
 
     # Parking heater heating/ventilation (RS)
@@ -405,7 +404,7 @@ class Vehicle:
             )
         except Exception as error:
             _LOGGER.warning(f"Failed to {action} vehicle - {error}")
-            self._requests["lock"] = {"status": "Exception", "timestamp": datetime.now()}
+            self._requests["lock"] = {"status": "Exception", "timestamp": datetime.now(timezone.utc)}
         raise Exception("Lock action failed")
 
     # Refresh vehicle data (VSR)
@@ -420,7 +419,7 @@ class Vehicle:
                 if response.status == 204:
                     self._requests["state"] = "in_progress"
                     self._requests["refresh"] = {
-                        "timestamp": datetime.now(),
+                        "timestamp": datetime.now(timezone.utc),
                         "status": "in_progress",
                         "id": 0,
                     }
@@ -431,13 +430,13 @@ class Vehicle:
                 else:
                     _LOGGER.debug(f"Unable to refresh the data. Incorrect response code: {response.status}")
                 self._requests["state"] = status
-                self._requests["refresh"] = {"status": status, "timestamp": datetime.now()}
+                self._requests["refresh"] = {"status": status, "timestamp": datetime.now(timezone.utc)}
                 return True
             else:
                 _LOGGER.debug("Unable to refresh the data.")
         except Exception as error:
             _LOGGER.warning(f"Failed to execute data refresh - {error}")
-            self._requests["refresh"] = {"status": "Exception", "timestamp": datetime.now()}
+            self._requests["refresh"] = {"status": "Exception", "timestamp": datetime.now(timezone.utc)}
         raise Exception("Data refresh failed")
 
     async def set_schedule(self, data: TimerData) -> bool:
@@ -624,24 +623,22 @@ class Vehicle:
 
     # Connection status
     @property
-    def last_connected(self) -> str:
+    def last_connected(self) -> datetime:
         """Return when vehicle was last connected to connect servers in local time."""
         # this field is only a dirty hack, because there is no overarching information for the car anymore,
-        # only information per service, so we just use the one for odometer
-        last_connected_time = "Unknown"
-        last_connected_time_utc = None
-        if self.is_battery_level_supported:
-            last_connected_time_utc = self.battery_level_last_updated
-        elif self.is_distance_supported:
-            last_connected_time_utc = self.distance_last_updated
-        if last_connected_time_utc is not None:
-            if type(last_connected_time_utc) is str:
-                last_connected_time_utc = datetime.strptime(last_connected_time_utc, "%Y-%m-%dT%H:%M:%S.%fZ").replace(
-                    microsecond=0
+        # only information per service, so we just use the one for fuelStatus.rangeStatus with is covering
+        # all vehicle types
+        if self.combined_range_last_updated:
+            if type(self.combined_range_last_updated) is str:
+                return (
+                    datetime.strptime(self.combined_range_last_updated, "%Y-%m-%dT%H:%M:%S.%fZ")
+                    .replace(microsecond=0)
+                    .replace(tzinfo=timezone.utc)
                 )
-            last_connected_time = last_connected_time_utc.replace(tzinfo=timezone.utc).astimezone(tz=None)
-            return last_connected_time.strftime("%Y-%m-%d %H:%M:%S")
-        return last_connected_time
+            else:
+                return self.combined_range_last_updated
+        else:
+            return None
 
     @property
     def last_connected_last_updated(self) -> datetime:
@@ -1021,15 +1018,12 @@ class Vehicle:
         return self.is_position_supported
 
     @property
-    def parking_time(self) -> str:
+    def parking_time(self) -> datetime:
         """Return timestamp of last parking time."""
-        park_time = "Unknown"
         parking_time_path = "parkingposition.carCapturedTimestamp"
         if is_valid_path(self.attrs, parking_time_path):
-            park_time_utc = find_path(self.attrs, parking_time_path)
-            park_time = park_time_utc.replace(tzinfo=timezone.utc).astimezone(tz=None)
-            return park_time.strftime("%Y-%m-%d %H:%M:%S")
-        return park_time
+            return find_path(self.attrs, parking_time_path)
+        return None
 
     @property
     def parking_time_last_updated(self) -> datetime:
@@ -2446,7 +2440,7 @@ class Vehicle:
                 return self._requests[section].get("timestamp")
         except Exception as e:
             _LOGGER.warning(e)
-        return datetime.now()
+        return datetime.now(timezone.utc)
 
     @property
     def is_request_in_progress_supported(self):
@@ -2588,7 +2582,7 @@ class Vehicle:
     @property
     def api_vehicles_status_last_updated(self) -> datetime:
         """Return attribute last updated timestamp."""
-        return datetime.now()
+        return datetime.now(timezone.utc)
 
     @property
     def is_api_vehicles_status_supported(self):
@@ -2603,7 +2597,7 @@ class Vehicle:
     @property
     def api_capabilities_status_last_updated(self) -> datetime:
         """Return attribute last updated timestamp."""
-        return datetime.now()
+        return datetime.now(timezone.utc)
 
     @property
     def is_api_capabilities_status_supported(self):
@@ -2618,7 +2612,7 @@ class Vehicle:
     @property
     def api_trips_status_last_updated(self) -> datetime:
         """Return attribute last updated timestamp."""
-        return datetime.now()
+        return datetime.now(timezone.utc)
 
     @property
     def is_api_trips_status_supported(self):
@@ -2635,7 +2629,7 @@ class Vehicle:
     @property
     def api_selectivestatus_status_last_updated(self) -> datetime:
         """Return attribute last updated timestamp."""
-        return datetime.now()
+        return datetime.now(timezone.utc)
 
     @property
     def is_api_selectivestatus_status_supported(self):
@@ -2650,7 +2644,7 @@ class Vehicle:
     @property
     def api_parkingposition_status_last_updated(self) -> datetime:
         """Return attribute last updated timestamp."""
-        return datetime.now()
+        return datetime.now(timezone.utc)
 
     @property
     def is_api_parkingposition_status_supported(self):
@@ -2667,7 +2661,7 @@ class Vehicle:
     @property
     def api_token_status_last_updated(self) -> datetime:
         """Return attribute last updated timestamp."""
-        return datetime.now()
+        return datetime.now(timezone.utc)
 
     @property
     def is_api_token_status_supported(self):
@@ -2675,19 +2669,17 @@ class Vehicle:
         return True
 
     @property
-    def last_data_refresh(self) -> bool:
+    def last_data_refresh(self) -> datetime:
         """Check when services were refreshed successfully for the last time."""
-        last_data_refresh_time = "Unknown"
         last_data_refresh_path = "refreshTimestamp"
         if is_valid_path(self.attrs, last_data_refresh_path):
-            last_data_refresh_time = find_path(self.attrs, last_data_refresh_path)
-            return last_data_refresh_time.strftime("%Y-%m-%d %H:%M:%S")
-        return last_data_refresh_time
+            return find_path(self.attrs, last_data_refresh_path)
+        return None
 
     @property
     def last_data_refresh_last_updated(self) -> datetime:
         """Return attribute last updated timestamp."""
-        return datetime.now()
+        return datetime.now(timezone.utc)
 
     @property
     def is_last_data_refresh_supported(self):

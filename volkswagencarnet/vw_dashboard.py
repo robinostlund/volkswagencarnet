@@ -878,6 +878,7 @@ def create_instruments():
             name="Last connected",
             icon="mdi:clock",
             unit="",
+            device_class=VWDeviceClass.TIMESTAMP,
             entity_type="diag",
         ),
         Sensor(
@@ -885,6 +886,7 @@ def create_instruments():
             name="Parking time",
             icon="mdi:clock",
             unit="",
+            device_class=VWDeviceClass.TIMESTAMP,
         ),
         Sensor(
             attr="charging_time_left",
@@ -1087,6 +1089,7 @@ def create_instruments():
             name="Last data refresh",
             icon="mdi:clock",
             unit="",
+            device_class=VWDeviceClass.TIMESTAMP,
             entity_type="diag",
         ),
         BinarySensor(attr="external_power", name="External power", device_class=VWDeviceClass.POWER),
