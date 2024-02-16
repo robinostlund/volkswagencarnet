@@ -920,9 +920,13 @@ class Vehicle:
     @property
     def charging_time_left(self) -> int:
         """Return minutes to charging complete."""
-        return int(
-            find_path(self.attrs, f"{Services.CHARGING}.chargingStatus.value.remainingChargingTimeToComplete_min")
-        )
+        if is_valid_path(
+            self.attrs, f"{Services.CHARGING}.chargingStatus.value.remainingChargingTimeToComplete_min"
+        ):
+            return int(
+                find_path(self.attrs, f"{Services.CHARGING}.chargingStatus.value.remainingChargingTimeToComplete_min")
+            )
+        return None
 
     @property
     def charging_time_left_last_updated(self) -> datetime:
@@ -933,7 +937,7 @@ class Vehicle:
     def is_charging_time_left_supported(self) -> bool:
         """Return true if charging is supported."""
         return is_valid_path(
-            self.attrs, f"{Services.CHARGING}.chargingStatus.value.remainingChargingTimeToComplete_min"
+            self.attrs, f"{Services.CHARGING}.chargingStatus.value.chargingState"
         )
 
     @property
