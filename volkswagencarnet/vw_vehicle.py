@@ -626,29 +626,40 @@ class Vehicle:
     def last_connected(self) -> datetime:
         """Return when vehicle was last connected to connect servers in local time."""
         # this field is only a dirty hack, because there is no overarching information for the car anymore,
-        # only information per service, so we just use the one for fuelStatus.rangeStatus with is covering
-        # all vehicle types
-        if self.combined_range_last_updated:
-            if type(self.combined_range_last_updated) is str:
+        # only information per service, so we just use the one for fuelStatus.rangeStatus when car is ideling
+        # and charing.batteryStatus when electic car is charging
+        """Return attribute last updated timestamp."""
+        if self.is_battery_level_supported and self.charging:
+            return self.battery_level_last_updated
+        elif self.is_distance_supported:
+            if type(self.distance_last_updated) is str:
                 return (
-                    datetime.strptime(self.combined_range_last_updated, "%Y-%m-%dT%H:%M:%S.%fZ")
+                    datetime.strptime(self.distance_last_updated, "%Y-%m-%dT%H:%M:%S.%fZ")
                     .replace(microsecond=0)
                     .replace(tzinfo=timezone.utc)
                 )
             else:
-                return self.combined_range_last_updated
-        else:
-            return None
+                return self.distance_last_updated
 
     @property
     def last_connected_last_updated(self) -> datetime:
         """Return attribute last updated timestamp."""
-        return self.attrs.get(Services.MEASUREMENTS).get("odometerStatus").get("value").get("carCapturedTimestamp")
+        if self.is_battery_level_supported and self.charging:
+            return self.battery_level_last_updated
+        elif self.is_distance_supported:
+            if type(self.distance_last_updated) is str:
+                return (
+                    datetime.strptime(self.distance_last_updated, "%Y-%m-%dT%H:%M:%S.%fZ")
+                    .replace(microsecond=0)
+                    .replace(tzinfo=timezone.utc)
+                )
+            else:
+                return self.distance_last_updated
 
     @property
     def is_last_connected_supported(self) -> bool:
         """Return if when vehicle was last connected to connect servers is supported."""
-        return is_valid_path(self.attrs, f"{Services.MEASUREMENTS}.odometerStatus.value.carCapturedTimestamp")
+        return self.is_battery_level_supported or self.is_distance_supported
 
     # Service information
     @property
