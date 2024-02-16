@@ -920,9 +920,7 @@ class Vehicle:
     @property
     def charging_time_left(self) -> int:
         """Return minutes to charging complete."""
-        if is_valid_path(
-            self.attrs, f"{Services.CHARGING}.chargingStatus.value.remainingChargingTimeToComplete_min"
-        ):
+        if is_valid_path(self.attrs, f"{Services.CHARGING}.chargingStatus.value.remainingChargingTimeToComplete_min"):
             return int(
                 find_path(self.attrs, f"{Services.CHARGING}.chargingStatus.value.remainingChargingTimeToComplete_min")
             )
@@ -936,9 +934,7 @@ class Vehicle:
     @property
     def is_charging_time_left_supported(self) -> bool:
         """Return true if charging is supported."""
-        return is_valid_path(
-            self.attrs, f"{Services.CHARGING}.chargingStatus.value.chargingState"
-        )
+        return is_valid_path(self.attrs, f"{Services.CHARGING}.chargingStatus.value.chargingState")
 
     @property
     def external_power(self) -> bool:
