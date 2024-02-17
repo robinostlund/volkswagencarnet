@@ -117,6 +117,50 @@ class Vehicle:
             self._requests[topic] = {"status": status, "timestamp": datetime.now(timezone.utc)}
         return True
 
+    async def _handle_settings_response(
+        self, section: str, action: str, target_value: str, retry_count=10, error_msg: str | None = None
+    ) -> bool:
+        """Update status of outstanding requests."""
+        retry_count -= 1
+        self._requests["state"] = "in_progress"
+        self._requests[section] = {
+            "timestamp": datetime.now(timezone.utc),
+            "status": "in_progress",
+            "id": 0,
+        }
+        if retry_count == 0:
+            self._requests["state"] = "timeout"
+            self._requests[section] = {"status": "timeout", "timestamp": datetime.now(timezone.utc)}
+            _LOGGER.info(f"Timeout while waiting for the {section} settings change.")
+            return "Timeout"
+        try:
+            _LOGGER.debug(f"Verifying {section} setting: {action}")
+            response = await self._connection.getSelectiveStatus(self.vin, [section])
+            if not response:
+                self._requests["state"] = "failed"
+                self._requests[section] = {"status": "failed", "timestamp": datetime.now(timezone.utc)}
+                _LOGGER.error(error_msg if error_msg is not None else f"Failed to perform {section} action")
+                raise Exception(error_msg if error_msg is not None else f"Failed to perform {section} action")
+            else:
+                if action == "set_temperature":
+                    config_temperature = (
+                        response.get("climatisation", {})
+                        .get("climatisationSettings", {})
+                        .get("value", {})
+                        .get("targetTemperature_C", "")
+                    )
+                    if config_temperature != float(target_value):
+                        await asyncio.sleep(10)
+                        return await self._handle_settings_response(section, action, target_value, retry_count)
+                    else:
+                        self._requests["state"] = "successful"
+                        self._requests[section] = {"status": "successful", "timestamp": datetime.now(timezone.utc)}
+                        _LOGGER.debug(f"{section} setting: {action} successfully applied")
+                return True
+        except Exception as error:
+            _LOGGER.warning(f"Exception encountered while waiting for settings change: {error}")
+            return "Exception"
+
     # API get and set functions #
     # Init and update vehicle data
     async def discover(self):
@@ -297,15 +341,23 @@ class Vehicle:
     async def set_climatisation_temp(self, temperature=20):
         """Set climatisation target temp."""
         if self.is_electric_climatisation_supported or self.is_auxiliary_climatisation_supported:
-            if 16 <= int(temperature) <= 30:
-                temp = int((temperature + 273) * 10)
-                data = {"action": {"settings": {"targetTemperature": temp}, "type": "setSettings"}}
-            elif 2885 <= int(temperature) <= 3030:
-                data = {"action": {"settings": {"targetTemperature": temperature}, "type": "setSettings"}}
+            if 15.5 <= float(temperature) <= 30:
+                data = {
+                    "targetTemperature": float(temperature),
+                    "targetTemperatureUnit": "celsius",
+                    "climatisationWithoutExternalPower": self.climatisation_without_external_power,
+                }
             else:
                 _LOGGER.error(f"Set climatisation target temp to {temperature} is not supported.")
                 raise Exception(f"Set climatisation target temp to {temperature} is not supported.")
-            return await self.set_climater(data)
+            self._requests["latest"] = "Climatisation"
+            await self._connection.setClimaterSettings(self.vin, data)
+            return await self._handle_settings_response(
+                section="climatisation",
+                action="set_temperature",
+                target_value=temperature,
+                error_msg="Failed to set temperature",
+            )
         else:
             _LOGGER.error("No climatisation support.")
             raise Exception("No climatisation support.")
@@ -316,6 +368,7 @@ class Vehicle:
             if action not in ["start", "stop"]:
                 _LOGGER.error(f'Window heater action "{action}" is not supported.')
                 raise Exception(f'Window heater action "{action}" is not supported.')
+            self._requests["latest"] = "Climatisation"
             response = await self._connection.setWindowHeater(self.vin, (action == "start"))
             return await self._handle_response(
                 response=response, topic="climatisation.windowHeating", error_msg=f"Failed to {action} window heating"
@@ -351,6 +404,7 @@ class Vehicle:
             else:
                 _LOGGER.error(f"Invalid climatisation action: {action}")
                 raise Exception(f"Invalid climatisation action: {action}")
+            self._requests["latest"] = "Climatisation"
             response = await self._connection.setClimater(self.vin, data, (action == "start"))
             return await self._handle_response(
                 response=response,
@@ -1176,7 +1230,7 @@ class Vehicle:
     def climatisation_target_temperature(self) -> float | None:
         """Return the target temperature from climater."""
         # TODO should we handle Fahrenheit??
-        return int(find_path(self.attrs, "climatisation.climatisationSettings.value.targetTemperature_C"))
+        return float(find_path(self.attrs, "climatisation.climatisationSettings.value.targetTemperature_C"))
 
     @property
     def climatisation_target_temperature_last_updated(self) -> datetime:
@@ -1201,9 +1255,7 @@ class Vehicle:
     @property
     def is_climatisation_without_external_power_supported(self) -> bool:
         """Return true if climatisation on battery power is supported."""
-        # return is_valid_path(self.attrs, "climatisation.climatisationSettings.value.climatisationWithoutExternalPower")
-        # CURRENTLY NOT SUPPORTED
-        return False
+        return is_valid_path(self.attrs, "climatisation.climatisationSettings.value.climatisationWithoutExternalPower")
 
     @property
     def outside_temperature(self) -> float | bool:  # FIXME should probably be Optional[float] instead
@@ -1235,30 +1287,22 @@ class Vehicle:
     @property
     def electric_climatisation(self) -> bool:
         """Return status of climatisation."""
-        status = (
-            self.attrs.get("climatisation", {})
-            .get("climatisationStatus", {})
-            .get("value", {})
-            .get("climatisationState", "")
-        )
-        return status in ["heating", "on"]
+        status = find_path(self.attrs, "climatisation.climatisationStatus.value.climatisationState")
+        return status in ["ventilation", "heating", "on"]
 
     @property
     def electric_climatisation_last_updated(self) -> datetime:
         """Return status of climatisation last updated."""
-        return (
-            self.attrs.get("climatisation", {})
-            .get("climatisationStatus", {})
-            .get("value", {})
-            .get("carCapturedTimestamp")
-        )
+        return find_path(self.attrs, "climatisation.climatisationStatus.value.carCapturedTimestamp")
 
     @property
     def is_electric_climatisation_supported(self) -> bool:
         """Return true if vehicle has climater."""
-        # return self.is_climatisation_supported
-        # CURRENTLY NOT SUPPORTED
-        return False
+        return (
+            self.is_climatisation_supported
+            and self.is_climatisation_target_temperature_supported
+            and self.is_climatisation_without_external_power_supported
+        )
 
     @property
     def auxiliary_climatisation(self) -> bool:

@@ -513,7 +513,7 @@ class Connection:
                 delay = randint(1, 3 + tries * 2)
                 _LOGGER.debug(f"Server side throttled. Waiting {delay}, try {tries + 1}")
                 await asyncio.sleep(delay)
-                return await self.post(url, vin, tries + 1, return_raw=return_raw, **data)
+                return await self.put(url, vin, tries + 1, return_raw=return_raw, **data)
             else:
                 raise
 
@@ -768,17 +768,24 @@ class Connection:
 
     async def setClimater(self, vin, data, action):
         """Execute climatisation actions."""
-
         action = "start" if action else "stop"
-
         try:
             response_raw = await self.post(
                 f"{BASE_API}/vehicle/v1/vehicles/{vin}/climatisation/{action}", json=data, return_raw=True
             )
             return await self._handle_action_result(response_raw)
-
         except Exception as e:
             raise Exception("Unknown error during setClimater") from e
+
+    async def setClimaterSettings(self, vin, data):
+        """Execute climatisation settings."""
+        try:
+            response_raw = await self.put(
+                f"{BASE_API}/vehicle/v1/vehicles/{vin}/climatisation/settings", json=data, return_raw=True
+            )
+            return await self._handle_action_result(response_raw)
+        except Exception as e:
+            raise Exception("Unknown error during setClimaterSettings") from e
 
     async def setWindowHeater(self, vin, action):
         """Execute window heating actions."""
