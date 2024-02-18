@@ -275,7 +275,7 @@ class Vehicle:
         raise Exception("Should have to be re-implemented")
 
     async def set_charger(self, action) -> bool:
-        """Turn on/off window charging."""
+        """Turn on/off charging."""
         if self.is_charging_supported:
             if action not in ["start", "stop"]:
                 _LOGGER.error(f'Charging action "{action}" is not supported.')
@@ -287,6 +287,21 @@ class Vehicle:
         else:
             _LOGGER.error("No charging support.")
             raise Exception("No charging support.")
+
+    async def set_charging_settings(self, action) -> bool:
+        """Turn on/off reduced charging."""
+        if self.is_charge_max_ac_setting_supported:
+            if action not in ["reduced", "maximum"]:
+                _LOGGER.error(f'Charging setting "{action}" is not supported.')
+                raise Exception(f'Charging setting "{action}" is not supported.')
+            data = {"maxChargeCurrentAC": action}
+            response = await self._connection.setChargingSettings(self.vin, data)
+            return await self._handle_response(
+                response=response, topic="charging", error_msg=f"Failed to {action} charging"
+            )
+        else:
+            _LOGGER.error("Charging settings are not supported.")
+            raise Exception("Charging settings are not supported.")
 
     # Climatisation electric/auxiliary/windows (CLIMATISATION)
     async def set_climatisation_temp(self, temperature=20):
@@ -872,20 +887,36 @@ class Vehicle:
         return is_valid_path(self.attrs, f"{Services.CHARGING}.chargingSettings.value.targetSOC_pct")
 
     @property
-    def charge_max_ampere(self) -> str | int:
+    def charge_max_ac_setting(self) -> str | int:
         """Return charger max ampere setting."""
         value = find_path(self.attrs, f"{Services.CHARGING}.chargingSettings.value.maxChargeCurrentAC")
         return value
 
     @property
-    def charge_max_ampere_last_updated(self) -> datetime:
+    def charge_max_ac_setting_last_updated(self) -> datetime:
         """Return charger max ampere last updated."""
         return find_path(self.attrs, f"{Services.CHARGING}.chargingSettings.value.carCapturedTimestamp")
 
     @property
-    def is_charge_max_ampere_supported(self) -> bool:
+    def is_charge_max_ac_setting_supported(self) -> bool:
         """Return true if Charger Max Ampere is supported."""
-        return is_valid_path(self.attrs, f"{Services.CHARGING}.chargingSettings.value.maxChargeCurrentAC")
+        value = find_path(self.attrs, f"{Services.CHARGING}.chargingSettings.value.maxChargeCurrentAC")
+        return value in ["reduced", "maximum"]
+
+    @property
+    def charge_max_ac_ampere(self) -> str | int:
+        """Return charger max ampere setting."""
+        return find_path(self.attrs, f"{Services.CHARGING}.chargingSettings.value.maxChargeCurrentAC_A")
+
+    @property
+    def charge_max_ac_ampere_last_updated(self) -> datetime:
+        """Return charger max ampere last updated."""
+        return find_path(self.attrs, f"{Services.CHARGING}.chargingSettings.value.carCapturedTimestamp")
+
+    @property
+    def is_charge_max_ac_ampere_supported(self) -> bool:
+        """Return true if Charger Max Ampere is supported."""
+        return find_path(self.attrs, f"{Services.CHARGING}.chargingSettings.value.maxChargeCurrentAC_A")
 
     @property
     def charging_cable_locked(self) -> bool:
@@ -953,6 +984,21 @@ class Vehicle:
     def is_external_power_supported(self) -> bool:
         """External power supported."""
         return is_valid_path(self.attrs, f"{Services.CHARGING}.plugStatus.value.externalPower")
+
+    @property
+    def reduced_ac_charging(self) -> bool:
+        """Return reduced charging state."""
+        return self.charge_max_ac_setting == "reduced"
+
+    @property
+    def reduced_ac_charging_last_updated(self) -> datetime:
+        """Return attribute last updated timestamp."""
+        return self.charge_max_ac_setting_last_updated
+
+    @property
+    def is_reduced_ac_charging_supported(self) -> bool:
+        """Return true if reduced charging is supported."""
+        return self.is_charge_max_ac_setting_supported
 
     @property
     def energy_flow(self):

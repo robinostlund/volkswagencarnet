@@ -821,6 +821,16 @@ class Connection:
         except Exception as e:
             raise Exception("Unknown error during setCharging") from e
 
+    async def setChargingSettings(self, vin, data):
+        """Execute charging actions."""
+        try:
+            response_raw = await self.put(
+                f"{BASE_API}/vehicle/v1/vehicles/{vin}/charging/settings", json=data, return_raw=True
+            )
+            return await self._handle_action_result(response_raw)
+        except Exception as e:
+            raise Exception("Unknown error during setChargingSettings") from e
+
     async def setLock(self, vin, lock, spin):
         """Remote lock and unlock actions."""
         await self.check_spin_state()
