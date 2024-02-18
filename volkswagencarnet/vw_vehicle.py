@@ -696,12 +696,16 @@ class Vehicle:
     @property
     def service_inspection(self):
         """Return time left for service inspection."""
-        return int(find_path(self.attrs, f"{Services.VEHICLE_HEALTH_INSPECTION}.maintenanceStatus.value.inspectionDue_days"))
+        return int(
+            find_path(self.attrs, f"{Services.VEHICLE_HEALTH_INSPECTION}.maintenanceStatus.value.inspectionDue_days")
+        )
 
     @property
     def service_inspection_last_updated(self) -> datetime:
         """Return attribute last updated timestamp."""
-        return find_path(self.attrs, f"{Services.VEHICLE_HEALTH_INSPECTION}.maintenanceStatus.value.carCapturedTimestamp")
+        return find_path(
+            self.attrs, f"{Services.VEHICLE_HEALTH_INSPECTION}.maintenanceStatus.value.carCapturedTimestamp"
+        )
 
     @property
     def is_service_inspection_supported(self) -> bool:
@@ -710,17 +714,23 @@ class Vehicle:
 
         :return:
         """
-        return is_valid_path(self.attrs, f"{Services.VEHICLE_HEALTH_INSPECTION}.maintenanceStatus.value.inspectionDue_days")
+        return is_valid_path(
+            self.attrs, f"{Services.VEHICLE_HEALTH_INSPECTION}.maintenanceStatus.value.inspectionDue_days"
+        )
 
     @property
     def service_inspection_distance(self):
         """Return distance left for service inspection."""
-        return int(find_path(self.attrs, f"{Services.VEHICLE_HEALTH_INSPECTION}.maintenanceStatus.value.inspectionDue_km"))
+        return int(
+            find_path(self.attrs, f"{Services.VEHICLE_HEALTH_INSPECTION}.maintenanceStatus.value.inspectionDue_km")
+        )
 
     @property
     def service_inspection_distance_last_updated(self) -> datetime:
         """Return attribute last updated timestamp."""
-        return find_path(self.attrs, f"{Services.VEHICLE_HEALTH_INSPECTION}.maintenanceStatus.value.carCapturedTimestamp")
+        return find_path(
+            self.attrs, f"{Services.VEHICLE_HEALTH_INSPECTION}.maintenanceStatus.value.carCapturedTimestamp"
+        )
 
     @property
     def is_service_inspection_distance_supported(self) -> bool:
@@ -729,17 +739,23 @@ class Vehicle:
 
         :return:
         """
-        return is_valid_path(self.attrs, f"{Services.VEHICLE_HEALTH_INSPECTION}.maintenanceStatus.value.inspectionDue_km")
+        return is_valid_path(
+            self.attrs, f"{Services.VEHICLE_HEALTH_INSPECTION}.maintenanceStatus.value.inspectionDue_km"
+        )
 
     @property
     def oil_inspection(self):
         """Return time left for oil inspection."""
-        return int(find_path(self.attrs, f"{Services.VEHICLE_HEALTH_INSPECTION}.maintenanceStatus.value.oilServiceDue_days"))
+        return int(
+            find_path(self.attrs, f"{Services.VEHICLE_HEALTH_INSPECTION}.maintenanceStatus.value.oilServiceDue_days")
+        )
 
     @property
     def oil_inspection_last_updated(self) -> datetime:
         """Return attribute last updated timestamp."""
-        return find_path(self.attrs, f"{Services.VEHICLE_HEALTH_INSPECTION}.maintenanceStatus.value.carCapturedTimestamp")
+        return find_path(
+            self.attrs, f"{Services.VEHICLE_HEALTH_INSPECTION}.maintenanceStatus.value.carCapturedTimestamp"
+        )
 
     @property
     def is_oil_inspection_supported(self) -> bool:
@@ -750,17 +766,23 @@ class Vehicle:
         """
         if not self.has_combustion_engine():
             return False
-        return is_valid_path(self.attrs, f"{Services.VEHICLE_HEALTH_INSPECTION}.maintenanceStatus.value.carCapturedTimestamp")
+        return is_valid_path(
+            self.attrs, f"{Services.VEHICLE_HEALTH_INSPECTION}.maintenanceStatus.value.carCapturedTimestamp"
+        )
 
     @property
     def oil_inspection_distance(self):
         """Return distance left for oil inspection."""
-        return int(find_path(self.attrs, f"{Services.VEHICLE_HEALTH_INSPECTION}.maintenanceStatus.value.oilServiceDue_km"))
+        return int(
+            find_path(self.attrs, f"{Services.VEHICLE_HEALTH_INSPECTION}.maintenanceStatus.value.oilServiceDue_km")
+        )
 
     @property
     def oil_inspection_distance_last_updated(self) -> datetime:
         """Return attribute last updated timestamp."""
-        return find_path(self.attrs, f"{Services.VEHICLE_HEALTH_INSPECTION}.maintenanceStatus.value.carCapturedTimestamp")
+        return find_path(
+            self.attrs, f"{Services.VEHICLE_HEALTH_INSPECTION}.maintenanceStatus.value.carCapturedTimestamp"
+        )
 
     @property
     def is_oil_inspection_distance_supported(self) -> bool:
@@ -771,7 +793,9 @@ class Vehicle:
         """
         if not self.has_combustion_engine():
             return False
-        return is_valid_path(self.attrs, f"{Services.VEHICLE_HEALTH_INSPECTION}.maintenanceStatus.value.oilServiceDue_km")
+        return is_valid_path(
+            self.attrs, f"{Services.VEHICLE_HEALTH_INSPECTION}.maintenanceStatus.value.oilServiceDue_km"
+        )
 
     @property
     def adblue_level(self) -> int:
@@ -1513,7 +1537,7 @@ class Vehicle:
 
         :return:
         """
-        windows = find_path(self.attrs, "access.accessStatus.value.windows")
+        windows = find_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.windows")
         for window in windows:
             if window["name"] == "frontLeft":
                 if not any(valid_status in window["status"] for valid_status in P.VALID_WINDOW_STATUS):
@@ -1524,13 +1548,13 @@ class Vehicle:
     @property
     def window_closed_left_front_last_updated(self) -> datetime:
         """Return attribute last updated timestamp."""
-        return find_path(self.attrs, "access.accessStatus.value.carCapturedTimestamp")
+        return find_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.carCapturedTimestamp")
 
     @property
     def is_window_closed_left_front_supported(self) -> bool:
         """Return true if supported."""
-        if is_valid_path(self.attrs, "access.accessStatus.value.windows"):
-            windows = find_path(self.attrs, "access.accessStatus.value.windows")
+        if is_valid_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.windows"):
+            windows = find_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.windows")
             for window in windows:
                 if window["name"] == "frontLeft" and "unsupported" not in window["status"]:
                     return True
@@ -1543,7 +1567,7 @@ class Vehicle:
 
         :return:
         """
-        windows = find_path(self.attrs, "access.accessStatus.value.windows")
+        windows = find_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.windows")
         for window in windows:
             if window["name"] == "frontRight":
                 if not any(valid_status in window["status"] for valid_status in P.VALID_WINDOW_STATUS):
@@ -1554,13 +1578,13 @@ class Vehicle:
     @property
     def window_closed_right_front_last_updated(self) -> datetime:
         """Return attribute last updated timestamp."""
-        return find_path(self.attrs, "access.accessStatus.value.carCapturedTimestamp")
+        return find_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.carCapturedTimestamp")
 
     @property
     def is_window_closed_right_front_supported(self) -> bool:
         """Return true if supported."""
-        if is_valid_path(self.attrs, "access.accessStatus.value.windows"):
-            windows = find_path(self.attrs, "access.accessStatus.value.windows")
+        if is_valid_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.windows"):
+            windows = find_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.windows")
             for window in windows:
                 if window["name"] == "frontRight" and "unsupported" not in window["status"]:
                     return True
@@ -1573,7 +1597,7 @@ class Vehicle:
 
         :return:
         """
-        windows = find_path(self.attrs, "access.accessStatus.value.windows")
+        windows = find_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.windows")
         for window in windows:
             if window["name"] == "rearLeft":
                 if not any(valid_status in window["status"] for valid_status in P.VALID_WINDOW_STATUS):
@@ -1584,13 +1608,13 @@ class Vehicle:
     @property
     def window_closed_left_back_last_updated(self) -> datetime:
         """Return attribute last updated timestamp."""
-        return find_path(self.attrs, "access.accessStatus.value.carCapturedTimestamp")
+        return find_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.carCapturedTimestamp")
 
     @property
     def is_window_closed_left_back_supported(self) -> bool:
         """Return true if supported."""
-        if is_valid_path(self.attrs, "access.accessStatus.value.windows"):
-            windows = find_path(self.attrs, "access.accessStatus.value.windows")
+        if is_valid_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.windows"):
+            windows = find_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.windows")
             for window in windows:
                 if window["name"] == "rearLeft" and "unsupported" not in window["status"]:
                     return True
@@ -1603,7 +1627,7 @@ class Vehicle:
 
         :return:
         """
-        windows = find_path(self.attrs, "access.accessStatus.value.windows")
+        windows = find_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.windows")
         for window in windows:
             if window["name"] == "rearRight":
                 if not any(valid_status in window["status"] for valid_status in P.VALID_WINDOW_STATUS):
@@ -1614,13 +1638,13 @@ class Vehicle:
     @property
     def window_closed_right_back_last_updated(self) -> datetime:
         """Return attribute last updated timestamp."""
-        return find_path(self.attrs, "access.accessStatus.value.carCapturedTimestamp")
+        return find_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.carCapturedTimestamp")
 
     @property
     def is_window_closed_right_back_supported(self) -> bool:
         """Return true if supported."""
-        if is_valid_path(self.attrs, "access.accessStatus.value.windows"):
-            windows = find_path(self.attrs, "access.accessStatus.value.windows")
+        if is_valid_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.windows"):
+            windows = find_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.windows")
             for window in windows:
                 if window["name"] == "rearRight" and "unsupported" not in window["status"]:
                     return True
@@ -1633,7 +1657,7 @@ class Vehicle:
 
         :return:
         """
-        windows = find_path(self.attrs, "access.accessStatus.value.windows")
+        windows = find_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.windows")
         for window in windows:
             if window["name"] == "sunRoof":
                 if not any(valid_status in window["status"] for valid_status in P.VALID_WINDOW_STATUS):
@@ -1644,13 +1668,13 @@ class Vehicle:
     @property
     def sunroof_closed_last_updated(self) -> datetime:
         """Return attribute last updated timestamp."""
-        return find_path(self.attrs, "access.accessStatus.value.carCapturedTimestamp")
+        return find_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.carCapturedTimestamp")
 
     @property
     def is_sunroof_closed_supported(self) -> bool:
         """Return true if supported."""
-        if is_valid_path(self.attrs, "access.accessStatus.value.windows"):
-            windows = find_path(self.attrs, "access.accessStatus.value.windows")
+        if is_valid_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.windows"):
+            windows = find_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.windows")
             for window in windows:
                 if window["name"] == "sunRoof" and "unsupported" not in window["status"]:
                     return True
@@ -1663,7 +1687,7 @@ class Vehicle:
 
         :return:
         """
-        windows = find_path(self.attrs, "access.accessStatus.value.windows")
+        windows = find_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.windows")
         for window in windows:
             if window["name"] == "sunRoofRear":
                 if not any(valid_status in window["status"] for valid_status in P.VALID_WINDOW_STATUS):
@@ -1674,13 +1698,13 @@ class Vehicle:
     @property
     def sunroof_rear_closed_last_updated(self) -> datetime:
         """Return attribute last updated timestamp."""
-        return find_path(self.attrs, "access.accessStatus.value.carCapturedTimestamp")
+        return find_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.carCapturedTimestamp")
 
     @property
     def is_sunroof_rear_closed_supported(self) -> bool:
         """Return true if supported."""
-        if is_valid_path(self.attrs, "access.accessStatus.value.windows"):
-            windows = find_path(self.attrs, "access.accessStatus.value.windows")
+        if is_valid_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.windows"):
+            windows = find_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.windows")
             for window in windows:
                 if window["name"] == "sunRoofRear" and "unsupported" not in window["status"]:
                     return True
@@ -1693,7 +1717,7 @@ class Vehicle:
 
         :return:
         """
-        windows = find_path(self.attrs, "access.accessStatus.value.windows")
+        windows = find_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.windows")
         for window in windows:
             if window["name"] == "roofCover":
                 if not any(valid_status in window["status"] for valid_status in P.VALID_WINDOW_STATUS):
@@ -1704,13 +1728,13 @@ class Vehicle:
     @property
     def roof_cover_closed_last_updated(self) -> datetime:
         """Return attribute last updated timestamp."""
-        return find_path(self.attrs, "access.accessStatus.value.carCapturedTimestamp")
+        return find_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.carCapturedTimestamp")
 
     @property
     def is_roof_cover_closed_supported(self) -> bool:
         """Return true if supported."""
-        if is_valid_path(self.attrs, "access.accessStatus.value.doors"):
-            windows = find_path(self.attrs, "access.accessStatus.value.windows")
+        if is_valid_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.doors"):
+            windows = find_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.windows")
             for window in windows:
                 if window["name"] == "roofCover" and "unsupported" not in window["status"]:
                     return True
@@ -1729,17 +1753,17 @@ class Vehicle:
 
         :return:
         """
-        return find_path(self.attrs, "access.accessStatus.value.doorLockStatus") == "locked"
+        return find_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.doorLockStatus") == "locked"
 
     @property
     def door_locked_last_updated(self) -> datetime:
         """Return door lock last updated."""
-        return find_path(self.attrs, "access.accessStatus.value.carCapturedTimestamp")
+        return find_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.carCapturedTimestamp")
 
     @property
     def door_locked_sensor_last_updated(self) -> datetime:
         """Return door lock last updated."""
-        return find_path(self.attrs, "access.accessStatus.value.carCapturedTimestamp")
+        return find_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.carCapturedTimestamp")
 
     @property
     def is_door_locked_supported(self) -> bool:
