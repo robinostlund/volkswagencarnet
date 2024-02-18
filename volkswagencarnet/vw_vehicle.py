@@ -900,8 +900,10 @@ class Vehicle:
     @property
     def is_charge_max_ac_setting_supported(self) -> bool:
         """Return true if Charger Max Ampere is supported."""
-        value = find_path(self.attrs, f"{Services.CHARGING}.chargingSettings.value.maxChargeCurrentAC")
-        return value in ["reduced", "maximum"]
+        if is_valid_path(self.attrs, f"{Services.CHARGING}.chargingSettings.value.maxChargeCurrentAC"):
+            value = find_path(self.attrs, f"{Services.CHARGING}.chargingSettings.value.maxChargeCurrentAC")
+            return value in ["reduced", "maximum"]
+        return False
 
     @property
     def charge_max_ac_ampere(self) -> str | int:
@@ -916,7 +918,7 @@ class Vehicle:
     @property
     def is_charge_max_ac_ampere_supported(self) -> bool:
         """Return true if Charger Max Ampere is supported."""
-        return find_path(self.attrs, f"{Services.CHARGING}.chargingSettings.value.maxChargeCurrentAC_A")
+        return is_valid_path(self.attrs, f"{Services.CHARGING}.chargingSettings.value.maxChargeCurrentAC_A")
 
     @property
     def charging_cable_locked(self) -> bool:
