@@ -562,9 +562,7 @@ class Connection:
         if not await self.validate_tokens:
             return False
         try:
-            response = await self.get(
-                f"{BASE_API}/vehicle/v1/vehicles/{vin}/pendingrequests"
-            )
+            response = await self.get(f"{BASE_API}/vehicle/v1/vehicles/{vin}/pendingrequests")
 
             if response:
                 response.update({"refreshTimestamp": datetime.now(timezone.utc)})
