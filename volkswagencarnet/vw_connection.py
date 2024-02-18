@@ -557,6 +557,24 @@ class Connection:
             _LOGGER.warning(f"Could not update information: {error}")
         return False
 
+    async def getPendingRequests(self, vin):
+        """Get status information for pending requests."""
+        if not await self.validate_tokens:
+            return False
+        try:
+            response = await self.get(
+                f"{BASE_API}/vehicle/v1/vehicles/{vin}/pendingrequests"
+            )
+
+            if response:
+                response.update({"refreshTimestamp": datetime.now(timezone.utc)})
+
+            return response
+
+        except Exception as error:
+            _LOGGER.warning(f"Could not fetch information for pending requests, error: {error}")
+        return False
+
     async def getOperationList(self, vin):
         """Collect operationlist for VIN, supported/licensed functions."""
         if not await self.validate_tokens:
@@ -669,7 +687,7 @@ class Connection:
             _LOGGER.warning(f"Could not refresh the data, error: {error}")
         return False
 
-    async def get_request_status(self, vin, sectionId, requestId, actionId=""):
+    async def get_request_status(self, vin, requestId, actionId=""):
         """Return status of a request ID for a given section ID."""
         if self.logged_in is False:
             if not await self.doLogin():
@@ -682,16 +700,12 @@ class Connection:
                     _LOGGER.warning(f"Login for {BRAND} account failed!")
                     raise Exception(f"Login for {BRAND} account failed")
 
-            # usually, the action is named like the section ("access" -> "accessStatus"), but sometimes not ("climatisation" -> "windowHeatingStatus")
-            if actionId == "":
-                actionId = sectionId
+            response = await self.getPendingRequests(vin)
 
-            response = await self.getSelectiveStatus(vin, [sectionId])
-
-            requests = response.get(sectionId, {}).get(f"{actionId}Status", {}).get("requests", [])
+            requests = response.get("data", [])
             result = None
             for request in requests:
-                if request.get("requestId", "") == requestId:
+                if request.get("id", "") == requestId:
                     result = request.get("status")
 
             # Translate status messages to meaningful info

@@ -108,58 +108,9 @@ class Vehicle:
                 status = "Throttled"
                 _LOGGER.warning(f"Request throttled ({topic}")
             else:
-                if "." in topic:
-                    (sectionId, actionId) = topic.split(".")
-                else:
-                    actionId = ""
-                    sectionId = topic
-                status = await self.wait_for_request(section=sectionId, request=response.get("id", 0), action=actionId)
+                status = await self.wait_for_request(request=response.get("id", 0))
             self._requests[topic] = {"status": status, "timestamp": datetime.now(timezone.utc)}
         return True
-
-    async def _handle_settings_response(
-        self, section: str, action: str, target_value: str, retry_count=10, error_msg: str | None = None
-    ) -> bool:
-        """Update status of outstanding requests."""
-        retry_count -= 1
-        self._requests["state"] = "in_progress"
-        self._requests[section] = {
-            "timestamp": datetime.now(timezone.utc),
-            "status": "in_progress",
-            "id": 0,
-        }
-        if retry_count == 0:
-            self._requests["state"] = "timeout"
-            self._requests[section] = {"status": "timeout", "timestamp": datetime.now(timezone.utc)}
-            _LOGGER.info(f"Timeout while waiting for the {section} settings change.")
-            return "Timeout"
-        try:
-            _LOGGER.debug(f"Verifying {section} setting: {action}")
-            response = await self._connection.getSelectiveStatus(self.vin, [section])
-            if not response:
-                self._requests["state"] = "failed"
-                self._requests[section] = {"status": "failed", "timestamp": datetime.now(timezone.utc)}
-                _LOGGER.error(error_msg if error_msg is not None else f"Failed to perform {section} action")
-                raise Exception(error_msg if error_msg is not None else f"Failed to perform {section} action")
-            else:
-                if action == "set_temperature":
-                    config_temperature = (
-                        response.get("climatisation", {})
-                        .get("climatisationSettings", {})
-                        .get("value", {})
-                        .get("targetTemperature_C", "")
-                    )
-                    if config_temperature != float(target_value):
-                        await asyncio.sleep(10)
-                        return await self._handle_settings_response(section, action, target_value, retry_count)
-                    else:
-                        self._requests["state"] = "successful"
-                        self._requests[section] = {"status": "successful", "timestamp": datetime.now(timezone.utc)}
-                        _LOGGER.debug(f"{section} setting: {action} successfully applied")
-                return True
-        except Exception as error:
-            _LOGGER.warning(f"Exception encountered while waiting for settings change: {error}")
-            return "Exception"
 
     # API get and set functions #
     # Init and update vehicle data
@@ -267,19 +218,19 @@ class Vehicle:
         if data:
             self._states.update({Services.SERVICE_STATUS: data})
 
-    async def wait_for_request(self, section, request, retry_count=18, action=""):
+    async def wait_for_request(self, request, retry_count=18):
         """Update status of outstanding requests."""
         retry_count -= 1
         if retry_count == 0:
             _LOGGER.info(f"Timeout while waiting for result of {request.requestId}.")
             return "Timeout"
         try:
-            status = await self._connection.get_request_status(self.vin, section, request, action)
+            status = await self._connection.get_request_status(self.vin, request)
             _LOGGER.debug(f"Request ID {request}: {status}")
             self._requests["state"] = status
             if status == "In Progress":
                 await asyncio.sleep(10)
-                return await self.wait_for_request(section, request, retry_count, action)
+                return await self.wait_for_request(request, retry_count)
             else:
                 return status
         except Exception as error:
@@ -351,12 +302,9 @@ class Vehicle:
                 _LOGGER.error(f"Set climatisation target temp to {temperature} is not supported.")
                 raise Exception(f"Set climatisation target temp to {temperature} is not supported.")
             self._requests["latest"] = "Climatisation"
-            await self._connection.setClimaterSettings(self.vin, data)
-            return await self._handle_settings_response(
-                section="climatisation",
-                action="set_temperature",
-                target_value=temperature,
-                error_msg="Failed to set temperature",
+            response = await self._connection.setClimaterSettings(self.vin, data)
+            return await self._handle_response(
+                response=response, topic="climatisation", error_msg="Failed to set temperature"
             )
         else:
             _LOGGER.error("No climatisation support.")
@@ -371,7 +319,7 @@ class Vehicle:
             self._requests["latest"] = "Climatisation"
             response = await self._connection.setWindowHeater(self.vin, (action == "start"))
             return await self._handle_response(
-                response=response, topic="climatisation.windowHeating", error_msg=f"Failed to {action} window heating"
+                response=response, topic="climatisation", error_msg=f"Failed to {action} window heating"
             )
         else:
             _LOGGER.error("No climatisation support.")
