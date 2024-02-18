@@ -169,11 +169,9 @@ class Vehicle:
                         Services.ACCESS,
                         Services.FUEL_STATUS,
                         Services.VEHICLE_LIGHTS,
-                        Services.VEHICLE_HEALTH_INSPECTION,
                         Services.MEASUREMENTS,
                         Services.CHARGING,
                         Services.CLIMATISATION,
-                        Services.AUTOMATION,
                     ]
                 ),
                 self.get_vehicle(),
