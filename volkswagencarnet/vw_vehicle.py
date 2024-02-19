@@ -27,6 +27,7 @@ ENGINE_TYPE_ELECTRIC = "electric"
 ENGINE_TYPE_DIESEL = "diesel"
 ENGINE_TYPE_GASOLINE = "gasoline"
 ENGINE_TYPE_COMBUSTION = [ENGINE_TYPE_DIESEL, ENGINE_TYPE_GASOLINE]
+DEFAULT_TARGET_TEMP = 24
 
 
 class Vehicle:
@@ -343,8 +344,13 @@ class Vehicle:
         """Turn on/off electric climatisation from battery."""
         if self.is_climatisation_without_external_power_supported:
             if mode in [True, False]:
+                temperature = (
+                    self.climatisation_target_temperature
+                    if self.climatisation_target_temperature is not None
+                    else DEFAULT_TARGET_TEMP
+                )
                 data = {
-                    "targetTemperature": self.climatisation_target_temperature,
+                    "targetTemperature": temperature,
                     "targetTemperatureUnit": "celsius",
                     "climatisationWithoutExternalPower": mode,
                 }
@@ -358,7 +364,6 @@ class Vehicle:
             else:
                 _LOGGER.error(f'Set climatisation without external power to "{mode}" is not supported.')
                 raise Exception(f'Set climatisation without external power to "{mode}" is not supported.')
-            return await self.set_climater(data)
         else:
             _LOGGER.error("No climatisation support.")
             raise Exception("No climatisation support.")
