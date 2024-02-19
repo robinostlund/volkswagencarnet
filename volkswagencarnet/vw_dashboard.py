@@ -320,13 +320,15 @@ class ElectricClimatisationClimate(Climate):
         return self.vehicle.climatisation_target_temperature
 
     async def set_temperature(self, temperature: float, **kwargs):
-        await self.vehicle.climatisation_target(temperature)
+        await self.vehicle.set_climatisation_temp(temperature)
+        await self.vehicle.update()
 
     async def set_hvac_mode(self, hvac_mode):
         if hvac_mode:
-            await self.vehicle.climatisation("electric")
+            await self.vehicle.set_climatisation("start")
         else:
-            await self.vehicle.climatisation("off")
+            await self.vehicle.set_climatisation("stop")
+        await self.vehicle.update()
 
 
 class CombustionClimatisationClimate(Climate):
@@ -587,6 +589,35 @@ class Charging(Switch):
         return dict(last_result=self.vehicle.charger_action_status)
 
 
+class ReducedACCharging(Switch):
+    def __init__(self):
+        super().__init__(
+            attr="reduced_ac_charging", name="Reduced AC Charging", icon="mdi:ev-station", entity_type="config"
+        )
+
+    @property
+    def state(self):
+        return self.vehicle.reduced_ac_charging
+
+    async def turn_on(self):
+        await self.vehicle.set_charging_settings("reduced")
+        await self.vehicle.update()
+
+    async def turn_off(self):
+        await self.vehicle.set_charging_settings("maximum")
+        await self.vehicle.update()
+
+    @property
+    def assumed_state(self) -> bool:
+        """Don't assume state."""
+        return False
+
+    @property
+    def attributes(self) -> dict:
+        """Return attributes."""
+        return dict(last_result=self.vehicle.charger_action_status)
+
+
 class DepartureTimer(Switch):
     """Departure timers."""
 
@@ -793,13 +824,14 @@ def create_instruments():
         RequestUpdate(),
         WindowHeater(),
         BatteryClimatisation(),
-        ElectricClimatisation(),
+        # ElectricClimatisation(),
         AuxiliaryClimatisation(),
         PHeaterVentilation(),
         PHeaterHeating(),
-        # ElectricClimatisationClimate(),
+        ElectricClimatisationClimate(),
         # CombustionClimatisationClimate(),
         Charging(),
+        ReducedACCharging(),
         DepartureTimer(1),
         DepartureTimer(2),
         DepartureTimer(3),
@@ -914,10 +946,16 @@ def create_instruments():
             unit="km",
         ),
         Sensor(
-            attr="charge_max_ampere",
-            name="Charger max ampere",
+            attr="charge_max_ac_setting",
+            name="Charger max AC setting",
             icon="mdi:flash",
             unit="",
+        ),
+        Sensor(
+            attr="charge_max_ac_ampere",
+            name="Charger max AC ampere",
+            icon="mdi:flash-auto",
+            unit="A",
         ),
         Sensor(
             attr="charging_power",
