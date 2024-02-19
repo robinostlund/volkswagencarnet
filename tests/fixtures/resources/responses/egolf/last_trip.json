@@ -1,0 +1,14 @@
+{
+  "data": {
+    "id": "1234567890",
+    "tripEndTimestamp": "2023-12-21T15:32:36Z",
+    "tripType": "shortTerm",
+    "vehicleType": "electric",
+    "mileage_km": 8,
+    "startMileage_km": 74769,
+    "overallMileage_km": 74777,
+    "travelTime": 25,
+    "averageElectricConsumption": 23,
+    "averageSpeed_kmph": 19
+  }
+}
