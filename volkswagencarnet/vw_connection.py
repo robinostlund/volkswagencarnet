@@ -513,7 +513,7 @@ class Connection:
                 delay = randint(1, 3 + tries * 2)
                 _LOGGER.debug(f"Server side throttled. Waiting {delay}, try {tries + 1}")
                 await asyncio.sleep(delay)
-                return await self.post(url, vin, tries + 1, return_raw=return_raw, **data)
+                return await self.put(url, vin, tries + 1, return_raw=return_raw, **data)
             else:
                 raise
 
@@ -555,6 +555,22 @@ class Connection:
             return True
         except (OSError, LookupError, Exception) as error:
             _LOGGER.warning(f"Could not update information: {error}")
+        return False
+
+    async def getPendingRequests(self, vin):
+        """Get status information for pending requests."""
+        if not await self.validate_tokens:
+            return False
+        try:
+            response = await self.get(f"{BASE_API}/vehicle/v1/vehicles/{vin}/pendingrequests")
+
+            if response:
+                response.update({"refreshTimestamp": datetime.now(timezone.utc)})
+
+            return response
+
+        except Exception as error:
+            _LOGGER.warning(f"Could not fetch information for pending requests, error: {error}")
         return False
 
     async def getOperationList(self, vin):
@@ -669,7 +685,7 @@ class Connection:
             _LOGGER.warning(f"Could not refresh the data, error: {error}")
         return False
 
-    async def get_request_status(self, vin, sectionId, requestId, actionId=""):
+    async def get_request_status(self, vin, requestId, actionId=""):
         """Return status of a request ID for a given section ID."""
         if self.logged_in is False:
             if not await self.doLogin():
@@ -682,16 +698,12 @@ class Connection:
                     _LOGGER.warning(f"Login for {BRAND} account failed!")
                     raise Exception(f"Login for {BRAND} account failed")
 
-            # usually, the action is named like the section ("access" -> "accessStatus"), but sometimes not ("climatisation" -> "windowHeatingStatus")
-            if actionId == "":
-                actionId = sectionId
+            response = await self.getPendingRequests(vin)
 
-            response = await self.getSelectiveStatus(vin, [sectionId])
-
-            requests = response.get(sectionId, {}).get(f"{actionId}Status", {}).get("requests", [])
+            requests = response.get("data", [])
             result = None
             for request in requests:
-                if request.get("requestId", "") == requestId:
+                if request.get("id", "") == requestId:
                     result = request.get("status")
 
             # Translate status messages to meaningful info
@@ -768,17 +780,24 @@ class Connection:
 
     async def setClimater(self, vin, data, action):
         """Execute climatisation actions."""
-
         action = "start" if action else "stop"
-
         try:
             response_raw = await self.post(
                 f"{BASE_API}/vehicle/v1/vehicles/{vin}/climatisation/{action}", json=data, return_raw=True
             )
             return await self._handle_action_result(response_raw)
-
         except Exception as e:
             raise Exception("Unknown error during setClimater") from e
+
+    async def setClimaterSettings(self, vin, data):
+        """Execute climatisation settings."""
+        try:
+            response_raw = await self.put(
+                f"{BASE_API}/vehicle/v1/vehicles/{vin}/climatisation/settings", json=data, return_raw=True
+            )
+            return await self._handle_action_result(response_raw)
+        except Exception as e:
+            raise Exception("Unknown error during setClimaterSettings") from e
 
     async def setWindowHeater(self, vin, action):
         """Execute window heating actions."""
@@ -801,6 +820,16 @@ class Connection:
             return await self._handle_action_result(response_raw)
         except Exception as e:
             raise Exception("Unknown error during setCharging") from e
+
+    async def setChargingSettings(self, vin, data):
+        """Execute charging actions."""
+        try:
+            response_raw = await self.put(
+                f"{BASE_API}/vehicle/v1/vehicles/{vin}/charging/settings", json=data, return_raw=True
+            )
+            return await self._handle_action_result(response_raw)
+        except Exception as e:
+            raise Exception("Unknown error during setChargingSettings") from e
 
     async def setLock(self, vin, lock, spin):
         """Remote lock and unlock actions."""
