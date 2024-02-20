@@ -393,24 +393,6 @@ class Vehicle:
             _LOGGER.error("No climatisation support.")
             raise Exception("No climatisation support.")
 
-    async def set_climater(self, data, spin=False):
-        """Climater actions."""
-        if not self._services.get("climatisation", False):
-            _LOGGER.info("Remote control of climatisation functions is not supported.")
-            raise Exception("Remote control of climatisation functions is not supported.")
-        if self._in_progress("climatisation"):
-            return False
-        try:
-            self._requests["latest"] = "Climatisation"
-            response = await self._connection.setClimater(self.vin, data, spin)
-            return await self._handle_response(
-                response=response, topic="climatisation", error_msg="Failed to execute climatisation request"
-            )
-        except Exception as error:
-            _LOGGER.warning(f"Failed to execute climatisation request - {error}")
-            self._requests["climatisation"] = {"status": "Exception", "timestamp": datetime.now(timezone.utc)}
-        raise Exception("Climatisation action failed")
-
     # Parking heater heating/ventilation (RS)
     async def set_pheater(self, mode, spin):
         """Set the mode for the parking heater."""
