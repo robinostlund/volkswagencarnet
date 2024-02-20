@@ -27,6 +27,7 @@ ENGINE_TYPE_ELECTRIC = "electric"
 ENGINE_TYPE_DIESEL = "diesel"
 ENGINE_TYPE_GASOLINE = "gasoline"
 ENGINE_TYPE_COMBUSTION = [ENGINE_TYPE_DIESEL, ENGINE_TYPE_GASOLINE]
+DEFAULT_TARGET_TEMP = 24
 
 
 class Vehicle:
@@ -341,13 +342,28 @@ class Vehicle:
 
     async def set_battery_climatisation(self, mode=False):
         """Turn on/off electric climatisation from battery."""
-        if self.is_electric_climatisation_supported:
+        if self.is_climatisation_without_external_power_supported:
             if mode in [True, False]:
-                data = {"action": {"settings": {"climatisationWithoutHVpower": mode}, "type": "setSettings"}}
+                temperature = (
+                    self.climatisation_target_temperature
+                    if self.climatisation_target_temperature is not None
+                    else DEFAULT_TARGET_TEMP
+                )
+                data = {
+                    "targetTemperature": temperature,
+                    "targetTemperatureUnit": "celsius",
+                    "climatisationWithoutExternalPower": mode,
+                }
+                self._requests["latest"] = "Climatisation"
+                response = await self._connection.setClimaterSettings(self.vin, data)
+                return await self._handle_response(
+                    response=response,
+                    topic="climatisation",
+                    error_msg="Failed to set climatisation without external power",
+                )
             else:
                 _LOGGER.error(f'Set climatisation without external power to "{mode}" is not supported.')
                 raise Exception(f'Set climatisation without external power to "{mode}" is not supported.')
-            return await self.set_climater(data)
         else:
             _LOGGER.error("No climatisation support.")
             raise Exception("No climatisation support.")
