@@ -387,7 +387,7 @@ class Vehicle:
         raise Exception("Should have to be re-implemented")
 
     async def set_departure_timer(self, timer_id, enable) -> bool:
-        """Turn on/off reduced charging."""
+        """Turn on/off departure timer."""
         if self.is_departure_timer_supported(timer_id):
             if type(enable) is not bool:
                 _LOGGER.error("Charging departure timers setting is not supported.")
