@@ -9,7 +9,6 @@ from datetime import datetime, timedelta, timezone
 from json import dumps as to_json
 from typing import Any
 
-from volkswagencarnet.vw_timer import TimerData, Timer, BasicSettings
 from .vw_const import VehicleStatusParameter as P, Services
 from .vw_utilities import find_path, is_valid_path
 
@@ -64,16 +63,8 @@ class Vehicle:
             Services.PARKING_POSITION: {"active": False},
             Services.CLIMATISATION: {"active": False},
             Services.CHARGING: {"active": False},
+            Services.DEPARTURE_PROFILES: {"active": False},
             Services.PARAMETERS: {},
-            # "rheating_v1": {"active": False},
-            # "rclima_v1": {"active": False},
-            # "statusreport_v1": {"active": False},
-            # "rbatterycharge_v1": {"active": False},
-            # "carfinder_v1": {"active": False},
-            # "timerprogramming_v1": {"active": False},
-            # "jobs_v1": {"active": False},
-            # "owner_v1": {"active": False},
-            # vehicles_v1_cai, services_v1, vehicletelemetry_v1
         }
 
     def _in_progress(self, topic: str, unknown_offset: int = 0) -> bool:
@@ -172,8 +163,9 @@ class Vehicle:
                         Services.VEHICLE_LIGHTS,
                         Services.VEHICLE_HEALTH_INSPECTION,
                         Services.MEASUREMENTS,
-                        Services.CHARGING,
                         Services.CLIMATISATION,
+                        Services.CHARGING,
+                        Services.DEPARTURE_PROFILES,
                     ]
                 ),
                 self.get_vehicle(),
@@ -269,10 +261,6 @@ class Vehicle:
         else:
             _LOGGER.error("No charger support.")
             raise Exception("No charger support.")
-
-    async def set_charge_min_level(self, level: int):
-        """Set the desired minimum charge level for departure schedules."""
-        raise Exception("Should have to be re-implemented")
 
     async def set_charger(self, action) -> bool:
         """Turn on/off charging."""
@@ -452,10 +440,6 @@ class Vehicle:
             _LOGGER.warning(f"Failed to execute data refresh - {error}")
             self._requests["refresh"] = {"status": "Exception", "timestamp": datetime.now(timezone.utc)}
         raise Exception("Data refresh failed")
-
-    async def set_schedule(self, data: TimerData) -> bool:
-        """Store schedule."""
-        raise Exception("Should have to be re-implemented")
 
     # Vehicle class helpers #
     # Vehicle info
@@ -1278,32 +1262,6 @@ class Vehicle:
             self.attrs, f"{Services.CLIMATISATION}.climatisationSettings.value.climatisationWithoutExternalPower"
         )
 
-    @property
-    def outside_temperature(self) -> float | bool:  # FIXME should probably be Optional[float] instead
-        """Return outside temperature."""
-        # TODO not found yet
-        response = int(self.attrs.get("StoredVehicleDataResponseParsed")[P.OUTSIDE_TEMPERATURE].get("value", None))
-        if response is not None:
-            return round(float((response / 10) - 273.15), 1)
-        else:
-            return False
-
-    @property
-    def outside_temperature_last_updated(self) -> datetime:
-        """Return outside temperature last updated."""
-        # TODO not found yet
-        return self.attrs.get("StoredVehicleDataResponseParsed")[P.OUTSIDE_TEMPERATURE].get(BACKEND_RECEIVED_TIMESTAMP)
-
-    @property
-    def is_outside_temperature_supported(self) -> bool:
-        """Return true if outside temp is supported."""
-        # TODO not found yet
-        if self.attrs.get("StoredVehicleDataResponseParsed", False):
-            if P.OUTSIDE_TEMPERATURE in self.attrs.get("StoredVehicleDataResponseParsed"):
-                if "value" in self.attrs.get("StoredVehicleDataResponseParsed")[P.OUTSIDE_TEMPERATURE]:
-                    return True
-        return False
-
     # Climatisation, electric
     @property
     def electric_climatisation(self) -> bool:
@@ -2047,157 +2005,114 @@ class Vehicle:
     # Departure timers
     @property
     def departure_timer1(self):
-        """
-        Return schedule #1.
-
-        :return:
-        """
-        return self.schedule(1)
+        """Return timer #1 status."""
+        return self.departure_timer_enabled(1)
 
     @property
     def departure_timer2(self):
-        """
-        Return schedule #2.
-
-        :return:
-        """
-        return self.schedule(2)
+        """Return timer #2 status."""
+        return self.departure_timer_enabled(2)
 
     @property
     def departure_timer3(self):
-        """
-        Return schedule #3.
-
-        :return:
-        """
-        return self.schedule(3)
+        """Return timer #3 status."""
+        return self.departure_timer_enabled(3)
 
     @property
     def departure_timer1_last_updated(self) -> datetime:
         """Return last updated timestamp."""
-        return self.schedule(1).timestamp
+        return find_path(
+            self.attrs, f"{Services.DEPARTURE_PROFILES}.departureProfilesStatus.value.carCapturedTimestamp"
+        )
 
     @property
     def departure_timer2_last_updated(self) -> datetime:
         """Return last updated timestamp."""
-        return self.schedule(2).timestamp
+        return self.departure_timer1_last_updated
 
     @property
     def departure_timer3_last_updated(self) -> datetime:
         """Return last updated timestamp."""
-        return self.schedule(3).timestamp
-
-    def schedule(self, schedule_id: str | int) -> Timer:
-        """
-        Return schedule #1.
-
-        :return:
-        """
-        timer: TimerData = self.attrs.get("timer", None)
-        return timer.get_schedule(schedule_id)
-
-    @property
-    def schedule_min_charge_level(self) -> int | None:
-        """Get charge minimum level."""
-        timer: TimerData = self.attrs.get("timer")
-        return (
-            timer.timersAndProfiles.timerBasicSetting.chargeMinLimit
-            if timer.timersAndProfiles.timerBasicSetting
-            else None
-        )
-
-    @property
-    def schedule_min_charge_level_last_updated(self) -> datetime | None:
-        """Return attribute last updated timestamp."""
-        timer: TimerData = self.attrs.get("timer")
-        return (
-            timer.timersAndProfiles.timerBasicSetting.timestamp if timer.timersAndProfiles.timerBasicSetting else None
-        )
-
-    @property
-    def is_schedule_min_charge_level_supported(self) -> bool:
-        """Check if charge minimum level is supported."""
-        timer: TimerData = self.attrs.get("timer", None)
-        return (
-            timer.timersAndProfiles.timerBasicSetting is not None
-            and timer.timersAndProfiles.timerBasicSetting.chargeMinLimit is not None
-        )
-
-    @property
-    def schedule_heater_source(self) -> str | None:
-        """Get departure schedule heater source."""
-        timer: TimerData = self.attrs.get("timer")
-        return (
-            timer.timersAndProfiles.timerBasicSetting.heaterSource
-            if timer.timersAndProfiles.timerBasicSetting
-            else None
-        )
-
-    @property
-    def schedule_heater_source_last_updated(self) -> datetime | None:
-        """Return attribute last updated timestamp."""
-        timer: TimerData = self.attrs.get("timer")
-        return (
-            timer.timersAndProfiles.timerBasicSetting.timestamp if timer.timersAndProfiles.timerBasicSetting else None
-        )
-
-    @property
-    def is_schedule_heater_source_supported(self) -> bool:
-        """Check if departure timers heater source is supported."""
-        timer: TimerData = self.attrs.get("timer", None)
-        return (
-            (timer.timersAndProfiles.timerBasicSetting.heaterSource is not None)
-            if timer.timersAndProfiles.timerBasicSetting
-            else False
-        )
-
-    @property
-    def timer_basic_settings(self) -> BasicSettings | None:
-        """Check if timer basic settings are supported."""
-        timer: TimerData = self.attrs.get("timer")
-        return timer.timersAndProfiles.timerBasicSetting
-
-    @property
-    def is_timer_basic_settings_supported(self) -> bool:
-        """Check if timer basic settings are supported."""
-        timer: TimerData = self.attrs.get("timer", None)
-        return (
-            timer is not None
-            and timer.timersAndProfiles is not None
-            and timer.timersAndProfiles.timerBasicSetting is not None
-        )
+        return self.departure_timer1_last_updated
 
     @property
     def is_departure_timer1_supported(self) -> bool:
         """Check if timer 1 is supported."""
-        # return self.is_schedule_supported(1)
-        # CURRENTLY NOT SUPPORTED
-        return False
+        return self.is_departure_timer_supported(1)
 
     @property
     def is_departure_timer2_supported(self) -> bool:
         """Check if timer 2is supported."""
-        # return self.is_schedule_supported(2)
-        # CURRENTLY NOT SUPPORTED
-        return False
+        return self.is_departure_timer_supported(2)
 
     @property
     def is_departure_timer3_supported(self) -> bool:
         """Check if timer 3 is supported."""
-        # return self.is_schedule_supported(3)
-        # CURRENTLY NOT SUPPORTED
-        return False
+        return self.is_departure_timer_supported(3)
 
-    def is_schedule_supported(self, id: str | int) -> bool:
-        """
-        Return true if schedule is supported.
+    def departure_timer_enabled(self, timer_id: str | int) -> bool:
+        """Return if departure timer is enabled."""
+        return self.departure_timer(timer_id).get("enabled", False)
 
-        :return:
-        """
-        # timer: TimerData = self.attrs.get("timer", None)
-        # return timer.has_schedule(id)
-        # CURRENTLY NOT SUPPORTED
-        return False
+    def is_departure_timer_supported(self, timer_id: str | int) -> bool:
+        """Return true if departure timer is supported."""
+        return self.departure_timer(timer_id) is not None
+
+    def timer_attributes(self, timer_id: str | int):
+        """Return departure timer attributes."""
+        timer = self.departure_timer(timer_id)
+        profile = self.departure_profile(timer.get("profileIDs", [0])[0])
+        timer_type = None
+        recurring_on = []
+        start_time = None
+        if timer.get("singleTimer", None):
+            timer_type = "single"
+            start_date_time = timer.get("singleTimer", None).get("startDateTime", None)
+            start_time = start_date_time.replace(tzinfo=timezone.utc).astimezone(tz=None).strftime("%Y-%m-%dT%H:%M:%S")
+        elif timer.get("recurringTimer", None):
+            timer_type = "recurring"
+            start_date_time = timer.get("recurringTimer", None).get("startTime", None)
+            start_time = (
+                datetime.strptime(start_date_time, "%H:%M")
+                .replace(tzinfo=timezone.utc)
+                .astimezone(tz=None)
+                .strftime("%H:%M")
+            )
+            recurring_days = timer.get("recurringTimer", None).get("recurringOn", None)
+            for day in recurring_days:
+                if recurring_days.get(day) is True:
+                    recurring_on.append(day)
+        data = {
+            "timerId": timer.get("id", None),
+            "profileId": profile.get("id", None),
+            "profileName": profile.get("name", None),
+            "timerType": timer_type,
+            "startTime": start_time,
+            "recurringOn": recurring_on,
+            "charging": profile.get("charging", False),
+            "climatisation": profile.get("climatisation", False),
+            "targetSOC_pct": profile.get("targetSOC_pct", None),
+            "maxChargeCurrentAC": profile.get("maxChargeCurrentAC", None),
+        }
+        return data
+
+    def departure_timer(self, timer_id: str | int):
+        """Return departure timer."""
+        if is_valid_path(self.attrs, f"{Services.DEPARTURE_PROFILES}.departureProfilesStatus.value.timers"):
+            timers = find_path(self.attrs, f"{Services.DEPARTURE_PROFILES}.departureProfilesStatus.value.timers")
+            for timer in timers:
+                if timer.get("id", 0) == timer_id:
+                    return timer
+        return None
+
+    def departure_profile(self, profile_id: str | int):
+        """Return departure profile."""
+        if is_valid_path(self.attrs, f"{Services.DEPARTURE_PROFILES}.departureProfilesStatus.value.profiles"):
+            profiles = find_path(self.attrs, f"{Services.DEPARTURE_PROFILES}.departureProfilesStatus.value.profiles")
+            for profile in profiles:
+                if profile.get("id", 0) == profile_id:
+                    return profile
+        return None
 
     # Trip data
     @property

@@ -740,44 +740,6 @@ class Connection:
 
         return True
 
-    async def get_sec_token(self, vin, spin, action):
-        """Get a security token, required for certain set functions."""
-        urls = {
-            "lock": "/api/rolesrights/authorization/v2/vehicles/$vin/services/rlu_v1/operations/LOCK/security-pin-auth-requested",
-            "unlock": "/api/rolesrights/authorization/v2/vehicles/$vin/services/rlu_v1/operations/UNLOCK/security-pin-auth-requested",
-            "heating": "/api/rolesrights/authorization/v2/vehicles/$vin/services/rheating_v1/operations/P_QSACT/security-pin-auth-requested",
-            "timer": "/api/rolesrights/authorization/v2/vehicles/$vin/services/timerprogramming_v1/operations/P_SETTINGS_AU/security-pin-auth-requested",
-            "rclima": "/api/rolesrights/authorization/v2/vehicles/$vin/services/rclima_v1/operations/P_START_CLIMA_AU/security-pin-auth-requested",
-        }
-        if not spin:
-            raise Exception("SPIN is required")
-        try:
-            if not urls.get(action, False):
-                raise Exception(f'Security token for "{action}" is not implemented')
-            response = await self.get(self._make_url(urls.get(action), vin=vin))
-            secToken = response["securityPinAuthInfo"]["securityToken"]
-            challenge = response["securityPinAuthInfo"]["securityPinTransmission"]["challenge"]
-            spinHash = self.hash_spin(challenge, spin)
-            body = {
-                "securityPinAuthentication": {
-                    "securityPin": {"challenge": challenge, "securityPinHash": spinHash},
-                    "securityToken": secToken,
-                }
-            }
-            self._session_headers["Content-Type"] = "application/json"
-            response = await self.post(
-                self._make_url("/api/rolesrights/authorization/v2/security-pin-auth-completed", vin=vin), json=body
-            )
-            self._session_headers.pop("Content-Type", None)
-            if response.get("securityToken", False):
-                return response["securityToken"]
-            else:
-                _LOGGER.warning("Did not receive a valid security token")
-                raise Exception("Did not receive a valid security token")
-        except Exception as error:
-            _LOGGER.error(f"Could not generate security token (maybe wrong SPIN?), error: {error}")
-            raise
-
     async def setClimater(self, vin, data, action):
         """Execute climatisation actions."""
         action = "start" if action else "stop"

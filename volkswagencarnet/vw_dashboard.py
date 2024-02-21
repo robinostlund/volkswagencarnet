@@ -7,7 +7,6 @@ from datetime import datetime
 from typing import Union, Optional, Any
 
 from .vw_const import TEMP_CELSIUS, VWDeviceClass, VWStateClass
-from .vw_timer import Timer, TimerData
 from .vw_utilities import camel2slug
 from .vw_vehicle import Vehicle
 
@@ -623,26 +622,21 @@ class DepartureTimer(Switch):
 
     def __init__(self, id: Union[str, int]):
         self._id = id
-        super().__init__(attr=f"departure_timer{id}", name=f"Departure Schedule {id}", icon="mdi:car-clock")
+        super().__init__(attr=f"departure_timer{id}", name=f"Departure Timer {id}", icon="mdi:car-clock")
 
     @property
     def state(self):
         """Return switch state."""
-        s: Timer = self.vehicle.schedule(self._id)
-        return 1 if s.enabled else 0
+        return self.vehicle.departure_timer_enabled(self._id)
 
     async def turn_on(self):
-        """Enable schedule."""
-        schedule: TimerData = self.vehicle.attrs["timer"]
-        schedule.get_schedule(self._id).enable()
-        await self.vehicle.set_schedule(schedule)
+        """Enable timer."""
+        await self.vehicle.set_timer()
         await self.vehicle.update()
 
     async def turn_off(self):
-        """Disable schedule."""
-        schedule: TimerData = self.vehicle.attrs["timer"]
-        schedule.get_schedule(self._id).disable()
-        await self.vehicle.set_schedule(schedule)
+        """Disable timer."""
+        await self.vehicle.set_timer()
         await self.vehicle.update()
 
     @property
@@ -652,16 +646,19 @@ class DepartureTimer(Switch):
 
     @property
     def attributes(self):
-        """Schedule attributes."""
-        s: Timer = self.vehicle.schedule(self._id)
+        """Timer attributes."""
+        data = self.vehicle.timer_attributes(self._id)
         return dict(
-            # last_result="FIXME",
-            profile_id=s.profileID,
-            last_updated=s.timestamp,
-            timer_id=s.timerID,
-            frequency=s.timerFrequency,
-            departure_time=s.departureDateTime if s.timerFrequency == "single" else s.departureTimeOfDay,
-            weekday_mask=None if s.timerFrequency == "single" else s.departureWeekdayMask,
+            timer_id=data.get("timerId"),
+            profile_id=data.get("profileId"),
+            profile_name=data.get("profileName"),
+            timer_type=data.get("timerType"),
+            start_time=data.get("startTime"),
+            recurring_on=data.get("recurringOn"),
+            charging_enabled=data.get("charging"),
+            climatisation_enabled=data.get("climatisation"),
+            target_charge_level_pct=data.get("targetSOC_pct"),
+            charger_max_ac_ampere=data.get("maxChargeCurrentAC"),
         )
 
 
@@ -836,18 +833,6 @@ def create_instruments():
         DepartureTimer(2),
         DepartureTimer(3),
         RequestResults(),
-        Sensor(
-            attr="schedule_min_charge_level",
-            name="Minimum charge level for departure timers",
-            icon="mdi:battery-arrow-down",
-            unit="%",
-        ),
-        Sensor(
-            attr="schedule_heater_source",
-            name="Heater source for departure timers",
-            icon="mdi:radiator",
-            unit="",
-        ),
         Sensor(
             attr="distance",
             name="Odometer",

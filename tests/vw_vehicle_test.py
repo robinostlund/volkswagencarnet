@@ -6,7 +6,6 @@ from datetime import datetime, timezone, timedelta
 import pytest
 
 from volkswagencarnet.vw_const import VehicleStatusParameter as P
-from volkswagencarnet.vw_timer import TimerData
 from volkswagencarnet.vw_utilities import json_loads
 from .fixtures.connection import TimersConnection, TimersConnectionNoSettings
 from .fixtures.constants import status_report_json_file, MOCK_VIN
@@ -92,16 +91,6 @@ class VehicleTest(IsolatedAsyncioTestCase):
         pass
 
     @pytest.mark.asyncio
-    async def test_get_timerprogramming(self):
-        """Vehicle with timers loaded."""
-        vehicle = Vehicle(conn=TimersConnection(None), url=MOCK_VIN)
-        vehicle._discovered = True
-
-        with patch.dict(vehicle._services, {"timerprogramming_v1": {"active": True}}):
-            await vehicle.get_timerprogramming()
-            self.assertIn("timer", vehicle._states)
-            self.assertIsInstance(vehicle._states["timer"], TimerData)
-
     async def test_update_deactivated(self):
         """Test that calling update on a deactivated Vehicle does nothing."""
         vehicle = MagicMock(spec=Vehicle, name="MockDeactivatedVehicle")
