@@ -386,6 +386,26 @@ class Vehicle:
         """Set the mode for the parking heater."""
         raise Exception("Should have to be re-implemented")
 
+    async def set_departure_timer(self, timer_id, enable) -> bool:
+        """Turn on/off reduced charging."""
+        if self.is_departure_timer_supported(timer_id):
+            if type(enable) is not bool:
+                _LOGGER.error("Charging departure timers setting is not supported.")
+                raise Exception("Charging departure timers setting is not supported.")
+            timers = find_path(self.attrs, f"{Services.DEPARTURE_PROFILES}.departureProfilesStatus.value.timers")
+            profiles = find_path(self.attrs, f"{Services.DEPARTURE_PROFILES}.departureProfilesStatus.value.profiles")
+            for i in range(len(timers)):
+                if timers[i].get("id", 0) == timer_id:
+                    timers[i]["enabled"] = enable
+            data = {"timers": timers, "profiles": profiles}
+            response = await self._connection.setDepartureTimers(self.vin, data)
+            return await self._handle_response(
+                response=response, topic="departuretimer", error_msg="Failed to change departure timers setting."
+            )
+        else:
+            _LOGGER.error("Departure timers are not supported.")
+            raise Exception("Departure timers are not supported.")
+
     # Lock (RLU)
     async def set_lock(self, action, spin):
         """Remote lock and unlock actions."""

@@ -631,12 +631,12 @@ class DepartureTimer(Switch):
 
     async def turn_on(self):
         """Enable timer."""
-        await self.vehicle.set_timer()
+        await self.vehicle.set_departure_timer(self._id, True)
         await self.vehicle.update()
 
     async def turn_off(self):
         """Disable timer."""
-        await self.vehicle.set_timer()
+        await self.vehicle.set_departure_timer(self._id, False)
         await self.vehicle.update()
 
     @property
