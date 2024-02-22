@@ -25,6 +25,7 @@ _LOGGER = logging.getLogger(__name__)
 ENGINE_TYPE_ELECTRIC = "electric"
 ENGINE_TYPE_DIESEL = "diesel"
 ENGINE_TYPE_GASOLINE = "gasoline"
+ENGINE_TYPE_HYBRID = "hybrid"
 ENGINE_TYPE_COMBUSTION = [ENGINE_TYPE_DIESEL, ENGINE_TYPE_GASOLINE]
 DEFAULT_TARGET_TEMP = 24
 
@@ -1129,7 +1130,9 @@ class Vehicle:
 
         :return:
         """
-        return int(find_path(self.attrs, f"{Services.MEASUREMENTS}.rangeStatus.value.electricRange"))
+        if is_valid_path(self.attrs, f"{Services.MEASUREMENTS}.rangeStatus.value.electricRange"):
+            return int(find_path(self.attrs, f"{Services.MEASUREMENTS}.rangeStatus.value.electricRange"))
+        return int(find_path(self.attrs, f"{Services.FUEL_STATUS}.rangeStatus.value.primaryEngine.remainingRange_km"))
 
     @property
     def electric_range_last_updated(self) -> datetime:
@@ -1143,7 +1146,10 @@ class Vehicle:
 
         :return:
         """
-        return is_valid_path(self.attrs, f"{Services.MEASUREMENTS}.rangeStatus.value.electricRange")
+        return is_valid_path(self.attrs, f"{Services.MEASUREMENTS}.rangeStatus.value.electricRange") or (
+            self.is_car_type_electric
+            and is_valid_path(self.attrs, f"{Services.FUEL_STATUS}.rangeStatus.value.primaryEngine.remainingRange_km")
+        )
 
     @property
     def combustion_range(self) -> int:
@@ -1202,6 +1208,29 @@ class Vehicle:
         return False
 
     @property
+    def battery_cruising_range(self) -> int:
+        """
+        Return battery cruising range.
+
+        :return:
+        """
+        return int(find_path(self.attrs, f"{Services.CHARGING}.batteryStatus.value.cruisingRangeElectric_km"))
+
+    @property
+    def battery_cruising_range_last_updated(self) -> datetime | None:
+        """Return battery cruising range last updated."""
+        return find_path(self.attrs, f"{Services.CHARGING}.batteryStatus.value.carCapturedTimestamp")
+
+    @property
+    def is_battery_cruising_range_supported(self) -> bool:
+        """
+        Return true if battery cruising range is supported.
+
+        :return:
+        """
+        return is_valid_path(self.attrs, f"{Services.CHARGING}.batteryStatus.value.cruisingRangeElectric_km")
+
+    @property
     def fuel_level(self) -> int:
         """
         Return fuel level.
@@ -1245,6 +1274,29 @@ class Vehicle:
         return is_valid_path(
             self.attrs, f"{Services.MEASUREMENTS}.fuelLevelStatus.value.currentFuelLevel_pct"
         ) or is_valid_path(self.attrs, f"{Services.FUEL_STATUS}.rangeStatus.value.primaryEngine.currentFuelLevel_pct")
+
+    @property
+    def car_type(self) -> int:
+        """
+        Return car type.
+
+        :return:
+        """
+        return find_path(self.attrs, f"{Services.FUEL_STATUS}.rangeStatus.value.carType").capitalize()
+
+    @property
+    def car_type_last_updated(self) -> datetime | None:
+        """Return car type last updated."""
+        return find_path(self.attrs, f"{Services.FUEL_STATUS}.rangeStatus.value.carCapturedTimestamp")
+
+    @property
+    def is_car_type_supported(self) -> bool:
+        """
+        Return true if car type is supported.
+
+        :return:
+        """
+        return is_valid_path(self.attrs, f"{Services.FUEL_STATUS}.rangeStatus.value.carType")
 
     # Climatisation settings
     @property
@@ -2586,6 +2638,22 @@ class Vehicle:
             engine_type = find_path(self.attrs, f"{Services.MEASUREMENTS}.fuelLevelStatus.value.secondaryEngineType")
 
         return engine_type in ENGINE_TYPE_COMBUSTION
+
+    def is_car_type_electric(self):
+        """Check if car type is electric."""
+        return self.car_type == ENGINE_TYPE_ELECTRIC
+
+    def is_car_type_diesel(self):
+        """Check if car type is diesel."""
+        return self.car_type == ENGINE_TYPE_DIESEL
+
+    def is_car_type_gasoline(self):
+        """Check if car type is gasoline."""
+        return self.car_type == ENGINE_TYPE_GASOLINE
+
+    def is_car_type_hybrid(self):
+        """Check if car type is hybrid."""
+        return self.car_type == ENGINE_TYPE_HYBRID
 
     def has_combustion_engine(self):
         """Return true if car has a combustion engine."""

@@ -931,6 +931,12 @@ def create_instruments():
             unit="km",
         ),
         Sensor(
+            attr="battery_cruising_range",
+            name="Battery cruising range",
+            icon="mdi:car-settings",
+            unit="km",
+        ),
+        Sensor(
             attr="charge_max_ac_setting",
             name="Charger max AC setting",
             icon="mdi:flash",
@@ -1051,12 +1057,10 @@ def create_instruments():
             unit="minutes",
         ),
         Sensor(
-            attr="outside_temperature",
-            name="Outside temperature",
-            icon="mdi:thermometer",
-            unit=TEMP_CELSIUS,
-            state_class=VWStateClass.MEASUREMENT,
-            device_class=VWDeviceClass.TEMPERATURE,
+            attr="car_type",
+            name="Car Type",
+            icon="mdi:car-select",
+            unit="",
         ),
         Sensor(
             attr="requests_remaining",
