@@ -1147,7 +1147,7 @@ class Vehicle:
         :return:
         """
         return is_valid_path(self.attrs, f"{Services.MEASUREMENTS}.rangeStatus.value.electricRange") or (
-            self.is_car_type_electric
+            self.is_car_type_electric()
             and is_valid_path(self.attrs, f"{Services.FUEL_STATUS}.rangeStatus.value.primaryEngine.remainingRange_km")
         )
 
@@ -1276,7 +1276,7 @@ class Vehicle:
         ) or is_valid_path(self.attrs, f"{Services.FUEL_STATUS}.rangeStatus.value.primaryEngine.currentFuelLevel_pct")
 
     @property
-    def car_type(self) -> int:
+    def car_type(self) -> str:
         """
         Return car type.
 
@@ -2641,19 +2641,31 @@ class Vehicle:
 
     def is_car_type_electric(self):
         """Check if car type is electric."""
-        return self.car_type == ENGINE_TYPE_ELECTRIC
+        return (
+            find_path(self.attrs, f"{Services.FUEL_STATUS}.rangeStatus.value.carType")
+            == ENGINE_TYPE_ELECTRIC
+        )
 
     def is_car_type_diesel(self):
         """Check if car type is diesel."""
-        return self.car_type == ENGINE_TYPE_DIESEL
+        return (
+            find_path(self.attrs, f"{Services.FUEL_STATUS}.rangeStatus.value.carType")
+            == ENGINE_TYPE_DIESEL
+        )
 
     def is_car_type_gasoline(self):
         """Check if car type is gasoline."""
-        return self.car_type == ENGINE_TYPE_GASOLINE
+        return (
+            find_path(self.attrs, f"{Services.FUEL_STATUS}.rangeStatus.value.carType")
+            == ENGINE_TYPE_GASOLINE
+        )
 
     def is_car_type_hybrid(self):
         """Check if car type is hybrid."""
-        return self.car_type == ENGINE_TYPE_HYBRID
+        return (
+            find_path(self.attrs, f"{Services.FUEL_STATUS}.rangeStatus.value.carType")
+            == ENGINE_TYPE_HYBRID
+        )
 
     def has_combustion_engine(self):
         """Return true if car has a combustion engine."""
