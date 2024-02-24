@@ -1339,7 +1339,7 @@ class Vehicle:
     def electric_climatisation(self) -> bool:
         """Return status of climatisation."""
         status = find_path(self.attrs, f"{Services.CLIMATISATION}.climatisationStatus.value.climatisationState")
-        return status in ["ventilation", "heating", "on"]
+        return status in ["ventilation", "heating", "cooling", "on"]
 
     @property
     def electric_climatisation_last_updated(self) -> datetime:
