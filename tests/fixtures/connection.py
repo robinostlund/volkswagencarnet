@@ -7,9 +7,7 @@ import pytest_asyncio
 from aiohttp import CookieJar, ClientSession
 
 from volkswagencarnet.vw_connection import Connection
-from volkswagencarnet.vw_timer import TimerData
-from volkswagencarnet.vw_utilities import json_loads
-from .constants import timers_json_file, resource_path, timers_no_settings_json_file
+from .constants import resource_path
 
 
 @pytest_asyncio.fixture
@@ -26,39 +24,3 @@ async def session():
 def connection(session):
     """Real connection for integration tests."""
     return Connection(session=session, username="", password="", country="DE", interval=999, fulldebug=True)
-
-
-class TimersConnection:
-    """Connection that has timers defined."""
-
-    def __init__(self, sess, **kwargs):
-        """Init."""
-        self._session = sess
-
-    async def doLogin(self):
-        """No-op login."""
-        return True
-
-    async def update(self):
-        """No-op update."""
-        return True
-
-    async def getTimers(self, vin):
-        """Get timers data from backend."""
-        # test with a "real" response
-        with open(timers_json_file) as f:
-            json = json_loads(f.read()).get("timer", {})
-            data = TimerData(**json)
-            return data
-
-
-class TimersConnectionNoSettings(TimersConnection):
-    """Connection that returns timers without basic settings."""
-
-    async def getTimers(self, vin):
-        """Get timers data from backend."""
-        # test with a "real" response
-        with open(timers_no_settings_json_file) as f:
-            json = json_loads(f.read()).get("timer", {})
-            data = TimerData(**json)
-            return data

@@ -7,7 +7,6 @@ from datetime import datetime
 from typing import Union, Optional, Any
 
 from .vw_const import TEMP_CELSIUS, VWDeviceClass, VWStateClass
-from .vw_timer import Timer, TimerData
 from .vw_utilities import camel2slug
 from .vw_vehicle import Vehicle
 
@@ -168,12 +167,6 @@ class Sensor(Instrument):
             elif "kWh/100 km" == self.unit:
                 self.unit = "kWh/100 mil"
 
-        # Init placeholder for parking heater duration
-        config.get("parkingheater", CLIMA_DEFAULT_DURATION)
-        if "pheater_duration" == self.attr:
-            setValue = config.get("climatisation_duration", CLIMA_DEFAULT_DURATION)
-            self.vehicle.pheater_duration = setValue
-
     @property
     def is_mutable(self):
         return False
@@ -278,6 +271,50 @@ class Switch(Instrument):
     def assumed_state(self) -> bool:
         """Assume state."""
         return True
+
+
+class Number(Instrument):
+    def __init__(
+        self,
+        attr: str,
+        name: str,
+        icon: Optional[str],
+        unit: Optional[str],
+        entity_type: Optional[str] = None,
+        device_class: Optional[str] = None,
+        state_class: Optional[str] = None,
+    ):
+        """Init."""
+        super().__init__(
+            component="number",
+            attr=attr,
+            name=name,
+            icon=icon,
+            entity_type=entity_type,
+            device_class=device_class,
+            state_class=state_class,
+        )
+        self.unit = unit
+
+    @property
+    def is_mutable(self):
+        return False
+
+    @property
+    def state(self):
+        raise NotImplementedError
+
+    @property
+    def min_value(self):
+        raise NotImplementedError
+
+    @property
+    def max_value(self):
+        raise NotImplementedError
+
+    @property
+    def native_step(self):
+        raise NotImplementedError
 
 
 class Climate(Instrument):
@@ -468,6 +505,45 @@ class TrunkLock(Instrument):
         return None
 
 
+# Numbers
+
+
+class AuxiliaryDuration(Number):
+    """Currently disabled due to the lack of auxiliary settings API."""
+
+    def __init__(self):
+        super().__init__(
+            attr="auxiliary_duration",
+            name="Auxiliary duration",
+            icon="mdi:timer",
+            unit="min",
+        )
+        self.spin = ""
+
+    def configurate(self, **config):
+        self.spin = config.get("spin", "")
+
+    @property
+    def state(self):
+        return self.vehicle.auxiliary_duration
+
+    async def set_value(self, minutes: int):
+        await self.vehicle.set_auxiliary_duration(minutes, self.spin)
+        await self.vehicle.update()
+
+    @property
+    def min_value(self):
+        return 5
+
+    @property
+    def max_value(self):
+        return 30
+
+    @property
+    def native_step(self):
+        return 5
+
+
 # Switches
 
 
@@ -528,12 +604,7 @@ class ElectricClimatisation(Switch):
 
 class AuxiliaryClimatisation(Switch):
     def __init__(self):
-        super().__init__(
-            attr="auxiliary_climatisation",
-            name="Auxiliary Climatisation",
-            icon="mdi:radiator",
-            entity_type="config",
-        )
+        super().__init__(attr="auxiliary_climatisation", name="Auxiliary Climatisation", icon="mdi:radiator")
         self.spin = ""
 
     def configurate(self, **config):
@@ -544,11 +615,11 @@ class AuxiliaryClimatisation(Switch):
         return self.vehicle.auxiliary_climatisation
 
     async def turn_on(self):
-        await self.vehicle.set_climatisation("auxiliary", self.spin)
+        await self.vehicle.set_auxiliary_climatisation("start", self.spin)
         await self.vehicle.update()
 
     async def turn_off(self):
-        await self.vehicle.set_climatisation("off")
+        await self.vehicle.set_auxiliary_climatisation("stop", self.spin)
         await self.vehicle.update()
 
     @property
@@ -623,26 +694,21 @@ class DepartureTimer(Switch):
 
     def __init__(self, id: Union[str, int]):
         self._id = id
-        super().__init__(attr=f"departure_timer{id}", name=f"Departure Schedule {id}", icon="mdi:car-clock")
+        super().__init__(attr=f"departure_timer{id}", name=f"Departure Timer {id}", icon="mdi:car-clock")
 
     @property
     def state(self):
         """Return switch state."""
-        s: Timer = self.vehicle.schedule(self._id)
-        return 1 if s.enabled else 0
+        return self.vehicle.departure_timer_enabled(self._id)
 
     async def turn_on(self):
-        """Enable schedule."""
-        schedule: TimerData = self.vehicle.attrs["timer"]
-        schedule.get_schedule(self._id).enable()
-        await self.vehicle.set_schedule(schedule)
+        """Enable timer."""
+        await self.vehicle.set_departure_timer(self._id, True)
         await self.vehicle.update()
 
     async def turn_off(self):
-        """Disable schedule."""
-        schedule: TimerData = self.vehicle.attrs["timer"]
-        schedule.get_schedule(self._id).disable()
-        await self.vehicle.set_schedule(schedule)
+        """Disable timer."""
+        await self.vehicle.set_departure_timer(self._id, False)
         await self.vehicle.update()
 
     @property
@@ -652,16 +718,19 @@ class DepartureTimer(Switch):
 
     @property
     def attributes(self):
-        """Schedule attributes."""
-        s: Timer = self.vehicle.schedule(self._id)
+        """Timer attributes."""
+        data = self.vehicle.timer_attributes(self._id)
         return dict(
-            # last_result="FIXME",
-            profile_id=s.profileID,
-            last_updated=s.timestamp,
-            timer_id=s.timerID,
-            frequency=s.timerFrequency,
-            departure_time=s.departureDateTime if s.timerFrequency == "single" else s.departureTimeOfDay,
-            weekday_mask=None if s.timerFrequency == "single" else s.departureWeekdayMask,
+            timer_id=data.get("timerId"),
+            profile_id=data.get("profileId"),
+            profile_name=data.get("profileName"),
+            timer_type=data.get("timerType"),
+            start_time=data.get("startTime"),
+            recurring_on=data.get("recurringOn"),
+            charging_enabled=data.get("charging"),
+            climatisation_enabled=data.get("climatisation"),
+            target_charge_level_pct=data.get("targetSOC_pct"),
+            charger_max_ac_ampere=data.get("maxChargeCurrentAC"),
         )
 
 
@@ -819,6 +888,7 @@ def create_instruments():
     """Return list of all entities."""
     return [
         Position(),
+        # AuxiliaryDuration(),
         DoorLock(),
         TrunkLock(),
         RequestUpdate(),
@@ -836,18 +906,6 @@ def create_instruments():
         DepartureTimer(2),
         DepartureTimer(3),
         RequestResults(),
-        Sensor(
-            attr="schedule_min_charge_level",
-            name="Minimum charge level for departure timers",
-            icon="mdi:battery-arrow-down",
-            unit="%",
-        ),
-        Sensor(
-            attr="schedule_heater_source",
-            name="Heater source for departure timers",
-            icon="mdi:radiator",
-            unit="",
-        ),
         Sensor(
             attr="distance",
             name="Odometer",
@@ -943,6 +1001,12 @@ def create_instruments():
             attr="combined_range",
             name="Combined range",
             icon="mdi:car",
+            unit="km",
+        ),
+        Sensor(
+            attr="battery_cruising_range",
+            name="Battery cruising range",
+            icon="mdi:car-settings",
             unit="km",
         ),
         Sensor(
@@ -1060,18 +1124,22 @@ def create_instruments():
             unit="",
         ),
         Sensor(
-            attr="pheater_duration",
-            name="Parking Heater heating/ventilation duration",
+            attr="auxiliary_duration",
+            name="Auxiliary Heater heating/ventilation duration",
             icon="mdi:timer",
             unit="minutes",
         ),
         Sensor(
-            attr="outside_temperature",
-            name="Outside temperature",
-            icon="mdi:thermometer",
-            unit=TEMP_CELSIUS,
-            state_class=VWStateClass.MEASUREMENT,
-            device_class=VWDeviceClass.TEMPERATURE,
+            attr="auxiliary_remaining_climatisation_time",
+            name="Auxiliary remaining climatisation time",
+            icon="mdi:fan-clock",
+            unit="minutes",
+        ),
+        Sensor(
+            attr="car_type",
+            name="Car Type",
+            icon="mdi:car-select",
+            unit="",
         ),
         Sensor(
             attr="requests_remaining",

@@ -9,7 +9,6 @@ from datetime import datetime, timedelta, timezone
 from json import dumps as to_json
 from typing import Any
 
-from volkswagencarnet.vw_timer import TimerData, Timer, BasicSettings
 from .vw_const import VehicleStatusParameter as P, Services
 from .vw_utilities import find_path, is_valid_path
 
@@ -26,6 +25,7 @@ _LOGGER = logging.getLogger(__name__)
 ENGINE_TYPE_ELECTRIC = "electric"
 ENGINE_TYPE_DIESEL = "diesel"
 ENGINE_TYPE_GASOLINE = "gasoline"
+ENGINE_TYPE_HYBRID = "hybrid"
 ENGINE_TYPE_COMBUSTION = [ENGINE_TYPE_DIESEL, ENGINE_TYPE_GASOLINE]
 DEFAULT_TARGET_TEMP = 24
 
@@ -64,16 +64,8 @@ class Vehicle:
             Services.PARKING_POSITION: {"active": False},
             Services.CLIMATISATION: {"active": False},
             Services.CHARGING: {"active": False},
+            Services.DEPARTURE_PROFILES: {"active": False},
             Services.PARAMETERS: {},
-            # "rheating_v1": {"active": False},
-            # "rclima_v1": {"active": False},
-            # "statusreport_v1": {"active": False},
-            # "rbatterycharge_v1": {"active": False},
-            # "carfinder_v1": {"active": False},
-            # "timerprogramming_v1": {"active": False},
-            # "jobs_v1": {"active": False},
-            # "owner_v1": {"active": False},
-            # vehicles_v1_cai, services_v1, vehicletelemetry_v1
         }
 
     def _in_progress(self, topic: str, unknown_offset: int = 0) -> bool:
@@ -172,8 +164,9 @@ class Vehicle:
                         Services.VEHICLE_LIGHTS,
                         Services.VEHICLE_HEALTH_INSPECTION,
                         Services.MEASUREMENTS,
-                        Services.CHARGING,
                         Services.CLIMATISATION,
+                        Services.CHARGING,
+                        Services.DEPARTURE_PROFILES,
                     ]
                 ),
                 self.get_vehicle(),
@@ -270,10 +263,6 @@ class Vehicle:
             _LOGGER.error("No charger support.")
             raise Exception("No charger support.")
 
-    async def set_charge_min_level(self, level: int):
-        """Set the desired minimum charge level for departure schedules."""
-        raise Exception("Should have to be re-implemented")
-
     async def set_charger(self, action) -> bool:
         """Turn on/off charging."""
         if self.is_charging_supported:
@@ -306,7 +295,7 @@ class Vehicle:
     # Climatisation electric/auxiliary/windows (CLIMATISATION)
     async def set_climatisation_temp(self, temperature=20):
         """Set climatisation target temp."""
-        if self.is_electric_climatisation_supported or self.is_auxiliary_climatisation_supported:
+        if self.is_electric_climatisation_supported:
             if 15.5 <= float(temperature) <= 30:
                 data = {
                     "targetTemperature": float(temperature),
@@ -369,7 +358,7 @@ class Vehicle:
             raise Exception("No climatisation support.")
 
     async def set_climatisation(self, action="stop"):
-        """Turn on/off climatisation with electric/auxiliary heater."""
+        """Turn on/off climatisation with electric heater."""
         if self.is_electric_climatisation_supported:
             if action == "start":
                 data = {
@@ -387,34 +376,60 @@ class Vehicle:
             return await self._handle_response(
                 response=response,
                 topic="climatisation",
-                error_msg=f"Failed to {action} climatisation with electric/auxiliary heater.",
+                error_msg=f"Failed to {action} climatisation with electric heater.",
             )
         else:
             _LOGGER.error("No climatisation support.")
             raise Exception("No climatisation support.")
 
-    async def set_climater(self, data, spin=False):
-        """Climater actions."""
-        if not self._services.get("climatisation", False):
-            _LOGGER.info("Remote control of climatisation functions is not supported.")
-            raise Exception("Remote control of climatisation functions is not supported.")
-        if self._in_progress("climatisation"):
-            return False
-        try:
+    async def set_auxiliary_climatisation(self, action, spin):
+        """Turn on/off climatisation with auxiliary heater."""
+        if self.is_auxiliary_climatisation_supported:
+            if action == "start":
+                data = {
+                    "duration_min": self.auxiliary_duration,
+                    "spin": spin,
+                }
+            elif action == "stop":
+                data = {}
+            else:
+                _LOGGER.error(f"Invalid auxiliary heater action: {action}")
+                raise Exception(f"Invalid auxiliary heater action: {action}")
             self._requests["latest"] = "Climatisation"
-            response = await self._connection.setClimater(self.vin, data, spin)
+            response = await self._connection.setAuxiliary(self.vin, data, (action == "start"))
             return await self._handle_response(
-                response=response, topic="climatisation", error_msg="Failed to execute climatisation request"
+                response=response,
+                topic="climatisation",
+                error_msg=f"Failed to {action} climatisation with auxiliary heater.",
             )
-        except Exception as error:
-            _LOGGER.warning(f"Failed to execute climatisation request - {error}")
-            self._requests["climatisation"] = {"status": "Exception", "timestamp": datetime.now(timezone.utc)}
-        raise Exception("Climatisation action failed")
+        else:
+            _LOGGER.error("No climatisation support.")
+            raise Exception("No climatisation support.")
 
     # Parking heater heating/ventilation (RS)
     async def set_pheater(self, mode, spin):
         """Set the mode for the parking heater."""
         raise Exception("Should have to be re-implemented")
+
+    async def set_departure_timer(self, timer_id, enable) -> bool:
+        """Turn on/off departure timer."""
+        if self.is_departure_timer_supported(timer_id):
+            if type(enable) is not bool:
+                _LOGGER.error("Charging departure timers setting is not supported.")
+                raise Exception("Charging departure timers setting is not supported.")
+            timers = find_path(self.attrs, f"{Services.DEPARTURE_PROFILES}.departureProfilesStatus.value.timers")
+            profiles = find_path(self.attrs, f"{Services.DEPARTURE_PROFILES}.departureProfilesStatus.value.profiles")
+            for i in range(len(timers)):
+                if timers[i].get("id", 0) == timer_id:
+                    timers[i]["enabled"] = enable
+            data = {"timers": timers, "profiles": profiles}
+            response = await self._connection.setDepartureTimers(self.vin, data)
+            return await self._handle_response(
+                response=response, topic="departuretimer", error_msg="Failed to change departure timers setting."
+            )
+        else:
+            _LOGGER.error("Departure timers are not supported.")
+            raise Exception("Departure timers are not supported.")
 
     # Lock (RLU)
     async def set_lock(self, action, spin):
@@ -470,10 +485,6 @@ class Vehicle:
             _LOGGER.warning(f"Failed to execute data refresh - {error}")
             self._requests["refresh"] = {"status": "Exception", "timestamp": datetime.now(timezone.utc)}
         raise Exception("Data refresh failed")
-
-    async def set_schedule(self, data: TimerData) -> bool:
-        """Store schedule."""
-        raise Exception("Should have to be re-implemented")
 
     # Vehicle class helpers #
     # Vehicle info
@@ -1143,7 +1154,9 @@ class Vehicle:
 
         :return:
         """
-        return int(find_path(self.attrs, f"{Services.MEASUREMENTS}.rangeStatus.value.electricRange"))
+        if is_valid_path(self.attrs, f"{Services.MEASUREMENTS}.rangeStatus.value.electricRange"):
+            return int(find_path(self.attrs, f"{Services.MEASUREMENTS}.rangeStatus.value.electricRange"))
+        return int(find_path(self.attrs, f"{Services.FUEL_STATUS}.rangeStatus.value.primaryEngine.remainingRange_km"))
 
     @property
     def electric_range_last_updated(self) -> datetime:
@@ -1157,7 +1170,10 @@ class Vehicle:
 
         :return:
         """
-        return is_valid_path(self.attrs, f"{Services.MEASUREMENTS}.rangeStatus.value.electricRange")
+        return is_valid_path(self.attrs, f"{Services.MEASUREMENTS}.rangeStatus.value.electricRange") or (
+            self.is_car_type_electric()
+            and is_valid_path(self.attrs, f"{Services.FUEL_STATUS}.rangeStatus.value.primaryEngine.remainingRange_km")
+        )
 
     @property
     def combustion_range(self) -> int:
@@ -1216,6 +1232,29 @@ class Vehicle:
         return False
 
     @property
+    def battery_cruising_range(self) -> int:
+        """
+        Return battery cruising range.
+
+        :return:
+        """
+        return int(find_path(self.attrs, f"{Services.CHARGING}.batteryStatus.value.cruisingRangeElectric_km"))
+
+    @property
+    def battery_cruising_range_last_updated(self) -> datetime | None:
+        """Return battery cruising range last updated."""
+        return find_path(self.attrs, f"{Services.CHARGING}.batteryStatus.value.carCapturedTimestamp")
+
+    @property
+    def is_battery_cruising_range_supported(self) -> bool:
+        """
+        Return true if battery cruising range is supported.
+
+        :return:
+        """
+        return is_valid_path(self.attrs, f"{Services.CHARGING}.batteryStatus.value.cruisingRangeElectric_km")
+
+    @property
     def fuel_level(self) -> int:
         """
         Return fuel level.
@@ -1260,6 +1299,29 @@ class Vehicle:
             self.attrs, f"{Services.MEASUREMENTS}.fuelLevelStatus.value.currentFuelLevel_pct"
         ) or is_valid_path(self.attrs, f"{Services.FUEL_STATUS}.rangeStatus.value.primaryEngine.currentFuelLevel_pct")
 
+    @property
+    def car_type(self) -> str:
+        """
+        Return car type.
+
+        :return:
+        """
+        return find_path(self.attrs, f"{Services.FUEL_STATUS}.rangeStatus.value.carType").capitalize()
+
+    @property
+    def car_type_last_updated(self) -> datetime | None:
+        """Return car type last updated."""
+        return find_path(self.attrs, f"{Services.FUEL_STATUS}.rangeStatus.value.carCapturedTimestamp")
+
+    @property
+    def is_car_type_supported(self) -> bool:
+        """
+        Return true if car type is supported.
+
+        :return:
+        """
+        return is_valid_path(self.attrs, f"{Services.FUEL_STATUS}.rangeStatus.value.carType")
+
     # Climatisation settings
     @property
     def climatisation_target_temperature(self) -> float | None:
@@ -1296,38 +1358,12 @@ class Vehicle:
             self.attrs, f"{Services.CLIMATISATION}.climatisationSettings.value.climatisationWithoutExternalPower"
         )
 
-    @property
-    def outside_temperature(self) -> float | bool:  # FIXME should probably be Optional[float] instead
-        """Return outside temperature."""
-        # TODO not found yet
-        response = int(self.attrs.get("StoredVehicleDataResponseParsed")[P.OUTSIDE_TEMPERATURE].get("value", None))
-        if response is not None:
-            return round(float((response / 10) - 273.15), 1)
-        else:
-            return False
-
-    @property
-    def outside_temperature_last_updated(self) -> datetime:
-        """Return outside temperature last updated."""
-        # TODO not found yet
-        return self.attrs.get("StoredVehicleDataResponseParsed")[P.OUTSIDE_TEMPERATURE].get(BACKEND_RECEIVED_TIMESTAMP)
-
-    @property
-    def is_outside_temperature_supported(self) -> bool:
-        """Return true if outside temp is supported."""
-        # TODO not found yet
-        if self.attrs.get("StoredVehicleDataResponseParsed", False):
-            if P.OUTSIDE_TEMPERATURE in self.attrs.get("StoredVehicleDataResponseParsed"):
-                if "value" in self.attrs.get("StoredVehicleDataResponseParsed")[P.OUTSIDE_TEMPERATURE]:
-                    return True
-        return False
-
     # Climatisation, electric
     @property
     def electric_climatisation(self) -> bool:
         """Return status of climatisation."""
         status = find_path(self.attrs, f"{Services.CLIMATISATION}.climatisationStatus.value.climatisationState")
-        return status in ["ventilation", "heating", "on"]
+        return status in ["ventilation", "heating", "cooling", "on"]
 
     @property
     def electric_climatisation_last_updated(self) -> datetime:
@@ -1347,7 +1383,7 @@ class Vehicle:
     def auxiliary_climatisation(self) -> bool:
         """Return status of auxiliary climatisation."""
         climatisation_state = find_path(
-            self.attrs, f"{Services.CLIMATISATION}.climatisationStatus.value.climatisationState"
+            self.attrs, f"{Services.CLIMATISATION}.auxiliaryHeatingStatus.value.climatisationState"
         )
         if climatisation_state in ["heating", "heatingAuxiliary", "on"]:
             return True
@@ -1356,17 +1392,50 @@ class Vehicle:
     @property
     def auxiliary_climatisation_last_updated(self) -> datetime:
         """Return status of auxiliary climatisation last updated."""
-        return find_path(self.attrs, f"{Services.CLIMATISATION}.climatisationStatus.value.carCapturedTimestamp")
+        return find_path(self.attrs, f"{Services.CLIMATISATION}.auxiliaryHeatingStatus.value.carCapturedTimestamp")
 
     @property
     def is_auxiliary_climatisation_supported(self) -> bool:
         """Return true if vehicle has auxiliary climatisation."""
-        # return (
-        #    is_valid_path(self.attrs, f"{Services.CLIMATISATION}.climatisationSettings.value.heaterSource")
-        #    or is_valid_path(self.attrs, f"{Services.CLIMATISATION}.climatisationSettings.value.climatizationAtUnlock")
-        # )
-        # CURRENTLY NOT SUPPORTED
-        return False
+        return is_valid_path(self.attrs, f"{Services.CLIMATISATION}.auxiliaryHeatingStatus.value.climatisationState")
+
+    @property
+    def auxiliary_duration(self) -> int:
+        """Return heating duration for auxiliary heater."""
+        return find_path(
+            self.attrs, f"{Services.CLIMATISATION}.climatisationSettings.value.auxiliaryHeatingSettings.duration_min"
+        )
+
+    @property
+    def auxiliary_duration_last_updated(self) -> bool:
+        """Return status of auxiliary heater last updated."""
+        return find_path(self.attrs, f"{Services.CLIMATISATION}.climatisationSettings.value.carCapturedTimestamp")
+
+    @property
+    def is_auxiliary_duration_supported(self) -> bool:
+        """Return true if auxiliary heater is supported."""
+        return is_valid_path(
+            self.attrs, f"{Services.CLIMATISATION}.climatisationSettings.value.auxiliaryHeatingSettings.duration_min"
+        )
+
+    @property
+    def auxiliary_remaining_climatisation_time(self) -> int:
+        """Return remaining climatisation time for auxiliary heater."""
+        return find_path(
+            self.attrs, f"{Services.CLIMATISATION}.auxiliaryHeatingStatus.value.remainingClimatisationTime_min"
+        )
+
+    @property
+    def auxiliary_remaining_climatisation_time_last_updated(self) -> bool:
+        """Return status of auxiliary heater remaining climatisation time last updated."""
+        return find_path(self.attrs, f"{Services.CLIMATISATION}.auxiliaryHeatingStatus.value.carCapturedTimestamp")
+
+    @property
+    def is_auxiliary_remaining_climatisation_time_supported(self) -> bool:
+        """Return true if auxiliary heater remaining climatisation time is supported."""
+        return is_valid_path(
+            self.attrs, f"{Services.CLIMATISATION}.auxiliaryHeatingStatus.value.remainingClimatisationTime_min"
+        )
 
     @property
     def is_climatisation_supported(self) -> bool:
@@ -1447,31 +1516,6 @@ class Vehicle:
         return False
 
     # Parking heater, "legacy" auxiliary climatisation
-    @property
-    def pheater_duration(self) -> int:
-        """
-        Return heating duration for legacy aux heater.
-
-        :return:
-        """
-        return self._climate_duration
-
-    @pheater_duration.setter
-    def pheater_duration(self, value) -> None:
-        if value in [10, 20, 30, 40, 50, 60]:
-            self._climate_duration = value
-        else:
-            _LOGGER.warning(f"Invalid value for duration: {value}")
-
-    @property
-    def is_pheater_duration_supported(self) -> bool:
-        """
-        Return true if legacy aux heater is supported.
-
-        :return:
-        """
-        return self.is_pheater_heating_supported
-
     @property
     def pheater_ventilation(self) -> bool:
         """Return status of combustion climatisation."""
@@ -2065,157 +2109,114 @@ class Vehicle:
     # Departure timers
     @property
     def departure_timer1(self):
-        """
-        Return schedule #1.
-
-        :return:
-        """
-        return self.schedule(1)
+        """Return timer #1 status."""
+        return self.departure_timer_enabled(1)
 
     @property
     def departure_timer2(self):
-        """
-        Return schedule #2.
-
-        :return:
-        """
-        return self.schedule(2)
+        """Return timer #2 status."""
+        return self.departure_timer_enabled(2)
 
     @property
     def departure_timer3(self):
-        """
-        Return schedule #3.
-
-        :return:
-        """
-        return self.schedule(3)
+        """Return timer #3 status."""
+        return self.departure_timer_enabled(3)
 
     @property
     def departure_timer1_last_updated(self) -> datetime:
         """Return last updated timestamp."""
-        return self.schedule(1).timestamp
+        return find_path(
+            self.attrs, f"{Services.DEPARTURE_PROFILES}.departureProfilesStatus.value.carCapturedTimestamp"
+        )
 
     @property
     def departure_timer2_last_updated(self) -> datetime:
         """Return last updated timestamp."""
-        return self.schedule(2).timestamp
+        return self.departure_timer1_last_updated
 
     @property
     def departure_timer3_last_updated(self) -> datetime:
         """Return last updated timestamp."""
-        return self.schedule(3).timestamp
-
-    def schedule(self, schedule_id: str | int) -> Timer:
-        """
-        Return schedule #1.
-
-        :return:
-        """
-        timer: TimerData = self.attrs.get("timer", None)
-        return timer.get_schedule(schedule_id)
-
-    @property
-    def schedule_min_charge_level(self) -> int | None:
-        """Get charge minimum level."""
-        timer: TimerData = self.attrs.get("timer")
-        return (
-            timer.timersAndProfiles.timerBasicSetting.chargeMinLimit
-            if timer.timersAndProfiles.timerBasicSetting
-            else None
-        )
-
-    @property
-    def schedule_min_charge_level_last_updated(self) -> datetime | None:
-        """Return attribute last updated timestamp."""
-        timer: TimerData = self.attrs.get("timer")
-        return (
-            timer.timersAndProfiles.timerBasicSetting.timestamp if timer.timersAndProfiles.timerBasicSetting else None
-        )
-
-    @property
-    def is_schedule_min_charge_level_supported(self) -> bool:
-        """Check if charge minimum level is supported."""
-        timer: TimerData = self.attrs.get("timer", None)
-        return (
-            timer.timersAndProfiles.timerBasicSetting is not None
-            and timer.timersAndProfiles.timerBasicSetting.chargeMinLimit is not None
-        )
-
-    @property
-    def schedule_heater_source(self) -> str | None:
-        """Get departure schedule heater source."""
-        timer: TimerData = self.attrs.get("timer")
-        return (
-            timer.timersAndProfiles.timerBasicSetting.heaterSource
-            if timer.timersAndProfiles.timerBasicSetting
-            else None
-        )
-
-    @property
-    def schedule_heater_source_last_updated(self) -> datetime | None:
-        """Return attribute last updated timestamp."""
-        timer: TimerData = self.attrs.get("timer")
-        return (
-            timer.timersAndProfiles.timerBasicSetting.timestamp if timer.timersAndProfiles.timerBasicSetting else None
-        )
-
-    @property
-    def is_schedule_heater_source_supported(self) -> bool:
-        """Check if departure timers heater source is supported."""
-        timer: TimerData = self.attrs.get("timer", None)
-        return (
-            (timer.timersAndProfiles.timerBasicSetting.heaterSource is not None)
-            if timer.timersAndProfiles.timerBasicSetting
-            else False
-        )
-
-    @property
-    def timer_basic_settings(self) -> BasicSettings | None:
-        """Check if timer basic settings are supported."""
-        timer: TimerData = self.attrs.get("timer")
-        return timer.timersAndProfiles.timerBasicSetting
-
-    @property
-    def is_timer_basic_settings_supported(self) -> bool:
-        """Check if timer basic settings are supported."""
-        timer: TimerData = self.attrs.get("timer", None)
-        return (
-            timer is not None
-            and timer.timersAndProfiles is not None
-            and timer.timersAndProfiles.timerBasicSetting is not None
-        )
+        return self.departure_timer1_last_updated
 
     @property
     def is_departure_timer1_supported(self) -> bool:
         """Check if timer 1 is supported."""
-        # return self.is_schedule_supported(1)
-        # CURRENTLY NOT SUPPORTED
-        return False
+        return self.is_departure_timer_supported(1)
 
     @property
     def is_departure_timer2_supported(self) -> bool:
         """Check if timer 2is supported."""
-        # return self.is_schedule_supported(2)
-        # CURRENTLY NOT SUPPORTED
-        return False
+        return self.is_departure_timer_supported(2)
 
     @property
     def is_departure_timer3_supported(self) -> bool:
         """Check if timer 3 is supported."""
-        # return self.is_schedule_supported(3)
-        # CURRENTLY NOT SUPPORTED
-        return False
+        return self.is_departure_timer_supported(3)
 
-    def is_schedule_supported(self, id: str | int) -> bool:
-        """
-        Return true if schedule is supported.
+    def departure_timer_enabled(self, timer_id: str | int) -> bool:
+        """Return if departure timer is enabled."""
+        return self.departure_timer(timer_id).get("enabled", False)
 
-        :return:
-        """
-        # timer: TimerData = self.attrs.get("timer", None)
-        # return timer.has_schedule(id)
-        # CURRENTLY NOT SUPPORTED
-        return False
+    def is_departure_timer_supported(self, timer_id: str | int) -> bool:
+        """Return true if departure timer is supported."""
+        return self.departure_timer(timer_id) is not None
+
+    def timer_attributes(self, timer_id: str | int):
+        """Return departure timer attributes."""
+        timer = self.departure_timer(timer_id)
+        profile = self.departure_profile(timer.get("profileIDs", [0])[0])
+        timer_type = None
+        recurring_on = []
+        start_time = None
+        if timer.get("singleTimer", None):
+            timer_type = "single"
+            start_date_time = timer.get("singleTimer", None).get("startDateTime", None)
+            start_time = start_date_time.replace(tzinfo=timezone.utc).astimezone(tz=None).strftime("%Y-%m-%dT%H:%M:%S")
+        elif timer.get("recurringTimer", None):
+            timer_type = "recurring"
+            start_date_time = timer.get("recurringTimer", None).get("startTime", None)
+            start_time = (
+                datetime.strptime(start_date_time, "%H:%M")
+                .replace(tzinfo=timezone.utc)
+                .astimezone(tz=None)
+                .strftime("%H:%M")
+            )
+            recurring_days = timer.get("recurringTimer", None).get("recurringOn", None)
+            for day in recurring_days:
+                if recurring_days.get(day) is True:
+                    recurring_on.append(day)
+        data = {
+            "timerId": timer.get("id", None),
+            "profileId": profile.get("id", None),
+            "profileName": profile.get("name", None),
+            "timerType": timer_type,
+            "startTime": start_time,
+            "recurringOn": recurring_on,
+            "charging": profile.get("charging", False),
+            "climatisation": profile.get("climatisation", False),
+            "targetSOC_pct": profile.get("targetSOC_pct", None),
+            "maxChargeCurrentAC": profile.get("maxChargeCurrentAC", None),
+        }
+        return data
+
+    def departure_timer(self, timer_id: str | int):
+        """Return departure timer."""
+        if is_valid_path(self.attrs, f"{Services.DEPARTURE_PROFILES}.departureProfilesStatus.value.timers"):
+            timers = find_path(self.attrs, f"{Services.DEPARTURE_PROFILES}.departureProfilesStatus.value.timers")
+            for timer in timers:
+                if timer.get("id", 0) == timer_id:
+                    return timer
+        return None
+
+    def departure_profile(self, profile_id: str | int):
+        """Return departure profile."""
+        if is_valid_path(self.attrs, f"{Services.DEPARTURE_PROFILES}.departureProfilesStatus.value.profiles"):
+            profiles = find_path(self.attrs, f"{Services.DEPARTURE_PROFILES}.departureProfilesStatus.value.profiles")
+            for profile in profiles:
+                if profile.get("id", 0) == profile_id:
+                    return profile
+        return None
 
     # Trip data
     @property
@@ -2669,6 +2670,22 @@ class Vehicle:
             engine_type = find_path(self.attrs, f"{Services.MEASUREMENTS}.fuelLevelStatus.value.secondaryEngineType")
 
         return engine_type in ENGINE_TYPE_COMBUSTION
+
+    def is_car_type_electric(self):
+        """Check if car type is electric."""
+        return find_path(self.attrs, f"{Services.FUEL_STATUS}.rangeStatus.value.carType") == ENGINE_TYPE_ELECTRIC
+
+    def is_car_type_diesel(self):
+        """Check if car type is diesel."""
+        return find_path(self.attrs, f"{Services.FUEL_STATUS}.rangeStatus.value.carType") == ENGINE_TYPE_DIESEL
+
+    def is_car_type_gasoline(self):
+        """Check if car type is gasoline."""
+        return find_path(self.attrs, f"{Services.FUEL_STATUS}.rangeStatus.value.carType") == ENGINE_TYPE_GASOLINE
+
+    def is_car_type_hybrid(self):
+        """Check if car type is hybrid."""
+        return find_path(self.attrs, f"{Services.FUEL_STATUS}.rangeStatus.value.carType") == ENGINE_TYPE_HYBRID
 
     def has_combustion_engine(self):
         """Return true if car has a combustion engine."""
