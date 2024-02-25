@@ -167,12 +167,6 @@ class Sensor(Instrument):
             elif "kWh/100 km" == self.unit:
                 self.unit = "kWh/100 mil"
 
-        # Init placeholder for parking heater duration
-        config.get("parkingheater", CLIMA_DEFAULT_DURATION)
-        if "pheater_duration" == self.attr:
-            setValue = config.get("climatisation_duration", CLIMA_DEFAULT_DURATION)
-            self.vehicle.pheater_duration = setValue
-
     @property
     def is_mutable(self):
         return False
@@ -277,6 +271,50 @@ class Switch(Instrument):
     def assumed_state(self) -> bool:
         """Assume state."""
         return True
+
+
+class Number(Instrument):
+    def __init__(
+        self,
+        attr: str,
+        name: str,
+        icon: Optional[str],
+        unit: Optional[str],
+        entity_type: Optional[str] = None,
+        device_class: Optional[str] = None,
+        state_class: Optional[str] = None,
+    ):
+        """Init."""
+        super().__init__(
+            component="number",
+            attr=attr,
+            name=name,
+            icon=icon,
+            entity_type=entity_type,
+            device_class=device_class,
+            state_class=state_class,
+        )
+        self.unit = unit
+
+    @property
+    def is_mutable(self):
+        return False
+
+    @property
+    def state(self):
+        raise NotImplementedError
+
+    @property
+    def min_value(self):
+        raise NotImplementedError
+
+    @property
+    def max_value(self):
+        raise NotImplementedError
+
+    @property
+    def native_step(self):
+        raise NotImplementedError
 
 
 class Climate(Instrument):
@@ -467,6 +505,45 @@ class TrunkLock(Instrument):
         return None
 
 
+# Numbers
+
+
+class AuxiliaryDuration(Number):
+    """Currently disabled due to the lack of auxiliary settings API."""
+
+    def __init__(self):
+        super().__init__(
+            attr="auxiliary_duration",
+            name="Auxiliary duration",
+            icon="mdi:timer",
+            unit="min",
+        )
+        self.spin = ""
+
+    def configurate(self, **config):
+        self.spin = config.get("spin", "")
+
+    @property
+    def state(self):
+        return self.vehicle.auxiliary_duration
+
+    async def set_value(self, minutes: int):
+        await self.vehicle.set_auxiliary_duration(minutes, self.spin)
+        await self.vehicle.update()
+
+    @property
+    def min_value(self):
+        return 5
+
+    @property
+    def max_value(self):
+        return 30
+
+    @property
+    def native_step(self):
+        return 5
+
+
 # Switches
 
 
@@ -527,12 +604,7 @@ class ElectricClimatisation(Switch):
 
 class AuxiliaryClimatisation(Switch):
     def __init__(self):
-        super().__init__(
-            attr="auxiliary_climatisation",
-            name="Auxiliary Climatisation",
-            icon="mdi:radiator",
-            entity_type="config",
-        )
+        super().__init__(attr="auxiliary_climatisation", name="Auxiliary Climatisation", icon="mdi:radiator")
         self.spin = ""
 
     def configurate(self, **config):
@@ -543,11 +615,11 @@ class AuxiliaryClimatisation(Switch):
         return self.vehicle.auxiliary_climatisation
 
     async def turn_on(self):
-        await self.vehicle.set_climatisation("auxiliary", self.spin)
+        await self.vehicle.set_auxiliary_climatisation("start", self.spin)
         await self.vehicle.update()
 
     async def turn_off(self):
-        await self.vehicle.set_climatisation("off")
+        await self.vehicle.set_auxiliary_climatisation("stop", self.spin)
         await self.vehicle.update()
 
     @property
@@ -816,6 +888,7 @@ def create_instruments():
     """Return list of all entities."""
     return [
         Position(),
+        # AuxiliaryDuration(),
         DoorLock(),
         TrunkLock(),
         RequestUpdate(),
@@ -1051,9 +1124,15 @@ def create_instruments():
             unit="",
         ),
         Sensor(
-            attr="pheater_duration",
-            name="Parking Heater heating/ventilation duration",
+            attr="auxiliary_duration",
+            name="Auxiliary Heater heating/ventilation duration",
             icon="mdi:timer",
+            unit="minutes",
+        ),
+        Sensor(
+            attr="auxiliary_remaining_climatisation_time",
+            name="Auxiliary remaining climatisation time",
+            icon="mdi:fan-clock",
             unit="minutes",
         ),
         Sensor(

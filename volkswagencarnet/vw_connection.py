@@ -761,6 +761,17 @@ class Connection:
         except Exception as e:
             raise Exception("Unknown error during setClimaterSettings") from e
 
+    async def setAuxiliary(self, vin, data, action):
+        """Execute auxiliary climatisation actions."""
+        action = "start" if action else "stop"
+        try:
+            response_raw = await self.post(
+                f"{BASE_API}/vehicle/v1/vehicles/{vin}/auxiliaryheating/{action}", json=data, return_raw=True
+            )
+            return await self._handle_action_result(response_raw)
+        except Exception as e:
+            raise Exception("Unknown error during setAuxiliary") from e
+
     async def setWindowHeater(self, vin, action):
         """Execute window heating actions."""
         action = "start" if action else "stop"

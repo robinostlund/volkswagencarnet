@@ -295,7 +295,7 @@ class Vehicle:
     # Climatisation electric/auxiliary/windows (CLIMATISATION)
     async def set_climatisation_temp(self, temperature=20):
         """Set climatisation target temp."""
-        if self.is_electric_climatisation_supported or self.is_auxiliary_climatisation_supported:
+        if self.is_electric_climatisation_supported:
             if 15.5 <= float(temperature) <= 30:
                 data = {
                     "targetTemperature": float(temperature),
@@ -358,7 +358,7 @@ class Vehicle:
             raise Exception("No climatisation support.")
 
     async def set_climatisation(self, action="stop"):
-        """Turn on/off climatisation with electric/auxiliary heater."""
+        """Turn on/off climatisation with electric heater."""
         if self.is_electric_climatisation_supported:
             if action == "start":
                 data = {
@@ -376,7 +376,31 @@ class Vehicle:
             return await self._handle_response(
                 response=response,
                 topic="climatisation",
-                error_msg=f"Failed to {action} climatisation with electric/auxiliary heater.",
+                error_msg=f"Failed to {action} climatisation with electric heater.",
+            )
+        else:
+            _LOGGER.error("No climatisation support.")
+            raise Exception("No climatisation support.")
+
+    async def set_auxiliary_climatisation(self, action, spin):
+        """Turn on/off climatisation with auxiliary heater."""
+        if self.is_auxiliary_climatisation_supported:
+            if action == "start":
+                data = {
+                    "duration_min": self.auxiliary_duration,
+                    "spin": spin,
+                }
+            elif action == "stop":
+                data = {}
+            else:
+                _LOGGER.error(f"Invalid auxiliary heater action: {action}")
+                raise Exception(f"Invalid auxiliary heater action: {action}")
+            self._requests["latest"] = "Climatisation"
+            response = await self._connection.setAuxiliary(self.vin, data, (action == "start"))
+            return await self._handle_response(
+                response=response,
+                topic="climatisation",
+                error_msg=f"Failed to {action} climatisation with auxiliary heater.",
             )
         else:
             _LOGGER.error("No climatisation support.")
@@ -1359,7 +1383,7 @@ class Vehicle:
     def auxiliary_climatisation(self) -> bool:
         """Return status of auxiliary climatisation."""
         climatisation_state = find_path(
-            self.attrs, f"{Services.CLIMATISATION}.climatisationStatus.value.climatisationState"
+            self.attrs, f"{Services.CLIMATISATION}.auxiliaryHeatingStatus.value.climatisationState"
         )
         if climatisation_state in ["heating", "heatingAuxiliary", "on"]:
             return True
@@ -1368,17 +1392,50 @@ class Vehicle:
     @property
     def auxiliary_climatisation_last_updated(self) -> datetime:
         """Return status of auxiliary climatisation last updated."""
-        return find_path(self.attrs, f"{Services.CLIMATISATION}.climatisationStatus.value.carCapturedTimestamp")
+        return find_path(self.attrs, f"{Services.CLIMATISATION}.auxiliaryHeatingStatus.value.carCapturedTimestamp")
 
     @property
     def is_auxiliary_climatisation_supported(self) -> bool:
         """Return true if vehicle has auxiliary climatisation."""
-        # return (
-        #    is_valid_path(self.attrs, f"{Services.CLIMATISATION}.climatisationSettings.value.heaterSource")
-        #    or is_valid_path(self.attrs, f"{Services.CLIMATISATION}.climatisationSettings.value.climatizationAtUnlock")
-        # )
-        # CURRENTLY NOT SUPPORTED
-        return False
+        return is_valid_path(self.attrs, f"{Services.CLIMATISATION}.auxiliaryHeatingStatus.value.climatisationState")
+
+    @property
+    def auxiliary_duration(self) -> int:
+        """Return heating duration for auxiliary heater."""
+        return find_path(
+            self.attrs, f"{Services.CLIMATISATION}.climatisationSettings.value.auxiliaryHeatingSettings.duration_min"
+        )
+
+    @property
+    def auxiliary_duration_last_updated(self) -> bool:
+        """Return status of auxiliary heater last updated."""
+        return find_path(self.attrs, f"{Services.CLIMATISATION}.climatisationSettings.value.carCapturedTimestamp")
+
+    @property
+    def is_auxiliary_duration_supported(self) -> bool:
+        """Return true if auxiliary heater is supported."""
+        return is_valid_path(
+            self.attrs, f"{Services.CLIMATISATION}.climatisationSettings.value.auxiliaryHeatingSettings.duration_min"
+        )
+
+    @property
+    def auxiliary_remaining_climatisation_time(self) -> int:
+        """Return remaining climatisation time for auxiliary heater."""
+        return find_path(
+            self.attrs, f"{Services.CLIMATISATION}.auxiliaryHeatingStatus.value.remainingClimatisationTime_min"
+        )
+
+    @property
+    def auxiliary_remaining_climatisation_time_last_updated(self) -> bool:
+        """Return status of auxiliary heater remaining climatisation time last updated."""
+        return find_path(self.attrs, f"{Services.CLIMATISATION}.auxiliaryHeatingStatus.value.carCapturedTimestamp")
+
+    @property
+    def is_auxiliary_remaining_climatisation_time_supported(self) -> bool:
+        """Return true if auxiliary heater remaining climatisation time is supported."""
+        return is_valid_path(
+            self.attrs, f"{Services.CLIMATISATION}.auxiliaryHeatingStatus.value.remainingClimatisationTime_min"
+        )
 
     @property
     def is_climatisation_supported(self) -> bool:
@@ -1459,31 +1516,6 @@ class Vehicle:
         return False
 
     # Parking heater, "legacy" auxiliary climatisation
-    @property
-    def pheater_duration(self) -> int:
-        """
-        Return heating duration for legacy aux heater.
-
-        :return:
-        """
-        return self._climate_duration
-
-    @pheater_duration.setter
-    def pheater_duration(self, value) -> None:
-        if value in [10, 20, 30, 40, 50, 60]:
-            self._climate_duration = value
-        else:
-            _LOGGER.warning(f"Invalid value for duration: {value}")
-
-    @property
-    def is_pheater_duration_supported(self) -> bool:
-        """
-        Return true if legacy aux heater is supported.
-
-        :return:
-        """
-        return self.is_pheater_heating_supported
-
     @property
     def pheater_ventilation(self) -> bool:
         """Return status of combustion climatisation."""
