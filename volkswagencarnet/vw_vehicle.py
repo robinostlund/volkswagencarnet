@@ -46,13 +46,9 @@ class Vehicle:
             "climatisation": {"status": "", "timestamp": datetime.now(timezone.utc)},
             "refresh": {"status": "", "timestamp": datetime.now(timezone.utc)},
             "lock": {"status": "", "timestamp": datetime.now(timezone.utc)},
-            "preheater": {"status": "", "timestamp": datetime.now(timezone.utc)},
-            "remaining": -1,
             "latest": "",
             "state": "",
         }
-        self._climate_duration: int = 30
-        self._climatisation_target_temperature: float | None = None
 
         # API Endpoints that might be enabled for car (that we support)
         self._services: dict[str, dict[str, Any]] = {
@@ -88,10 +84,6 @@ class Vehicle:
             _LOGGER.error(error_msg if error_msg is not None else f"Failed to perform {topic} action")
             raise Exception(error_msg if error_msg is not None else f"Failed to perform {topic} action")
         else:
-            remaining = response.get("rate_limit_remaining", -1)
-            if remaining != -1:
-                _LOGGER.info(f"{remaining} requests")
-                self._requests["remaining"] = remaining
             self._requests[topic] = {
                 "timestamp": datetime.now(timezone.utc),
                 "status": response.get("state", "Unknown"),
@@ -250,7 +242,7 @@ class Vehicle:
 
     # Data set functions
     # Charging (BATTERYCHARGE)
-    async def set_charger_current(self, value) -> bool:
+    async def set_charger_current(self, value):
         """Set charger current."""
         if self.is_charging_supported:
             if 1 <= int(value) <= 255:
@@ -269,6 +261,7 @@ class Vehicle:
             if action not in ["start", "stop"]:
                 _LOGGER.error(f'Charging action "{action}" is not supported.')
                 raise Exception(f'Charging action "{action}" is not supported.')
+            self._requests["latest"] = "Batterycharge"
             response = await self._connection.setCharging(self.vin, (action == "start"))
             return await self._handle_response(
                 response=response, topic="charging", error_msg=f"Failed to {action} charging"
@@ -277,42 +270,105 @@ class Vehicle:
             _LOGGER.error("No charging support.")
             raise Exception("No charging support.")
 
-    async def set_charging_settings(self, action) -> bool:
-        """Turn on/off reduced charging."""
-        if self.is_charge_max_ac_setting_supported:
-            if action not in ["reduced", "maximum"]:
-                _LOGGER.error(f'Charging setting "{action}" is not supported.')
-                raise Exception(f'Charging setting "{action}" is not supported.')
-            data = {"maxChargeCurrentAC": action}
+    async def set_charging_settings(self, setting, value):
+        """Set charging settings."""
+        if (
+            self.is_charge_max_ac_setting_supported
+            or self.is_auto_release_ac_connector_supported
+            or self.is_battery_target_charge_level_supported
+        ):
+            if setting == "reduced_ac_charging" and value not in ["reduced", "maximum"]:
+                _LOGGER.error(f'Charging setting "{value}" is not supported.')
+                raise Exception(f'Charging setting "{value}" is not supported.')
+            data = {}
+            if self.is_charge_max_ac_setting_supported:
+                data["maxChargeCurrentAC"] = value if setting == "reduced_ac_charging" else self.charge_max_ac_setting
+            if self.is_auto_release_ac_connector_supported:
+                data["autoUnlockPlugWhenChargedAC"] = (
+                    value if setting == "auto_release_ac_connector" else self.auto_release_ac_connector_state
+                )
+            if self.is_battery_target_charge_level_supported:
+                self._battery_target_charge_level = value
+                data["targetSOC_pct"] = (
+                    value if setting == "battery_target_charge_level" else self.battery_target_charge_level
+                )
+            self._requests["latest"] = "Batterycharge"
             response = await self._connection.setChargingSettings(self.vin, data)
             return await self._handle_response(
-                response=response, topic="charging", error_msg=f"Failed to {action} charging"
+                response=response, topic="charging", error_msg="Failed to change charging settings"
             )
         else:
             _LOGGER.error("Charging settings are not supported.")
             raise Exception("Charging settings are not supported.")
 
     # Climatisation electric/auxiliary/windows (CLIMATISATION)
-    async def set_climatisation_temp(self, temperature=20):
-        """Set climatisation target temp."""
-        if self.is_electric_climatisation_supported:
-            if 15.5 <= float(temperature) <= 30:
+    async def set_climatisation_settings(self, setting, value):
+        """Set climatisation settings."""
+        if (
+            self.is_climatisation_target_temperature_supported
+            or self.is_climatisation_without_external_power_supported
+            or self.is_auxiliary_air_conditioning_supported
+            or self.is_automatic_window_heating_supported
+            or self.is_zone_front_left_supported
+            or self.is_zone_front_right_supported
+        ):
+            if (
+                setting == "climatisation_target_temperature"
+                and 15.5 <= float(value) <= 30
+                or setting
+                in [
+                    "climatisation_without_external_power",
+                    "auxiliary_air_conditioning",
+                    "automatic_window_heating",
+                    "zone_front_left",
+                    "zone_front_right",
+                ]
+                and value in [True, False]
+            ):
+                temperature = (
+                    value
+                    if setting == "climatisation_target_temperature"
+                    else (
+                        self.climatisation_target_temperature
+                        if self.climatisation_target_temperature is not None
+                        else DEFAULT_TARGET_TEMP
+                    )
+                )
                 data = {
                     "targetTemperature": float(temperature),
                     "targetTemperatureUnit": "celsius",
-                    "climatisationWithoutExternalPower": self.climatisation_without_external_power,
                 }
+                if self.is_climatisation_without_external_power_supported:
+                    data["climatisationWithoutExternalPower"] = (
+                        value
+                        if setting == "climatisation_without_external_power"
+                        else self.climatisation_without_external_power
+                    )
+                if self.is_auxiliary_air_conditioning_supported:
+                    data["climatizationAtUnlock"] = (
+                        value if setting == "auxiliary_air_conditioning" else self.auxiliary_air_conditioning
+                    )
+                if self.is_automatic_window_heating_supported:
+                    data["windowHeatingEnabled"] = (
+                        value if setting == "automatic_window_heating" else self.automatic_window_heating
+                    )
+                if self.is_zone_front_left_supported:
+                    data["zoneFrontLeftEnabled"] = value if setting == "zone_front_left" else self.zone_front_left
+                if self.is_zone_front_right_supported:
+                    data["zoneFrontRightEnabled"] = value if setting == "zone_front_right" else self.zone_front_right
+                self._requests["latest"] = "Climatisation"
+                response = await self._connection.setClimaterSettings(self.vin, data)
+                return await self._handle_response(
+                    response=response,
+                    topic="climatisation",
+                    error_msg="Failed to set climatisation settings",
+                )
             else:
-                _LOGGER.error(f"Set climatisation target temp to {temperature} is not supported.")
-                raise Exception(f"Set climatisation target temp to {temperature} is not supported.")
-            self._requests["latest"] = "Climatisation"
-            response = await self._connection.setClimaterSettings(self.vin, data)
-            return await self._handle_response(
-                response=response, topic="climatisation", error_msg="Failed to set temperature"
-            )
+                _LOGGER.error(f'Set climatisation setting to "{value}" is not supported.')
+                raise Exception(f'Set climatisation setting to "{value}" is not supported.')
         else:
-            _LOGGER.error("No climatisation support.")
-            raise Exception("No climatisation support.")
+            _LOGGER.error("Climatisation settings are not supported.")
+            raise Exception("Climatisation settings are not supported.")
 
     async def set_window_heating(self, action="stop"):
         """Turn on/off window heater."""
@@ -329,43 +385,24 @@ class Vehicle:
             _LOGGER.error("No climatisation support.")
             raise Exception("No climatisation support.")
 
-    async def set_battery_climatisation(self, mode=False):
-        """Turn on/off electric climatisation from battery."""
-        if self.is_climatisation_without_external_power_supported:
-            if mode in [True, False]:
-                temperature = (
-                    self.climatisation_target_temperature
-                    if self.climatisation_target_temperature is not None
-                    else DEFAULT_TARGET_TEMP
-                )
-                data = {
-                    "targetTemperature": temperature,
-                    "targetTemperatureUnit": "celsius",
-                    "climatisationWithoutExternalPower": mode,
-                }
-                self._requests["latest"] = "Climatisation"
-                response = await self._connection.setClimaterSettings(self.vin, data)
-                return await self._handle_response(
-                    response=response,
-                    topic="climatisation",
-                    error_msg="Failed to set climatisation without external power",
-                )
-            else:
-                _LOGGER.error(f'Set climatisation without external power to "{mode}" is not supported.')
-                raise Exception(f'Set climatisation without external power to "{mode}" is not supported.')
-        else:
-            _LOGGER.error("No climatisation support.")
-            raise Exception("No climatisation support.")
-
     async def set_climatisation(self, action="stop"):
         """Turn on/off climatisation with electric heater."""
         if self.is_electric_climatisation_supported:
             if action == "start":
                 data = {
-                    "climatisationWithoutExternalPower": self.climatisation_without_external_power,
                     "targetTemperature": self.climatisation_target_temperature,
                     "targetTemperatureUnit": "celsius",
                 }
+                if self.is_climatisation_without_external_power_supported:
+                    data["climatisationWithoutExternalPower"] = self.climatisation_without_external_power
+                if self.is_auxiliary_air_conditioning_supported:
+                    data["climatizationAtUnlock"] = self.auxiliary_air_conditioning
+                if self.is_automatic_window_heating_supported:
+                    data["windowHeatingEnabled"] = self.automatic_window_heating
+                if self.is_zone_front_left_supported:
+                    data["zoneFrontLeftEnabled"] = self.zone_front_left
+                if self.is_zone_front_right_supported:
+                    data["zoneFrontRightEnabled"] = self.zone_front_right
             elif action == "stop":
                 data = {}
             else:
@@ -405,11 +442,6 @@ class Vehicle:
         else:
             _LOGGER.error("No climatisation support.")
             raise Exception("No climatisation support.")
-
-    # Parking heater heating/ventilation (RS)
-    async def set_pheater(self, mode, spin):
-        """Set the mode for the parking heater."""
-        raise Exception("Should have to be re-implemented")
 
     async def set_departure_timer(self, timer_id, enable) -> bool:
         """Turn on/off departure timer."""
@@ -791,7 +823,7 @@ class Vehicle:
 
         :return:
         """
-        if not self.has_combustion_engine():
+        if not self.has_combustion_engine:
             return False
         return is_valid_path(
             self.attrs, f"{Services.VEHICLE_HEALTH_INSPECTION}.maintenanceStatus.value.carCapturedTimestamp"
@@ -818,7 +850,7 @@ class Vehicle:
 
         :return:
         """
-        if not self.has_combustion_engine():
+        if not self.has_combustion_engine:
             return False
         return is_valid_path(
             self.attrs, f"{Services.VEHICLE_HEALTH_INSPECTION}.maintenanceStatus.value.oilServiceDue_km"
@@ -1053,6 +1085,29 @@ class Vehicle:
         return self.is_charge_max_ac_setting_supported
 
     @property
+    def auto_release_ac_connector_state(self) -> str:
+        """Return auto release ac connector state value."""
+        return find_path(self.attrs, f"{Services.CHARGING}.chargingSettings.value.autoUnlockPlugWhenChargedAC")
+
+    @property
+    def auto_release_ac_connector(self) -> bool:
+        """Return auto release ac connector state."""
+        return (
+            find_path(self.attrs, f"{Services.CHARGING}.chargingSettings.value.autoUnlockPlugWhenChargedAC")
+            == "permanent"
+        )
+
+    @property
+    def auto_release_ac_connector_last_updated(self) -> datetime:
+        """Return attribute last updated timestamp."""
+        return find_path(self.attrs, f"{Services.CHARGING}.chargingSettings.value.carCapturedTimestamp")
+
+    @property
+    def is_auto_release_ac_connector_supported(self) -> bool:
+        """Return true if auto release ac connector is supported."""
+        return is_valid_path(self.attrs, f"{Services.CHARGING}.chargingSettings.value.autoUnlockPlugWhenChargedAC")
+
+    @property
     def energy_flow(self):
         # TODO untouched
         """Return true if energy is flowing through charging port."""
@@ -1171,7 +1226,7 @@ class Vehicle:
         :return:
         """
         return is_valid_path(self.attrs, f"{Services.MEASUREMENTS}.rangeStatus.value.electricRange") or (
-            self.is_car_type_electric()
+            self.is_car_type_electric
             and is_valid_path(self.attrs, f"{Services.FUEL_STATUS}.rangeStatus.value.primaryEngine.remainingRange_km")
         )
 
@@ -1306,12 +1361,20 @@ class Vehicle:
 
         :return:
         """
-        return find_path(self.attrs, f"{Services.FUEL_STATUS}.rangeStatus.value.carType").capitalize()
+        if is_valid_path(self.attrs, f"{Services.FUEL_STATUS}.rangeStatus.value.carType"):
+            return find_path(self.attrs, f"{Services.FUEL_STATUS}.rangeStatus.value.carType").capitalize()
+        if is_valid_path(self.attrs, f"{Services.MEASUREMENTS}.fuelLevelStatus.value.carType"):
+            return find_path(self.attrs, f"{Services.MEASUREMENTS}.fuelLevelStatus.value.carType").capitalize()
+        return "Unknown"
 
     @property
     def car_type_last_updated(self) -> datetime | None:
         """Return car type last updated."""
-        return find_path(self.attrs, f"{Services.FUEL_STATUS}.rangeStatus.value.carCapturedTimestamp")
+        if is_valid_path(self.attrs, f"{Services.FUEL_STATUS}.rangeStatus.value.carCapturedTimestamp"):
+            return find_path(self.attrs, f"{Services.FUEL_STATUS}.rangeStatus.value.carCapturedTimestamp")
+        if is_valid_path(self.attrs, f"{Services.MEASUREMENTS}.fuelLevelStatus.value.carCapturedTimestamp"):
+            return find_path(self.attrs, f"{Services.MEASUREMENTS}.fuelLevelStatus.value.carCapturedTimestamp")
+        return None
 
     @property
     def is_car_type_supported(self) -> bool:
@@ -1320,7 +1383,9 @@ class Vehicle:
 
         :return:
         """
-        return is_valid_path(self.attrs, f"{Services.FUEL_STATUS}.rangeStatus.value.carType")
+        return is_valid_path(self.attrs, f"{Services.FUEL_STATUS}.rangeStatus.value.carType") or is_valid_path(
+            self.attrs, f"{Services.MEASUREMENTS}.fuelLevelStatus.value.carType"
+        )
 
     # Climatisation settings
     @property
@@ -1358,6 +1423,66 @@ class Vehicle:
             self.attrs, f"{Services.CLIMATISATION}.climatisationSettings.value.climatisationWithoutExternalPower"
         )
 
+    @property
+    def auxiliary_air_conditioning(self):
+        """Return state of auxiliary air conditioning."""
+        return find_path(self.attrs, f"{Services.CLIMATISATION}.climatisationSettings.value.climatizationAtUnlock")
+
+    @property
+    def auxiliary_air_conditioning_last_updated(self) -> datetime:
+        """Return state of auxiliary air conditioning last updated."""
+        return find_path(self.attrs, f"{Services.CLIMATISATION}.climatisationSettings.value.carCapturedTimestamp")
+
+    @property
+    def is_auxiliary_air_conditioning_supported(self) -> bool:
+        """Return true if auxiliary air conditioning is supported."""
+        return is_valid_path(self.attrs, f"{Services.CLIMATISATION}.climatisationSettings.value.climatizationAtUnlock")
+
+    @property
+    def automatic_window_heating(self):
+        """Return state of automatic window heating."""
+        return find_path(self.attrs, f"{Services.CLIMATISATION}.climatisationSettings.value.windowHeatingEnabled")
+
+    @property
+    def automatic_window_heating_last_updated(self) -> datetime:
+        """Return state of automatic window heating last updated."""
+        return find_path(self.attrs, f"{Services.CLIMATISATION}.climatisationSettings.value.carCapturedTimestamp")
+
+    @property
+    def is_automatic_window_heating_supported(self) -> bool:
+        """Return true if automatic window heating is supported."""
+        return is_valid_path(self.attrs, f"{Services.CLIMATISATION}.climatisationSettings.value.windowHeatingEnabled")
+
+    @property
+    def zone_front_left(self):
+        """Return state of zone front left."""
+        return find_path(self.attrs, f"{Services.CLIMATISATION}.climatisationSettings.value.zoneFrontLeftEnabled")
+
+    @property
+    def zone_front_left_last_updated(self) -> datetime:
+        """Return state of zone front left last updated."""
+        return find_path(self.attrs, f"{Services.CLIMATISATION}.climatisationSettings.value.carCapturedTimestamp")
+
+    @property
+    def is_zone_front_left_supported(self) -> bool:
+        """Return true if zone front left is supported."""
+        return is_valid_path(self.attrs, f"{Services.CLIMATISATION}.climatisationSettings.value.zoneFrontLeftEnabled")
+
+    @property
+    def zone_front_right(self):
+        """Return state of zone front left."""
+        return find_path(self.attrs, f"{Services.CLIMATISATION}.climatisationSettings.value.zoneFrontRightEnabled")
+
+    @property
+    def zone_front_right_last_updated(self) -> datetime:
+        """Return state of zone front left last updated."""
+        return find_path(self.attrs, f"{Services.CLIMATISATION}.climatisationSettings.value.carCapturedTimestamp")
+
+    @property
+    def is_zone_front_right_supported(self) -> bool:
+        """Return true if zone front left is supported."""
+        return is_valid_path(self.attrs, f"{Services.CLIMATISATION}.climatisationSettings.value.zoneFrontRightEnabled")
+
     # Climatisation, electric
     @property
     def electric_climatisation(self) -> bool:
@@ -1377,6 +1502,10 @@ class Vehicle:
             self.is_climatisation_supported
             and self.is_climatisation_target_temperature_supported
             and self.is_climatisation_without_external_power_supported
+        ) or (
+            self.is_car_type_electric
+            and self.is_climatisation_supported
+            and self.is_climatisation_target_temperature_supported
         )
 
     @property
@@ -1514,61 +1643,6 @@ class Vehicle:
                 if parameter["key"] == "supportsStartWindowHeating" and parameter["value"] == "true":
                     return True
         return False
-
-    # Parking heater, "legacy" auxiliary climatisation
-    @property
-    def pheater_ventilation(self) -> bool:
-        """Return status of combustion climatisation."""
-        return (
-            self.attrs.get("heating", {}).get("climatisationStateReport", {}).get("climatisationState", False)
-            == "ventilation"
-        )
-
-    @property
-    def pheater_ventilation_last_updated(self) -> datetime:
-        """Return status of combustion climatisation."""
-        return (
-            self.attrs.get("heating", {}).get("climatisationStateReport", {}).get("climatisationState", False)
-            == "ventilation"
-        )
-
-    @property
-    def is_pheater_ventilation_supported(self) -> bool:
-        """Return true if vehicle has combustion climatisation."""
-        return self.is_pheater_heating_supported
-
-    @property
-    def pheater_heating(self) -> bool:
-        """Return status of combustion engine heating."""
-        return (
-            self.attrs.get("heating", {}).get("climatisationStateReport", {}).get("climatisationState", False)
-            == "heating"
-        )
-
-    @property
-    def pheater_heating_last_updated(self) -> datetime:
-        """Return attribute last updated timestamp."""
-        return self.attrs.get("heating", {}).get("climatisationStateReport", {}).get("FIXME")
-
-    @property
-    def is_pheater_heating_supported(self) -> bool:
-        """Return true if vehicle has combustion engine heating."""
-        return self.attrs.get("heating", {}).get("climatisationStateReport", {}).get("climatisationState", False)
-
-    @property
-    def pheater_status(self) -> str:
-        """Return status of combustion engine heating/ventilation."""
-        return self.attrs.get("heating", {}).get("climatisationStateReport", {}).get("climatisationState", "Unknown")
-
-    @property
-    def pheater_status_last_updated(self) -> datetime:
-        """Return attribute last updated timestamp."""
-        return self.attrs.get("heating", {}).get("climatisationStateReport", {}).get("FIXME")
-
-    @property
-    def is_pheater_status_supported(self) -> bool:
-        """Return true if vehicle has combustion engine heating/ventilation."""
-        return self.attrs.get("heating", {}).get("climatisationStateReport", {}).get("climatisationState", False)
 
     # Windows
     @property
@@ -2498,11 +2572,6 @@ class Vehicle:
         return self._requests.get("climatisation", {}).get("status", "None")
 
     @property
-    def pheater_action_status(self):
-        """Return latest status of parking heater request."""
-        return self._requests.get("preheater", {}).get("status", "None")
-
-    @property
     def lock_action_status(self):
         """Return latest status of lock action request."""
         return self._requests.get("lock", {}).get("status", "None")
@@ -2553,7 +2622,7 @@ class Vehicle:
         """Get last request result."""
         data = {"latest": self._requests.get("latest", None), "state": self._requests.get("state", None)}
         for section in self._requests:
-            if section in ["departuretimer", "batterycharge", "climatisation", "refresh", "lock", "preheater"]:
+            if section in ["departuretimer", "batterycharge", "climatisation", "refresh", "lock"]:
                 data[section] = self._requests[section].get("status", "Unknown")
         return data
 
@@ -2564,7 +2633,7 @@ class Vehicle:
             return self._requests.get(str(self._requests.get("latest")), {}).get("timestamp")
         # all requests should have more or less the same timestamp anyway, so
         # just return the first one
-        for section in ["departuretimer", "batterycharge", "climatisation", "refresh", "lock", "preheater"]:
+        for section in ["departuretimer", "batterycharge", "climatisation", "refresh", "lock"]:
             if section in self._requests:
                 return self._requests[section].get("timestamp")
         return None
@@ -2578,37 +2647,6 @@ class Vehicle:
     def requests_results_last_updated(self):
         """Return last updated timestamp for attribute."""
         return None
-
-    @property
-    def requests_remaining(self):
-        """Get remaining requests before throttled."""
-        if self.attrs.get("rate_limit_remaining", False):
-            self.requests_remaining = self.attrs.get("rate_limit_remaining")
-            self.attrs.pop("rate_limit_remaining")
-        return self._requests["remaining"]
-
-    @requests_remaining.setter
-    def requests_remaining(self, value):
-        self._requests["remaining"] = value
-        self.requests_remaining_last_updated = datetime.utcnow()
-
-    @property
-    def requests_remaining_last_updated(self) -> datetime:
-        """Get last updated timestamp."""
-        return self._requests["remaining_updated"] if "remaining_updated" in self._requests else None
-
-    @requests_remaining_last_updated.setter
-    def requests_remaining_last_updated(self, value):
-        self._requests["remaining_updated"] = value
-
-    @property
-    def is_requests_remaining_supported(self):
-        """
-        Return true if requests remaining is supported.
-
-        :return:
-        """
-        return True if self._requests.get("remaining", False) else False
 
     # Helper functions #
     def __str__(self):
@@ -2671,22 +2709,47 @@ class Vehicle:
 
         return engine_type in ENGINE_TYPE_COMBUSTION
 
+    @property
     def is_car_type_electric(self):
         """Check if car type is electric."""
-        return find_path(self.attrs, f"{Services.FUEL_STATUS}.rangeStatus.value.carType") == ENGINE_TYPE_ELECTRIC
+        if is_valid_path(self.attrs, f"{Services.FUEL_STATUS}.rangeStatus.value.carType"):
+            return find_path(self.attrs, f"{Services.FUEL_STATUS}.rangeStatus.value.carType") == ENGINE_TYPE_ELECTRIC
+        if is_valid_path(self.attrs, f"{Services.MEASUREMENTS}.fuelLevelStatus.value.carType"):
+            return (
+                find_path(self.attrs, f"{Services.MEASUREMENTS}.fuelLevelStatus.value.carType") == ENGINE_TYPE_ELECTRIC
+            )
+        return False
 
+    @property
     def is_car_type_diesel(self):
         """Check if car type is diesel."""
-        return find_path(self.attrs, f"{Services.FUEL_STATUS}.rangeStatus.value.carType") == ENGINE_TYPE_DIESEL
+        if is_valid_path(self.attrs, f"{Services.FUEL_STATUS}.rangeStatus.value.carType"):
+            return find_path(self.attrs, f"{Services.FUEL_STATUS}.rangeStatus.value.carType") == ENGINE_TYPE_DIESEL
+        if is_valid_path(self.attrs, f"{Services.MEASUREMENTS}.fuelLevelStatus.value.carType"):
+            return find_path(self.attrs, f"{Services.MEASUREMENTS}.fuelLevelStatus.value.carType") == ENGINE_TYPE_DIESEL
+        return False
 
+    @property
     def is_car_type_gasoline(self):
         """Check if car type is gasoline."""
-        return find_path(self.attrs, f"{Services.FUEL_STATUS}.rangeStatus.value.carType") == ENGINE_TYPE_GASOLINE
+        if is_valid_path(self.attrs, f"{Services.FUEL_STATUS}.rangeStatus.value.carType"):
+            return find_path(self.attrs, f"{Services.FUEL_STATUS}.rangeStatus.value.carType") == ENGINE_TYPE_GASOLINE
+        if is_valid_path(self.attrs, f"{Services.MEASUREMENTS}.fuelLevelStatus.value.carType"):
+            return (
+                find_path(self.attrs, f"{Services.MEASUREMENTS}.fuelLevelStatus.value.carType") == ENGINE_TYPE_GASOLINE
+            )
+        return False
 
+    @property
     def is_car_type_hybrid(self):
         """Check if car type is hybrid."""
-        return find_path(self.attrs, f"{Services.FUEL_STATUS}.rangeStatus.value.carType") == ENGINE_TYPE_HYBRID
+        if is_valid_path(self.attrs, f"{Services.FUEL_STATUS}.rangeStatus.value.carType"):
+            return find_path(self.attrs, f"{Services.FUEL_STATUS}.rangeStatus.value.carType") == ENGINE_TYPE_HYBRID
+        if is_valid_path(self.attrs, f"{Services.MEASUREMENTS}.fuelLevelStatus.value.carType"):
+            return find_path(self.attrs, f"{Services.MEASUREMENTS}.fuelLevelStatus.value.carType") == ENGINE_TYPE_HYBRID
+        return False
 
+    @property
     def has_combustion_engine(self):
         """Return true if car has a combustion engine."""
         return self.is_primary_drive_combustion() or self.is_secondary_drive_combustion()
