@@ -670,11 +670,11 @@ class ReducedACCharging(Switch):
         return self.vehicle.reduced_ac_charging
 
     async def turn_on(self):
-        await self.vehicle.set_charging_settings(setting="reduced_ac_charging", action="reduced")
+        await self.vehicle.set_charging_settings(setting="reduced_ac_charging", value="reduced")
         await self.vehicle.update()
 
     async def turn_off(self):
-        await self.vehicle.set_charging_settings(setting="reduced_ac_charging", action="maximum")
+        await self.vehicle.set_charging_settings(setting="reduced_ac_charging", value="maximum")
         await self.vehicle.update()
 
     @property
@@ -702,11 +702,11 @@ class AutoReleaseACConnector(Switch):
         return self.vehicle.auto_release_ac_connector
 
     async def turn_on(self):
-        await self.vehicle.set_charging_settings(setting="auto_release_ac_connector", action="permanent")
+        await self.vehicle.set_charging_settings(setting="auto_release_ac_connector", value="permanent")
         await self.vehicle.update()
 
     async def turn_off(self):
-        await self.vehicle.set_charging_settings(setting="auto_release_ac_connector", action="off")
+        await self.vehicle.set_charging_settings(setting="auto_release_ac_connector", value="off")
         await self.vehicle.update()
 
     @property
