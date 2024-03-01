@@ -1509,6 +1509,25 @@ class Vehicle:
         )
 
     @property
+    def electric_remaining_climatisation_time(self) -> int:
+        """Return remaining climatisation time for electric climatisation."""
+        return find_path(
+            self.attrs, f"{Services.CLIMATISATION}.climatisationStatus.value.remainingClimatisationTime_min"
+        )
+
+    @property
+    def electric_remaining_climatisation_time_last_updated(self) -> bool:
+        """Return status of electric climatisation remaining climatisation time last updated."""
+        return find_path(self.attrs, f"{Services.CLIMATISATION}.climatisationStatus.value.carCapturedTimestamp")
+
+    @property
+    def is_electric_remaining_climatisation_time_supported(self) -> bool:
+        """Return true if electric climatisation remaining climatisation time is supported."""
+        return is_valid_path(
+            self.attrs, f"{Services.CLIMATISATION}.climatisationStatus.value.remainingClimatisationTime_min"
+        )
+
+    @property
     def auxiliary_climatisation(self) -> bool:
         """Return status of auxiliary climatisation."""
         climatisation_state = find_path(

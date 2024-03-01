@@ -1228,6 +1228,12 @@ def create_instruments():
             unit="minutes",
         ),
         Sensor(
+            attr="electric_remaining_climatisation_time",
+            name="Electric remaining climatisation time",
+            icon="mdi:fan-clock",
+            unit="minutes",
+        ),
+        Sensor(
             attr="car_type",
             name="Car Type",
             icon="mdi:car-select",
