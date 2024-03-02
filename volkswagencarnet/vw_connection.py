@@ -812,6 +812,16 @@ class Connection:
         except Exception as e:
             raise Exception("Unknown error during setDepartureTimers") from e
 
+    async def setAuxiliaryHeatingTimers(self, vin, data):
+        """Execute auxiliary heating timers actions."""
+        try:
+            response_raw = await self.put(
+                f"{BASE_API}/vehicle/v1/vehicles/{vin}/auxiliaryheating/timers", json=data, return_raw=True
+            )
+            return await self._handle_action_result(response_raw)
+        except Exception as e:
+            raise Exception("Unknown error during setAuxiliaryHeatingTimers") from e
+
     async def setLock(self, vin, lock, spin):
         """Remote lock and unlock actions."""
         await self.check_spin_state()

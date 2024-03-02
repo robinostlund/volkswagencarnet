@@ -61,6 +61,7 @@ class Vehicle:
             Services.CLIMATISATION: {"active": False},
             Services.CHARGING: {"active": False},
             Services.DEPARTURE_PROFILES: {"active": False},
+            Services.CLIMATISATION_TIMERS: {"active": False},
             Services.PARAMETERS: {},
         }
 
@@ -159,6 +160,7 @@ class Vehicle:
                         Services.CLIMATISATION,
                         Services.CHARGING,
                         Services.DEPARTURE_PROFILES,
+                        Services.CLIMATISATION_TIMERS,
                     ]
                 ),
                 self.get_vehicle(),
@@ -443,19 +445,35 @@ class Vehicle:
             _LOGGER.error("No climatisation support.")
             raise Exception("No climatisation support.")
 
-    async def set_departure_timer(self, timer_id, enable) -> bool:
+    async def set_departure_timer(self, timer_id, spin, enable) -> bool:
         """Turn on/off departure timer."""
         if self.is_departure_timer_supported(timer_id):
             if type(enable) is not bool:
                 _LOGGER.error("Charging departure timers setting is not supported.")
                 raise Exception("Charging departure timers setting is not supported.")
-            timers = find_path(self.attrs, f"{Services.DEPARTURE_PROFILES}.departureProfilesStatus.value.timers")
-            profiles = find_path(self.attrs, f"{Services.DEPARTURE_PROFILES}.departureProfilesStatus.value.profiles")
-            for i in range(len(timers)):
-                if timers[i].get("id", 0) == timer_id:
-                    timers[i]["enabled"] = enable
-            data = {"timers": timers, "profiles": profiles}
-            response = await self._connection.setDepartureTimers(self.vin, data)
+            data = None
+            response = None
+            if is_valid_path(
+                self.attrs, f"{Services.DEPARTURE_PROFILES}.departureProfilesStatus.value.timers"
+            ) and is_valid_path(self.attrs, f"{Services.DEPARTURE_PROFILES}.departureProfilesStatus.value.profiles"):
+                timers = find_path(self.attrs, f"{Services.DEPARTURE_PROFILES}.departureProfilesStatus.value.timers")
+                profiles = find_path(
+                    self.attrs, f"{Services.DEPARTURE_PROFILES}.departureProfilesStatus.value.profiles"
+                )
+                for i in range(len(timers)):
+                    if timers[i].get("id", 0) == timer_id:
+                        timers[i]["enabled"] = enable
+                data = {"timers": timers, "profiles": profiles}
+                response = await self._connection.setDepartureTimers(self.vin, data)
+            if is_valid_path(self.attrs, f"{Services.CLIMATISATION_TIMERS}.auxiliaryHeatingTimersStatus.value.timers"):
+                timers = find_path(
+                    self.attrs, f"{Services.CLIMATISATION_TIMERS}.auxiliaryHeatingTimersStatus.value.timers"
+                )
+                for i in range(len(timers)):
+                    if timers[i].get("id", 0) == timer_id:
+                        timers[i]["enabled"] = enable
+                data = {"spin": spin, "timers": timers}
+                response = await self._connection.setAuxiliaryHeatingTimers(self.vin, data)
             return await self._handle_response(
                 response=response, topic="departuretimer", error_msg="Failed to change departure timers setting."
             )
@@ -2218,9 +2236,19 @@ class Vehicle:
     @property
     def departure_timer1_last_updated(self) -> datetime:
         """Return last updated timestamp."""
-        return find_path(
+        if is_valid_path(
             self.attrs, f"{Services.DEPARTURE_PROFILES}.departureProfilesStatus.value.carCapturedTimestamp"
-        )
+        ):
+            return find_path(
+                self.attrs, f"{Services.DEPARTURE_PROFILES}.departureProfilesStatus.value.carCapturedTimestamp"
+            )
+        if is_valid_path(
+            self.attrs, f"{Services.CLIMATISATION_TIMERS}.auxiliaryHeatingTimersStatus.value.carCapturedTimestamp"
+        ):
+            return find_path(
+                self.attrs, f"{Services.CLIMATISATION_TIMERS}.auxiliaryHeatingTimersStatus.value.carCapturedTimestamp"
+            )
+        return None
 
     @property
     def departure_timer2_last_updated(self) -> datetime:
@@ -2280,23 +2308,29 @@ class Vehicle:
                 if recurring_days.get(day) is True:
                     recurring_on.append(day)
         data = {
-            "timerId": timer.get("id", None),
-            "profileId": profile.get("id", None),
-            "profileName": profile.get("name", None),
-            "timerType": timer_type,
-            "startTime": start_time,
-            "recurringOn": recurring_on,
-            "charging": profile.get("charging", False),
-            "climatisation": profile.get("climatisation", False),
-            "targetSOC_pct": profile.get("targetSOC_pct", None),
-            "maxChargeCurrentAC": profile.get("maxChargeCurrentAC", None),
+            "timer_id": timer.get("id", None),
+            "timer_type": timer_type,
+            "start_time": start_time,
+            "recurring_on": recurring_on,
         }
+        if profile is not None:
+            data["profile_id"] = profile.get("id", None)
+            data["profile_name"] = profile.get("name", None)
+            data["charging_enabled"] = profile.get("charging", False)
+            data["climatisation_enabled"] = profile.get("climatisation", False)
+            data["target_charge_level_pct"] = profile.get("targetSOC_pct", None)
+            data["charger_max_ac_ampere"] = profile.get("maxChargeCurrentAC", None)
         return data
 
     def departure_timer(self, timer_id: str | int):
         """Return departure timer."""
         if is_valid_path(self.attrs, f"{Services.DEPARTURE_PROFILES}.departureProfilesStatus.value.timers"):
             timers = find_path(self.attrs, f"{Services.DEPARTURE_PROFILES}.departureProfilesStatus.value.timers")
+            for timer in timers:
+                if timer.get("id", 0) == timer_id:
+                    return timer
+        if is_valid_path(self.attrs, f"{Services.CLIMATISATION_TIMERS}.auxiliaryHeatingTimersStatus.value.timers"):
+            timers = find_path(self.attrs, f"{Services.CLIMATISATION_TIMERS}.auxiliaryHeatingTimersStatus.value.timers")
             for timer in timers:
                 if timer.get("id", 0) == timer_id:
                     return timer

@@ -122,6 +122,7 @@ class Services:
     AUTOMATION = "automation"
     CHARGING = "charging"
     CLIMATISATION = "climatisation"
+    CLIMATISATION_TIMERS = "climatisationTimers"
     DEPARTURE_PROFILES = "departureProfiles"
     FUEL_STATUS = "fuelStatus"
     MEASUREMENTS = "measurements"

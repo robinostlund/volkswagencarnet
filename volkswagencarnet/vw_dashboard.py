@@ -726,6 +726,10 @@ class DepartureTimer(Switch):
     def __init__(self, id: Union[str, int]):
         self._id = id
         super().__init__(attr=f"departure_timer{id}", name=f"Departure Timer {id}", icon="mdi:car-clock")
+        self.spin = ""
+
+    def configurate(self, **config):
+        self.spin = config.get("spin", "")
 
     @property
     def state(self):
@@ -734,12 +738,12 @@ class DepartureTimer(Switch):
 
     async def turn_on(self):
         """Enable timer."""
-        await self.vehicle.set_departure_timer(self._id, True)
+        await self.vehicle.set_departure_timer(timer_id=self._id, spin=self.spin, enable=True)
         await self.vehicle.update()
 
     async def turn_off(self):
         """Disable timer."""
-        await self.vehicle.set_departure_timer(self._id, False)
+        await self.vehicle.set_departure_timer(timer_id=self._id, spin=self.spin, enable=False)
         await self.vehicle.update()
 
     @property
@@ -751,18 +755,7 @@ class DepartureTimer(Switch):
     def attributes(self):
         """Timer attributes."""
         data = self.vehicle.timer_attributes(self._id)
-        return dict(
-            timer_id=data.get("timerId"),
-            profile_id=data.get("profileId"),
-            profile_name=data.get("profileName"),
-            timer_type=data.get("timerType"),
-            start_time=data.get("startTime"),
-            recurring_on=data.get("recurringOn"),
-            charging_enabled=data.get("charging"),
-            climatisation_enabled=data.get("climatisation"),
-            target_charge_level_pct=data.get("targetSOC_pct"),
-            charger_max_ac_ampere=data.get("maxChargeCurrentAC"),
-        )
+        return dict(data)
 
 
 class WindowHeater(Switch):
