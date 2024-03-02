@@ -126,6 +126,7 @@ class Services:
     DEPARTURE_PROFILES = "departureProfiles"
     FUEL_STATUS = "fuelStatus"
     MEASUREMENTS = "measurements"
+    USER_CAPABILITIES = "userCapabilities"
     VEHICLE_LIGHTS = "vehicleLights"
     VEHICLE_HEALTH_INSPECTION = "vehicleHealthInspection"
 

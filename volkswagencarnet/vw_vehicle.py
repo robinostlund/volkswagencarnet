@@ -62,6 +62,7 @@ class Vehicle:
             Services.CHARGING: {"active": False},
             Services.DEPARTURE_PROFILES: {"active": False},
             Services.CLIMATISATION_TIMERS: {"active": False},
+            Services.USER_CAPABILITIES: {"active": False},
             Services.PARAMETERS: {},
         }
 
@@ -161,6 +162,7 @@ class Vehicle:
                         Services.CHARGING,
                         Services.DEPARTURE_PROFILES,
                         Services.CLIMATISATION_TIMERS,
+                        Services.USER_CAPABILITIES,
                     ]
                 ),
                 self.get_vehicle(),
@@ -425,10 +427,9 @@ class Vehicle:
         """Turn on/off climatisation with auxiliary heater."""
         if self.is_auxiliary_climatisation_supported:
             if action == "start":
-                data = {
-                    "duration_min": self.auxiliary_duration,
-                    "spin": spin,
-                }
+                data = {"spin": spin}
+                if self.is_auxiliary_duration_supported:
+                    data["duration_min"] = self.auxiliary_duration
             elif action == "stop":
                 data = {}
             else:
@@ -1548,9 +1549,15 @@ class Vehicle:
     @property
     def auxiliary_climatisation(self) -> bool:
         """Return status of auxiliary climatisation."""
-        climatisation_state = find_path(
-            self.attrs, f"{Services.CLIMATISATION}.auxiliaryHeatingStatus.value.climatisationState"
-        )
+        climatisation_state = None
+        if is_valid_path(self.attrs, f"{Services.CLIMATISATION}.auxiliaryHeatingStatus.value.climatisationState"):
+            climatisation_state = find_path(
+                self.attrs, f"{Services.CLIMATISATION}.auxiliaryHeatingStatus.value.climatisationState"
+            )
+        if is_valid_path(self.attrs, f"{Services.CLIMATISATION}.climatisationStatus.value.climatisationState"):
+            climatisation_state = find_path(
+                self.attrs, f"{Services.CLIMATISATION}.climatisationStatus.value.climatisationState"
+            )
         if climatisation_state in ["heating", "heatingAuxiliary", "on"]:
             return True
         return False
@@ -1558,12 +1565,26 @@ class Vehicle:
     @property
     def auxiliary_climatisation_last_updated(self) -> datetime:
         """Return status of auxiliary climatisation last updated."""
-        return find_path(self.attrs, f"{Services.CLIMATISATION}.auxiliaryHeatingStatus.value.carCapturedTimestamp")
+        if is_valid_path(self.attrs, f"{Services.CLIMATISATION}.auxiliaryHeatingStatus.value.carCapturedTimestamp"):
+            return find_path(self.attrs, f"{Services.CLIMATISATION}.auxiliaryHeatingStatus.value.carCapturedTimestamp")
+        if is_valid_path(self.attrs, f"{Services.CLIMATISATION}.climatisationStatus.value.carCapturedTimestamp"):
+            return find_path(self.attrs, f"{Services.CLIMATISATION}.climatisationStatus.value.carCapturedTimestamp")
+        return None
 
     @property
     def is_auxiliary_climatisation_supported(self) -> bool:
         """Return true if vehicle has auxiliary climatisation."""
-        return is_valid_path(self.attrs, f"{Services.CLIMATISATION}.auxiliaryHeatingStatus.value.climatisationState")
+        if is_valid_path(self.attrs, f"{Services.CLIMATISATION}.auxiliaryHeatingStatus.value.climatisationState"):
+            return True
+        if is_valid_path(self.attrs, f"{Services.USER_CAPABILITIES}.capabilitiesStatus.value"):
+            capabilities = find_path(self.attrs, f"{Services.USER_CAPABILITIES}.capabilitiesStatus.value")
+            for capability in capabilities:
+                if capability.get("id", None) == "hybridCarAuxiliaryHeating":
+                    if 1007 in capability.get("status", []):
+                        return False
+                    else:
+                        return True
+        return False
 
     @property
     def auxiliary_duration(self) -> int:
