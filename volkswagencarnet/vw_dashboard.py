@@ -317,87 +317,6 @@ class Number(Instrument):
         raise NotImplementedError
 
 
-class Climate(Instrument):
-    """Climate instrument."""
-
-    def __init__(self, attr, name, icon):
-        super().__init__(component="climate", attr=attr, name=name, icon=icon)
-        self.spin = ""
-        self.duration = CLIMA_DEFAULT_DURATION
-
-    @property
-    def hvac_mode(self):
-        raise NotImplementedError
-
-    @property
-    def target_temperature(self):
-        raise NotImplementedError
-
-    def set_temperature(self, temperature: float, **kwargs):
-        raise NotImplementedError
-
-    def set_hvac_mode(self, hvac_mode):
-        raise NotImplementedError
-
-
-class ElectricClimatisationClimate(Climate):
-    @property
-    def is_mutable(self):
-        return True
-
-    def __init__(self):
-        super().__init__(attr="electric_climatisation", name="Electric Climatisation", icon="mdi:radiator")
-
-    @property
-    def hvac_mode(self):
-        return self.vehicle.electric_climatisation
-
-    @property
-    def target_temperature(self):
-        return self.vehicle.climatisation_target_temperature
-
-    async def set_temperature(self, temperature: float, **kwargs):
-        await self.vehicle.set_climatisation_temp(temperature)
-        await self.vehicle.update()
-
-    async def set_hvac_mode(self, hvac_mode):
-        if hvac_mode:
-            await self.vehicle.set_climatisation("start")
-        else:
-            await self.vehicle.set_climatisation("stop")
-        await self.vehicle.update()
-
-
-class CombustionClimatisationClimate(Climate):
-    @property
-    def is_mutable(self):
-        return True
-
-    def __init__(self):
-        super().__init__(attr="pheater_heating", name="Parking Heater Climatisation", icon="mdi:radiator")
-
-    def configurate(self, **config):
-        self.spin = config.get("spin", "")
-        self.duration = config.get("combustionengineheatingduration", CLIMA_DEFAULT_DURATION)
-
-    @property
-    def hvac_mode(self):
-        return self.vehicle.pheater_heating
-
-    @property
-    def target_temperature(self):
-        return self.vehicle.climatisation_target_temperature
-
-    async def set_temperature(self, temperature: float, **kwargs):
-        await self.vehicle.setClimatisationTargetTemperature(temperature)
-
-    async def set_hvac_mode(self, hvac_mode):
-        if hvac_mode:
-            await self.vehicle.pheater_climatisation(spin=self.spin, duration=self.duration, mode="heating")
-        else:
-            await self.vehicle.pheater_climatisation(spin=self.spin, mode="off")
-
-
 class Position(Instrument):
     def __init__(self):
         super().__init__(component="device_tracker", attr="position", name="Position")
@@ -517,6 +436,7 @@ class AuxiliaryDuration(Number):
             name="Auxiliary duration",
             icon="mdi:timer",
             unit="min",
+            entity_type="config",
         )
         self.spin = ""
 
@@ -542,6 +462,85 @@ class AuxiliaryDuration(Number):
     @property
     def native_step(self):
         return 5
+
+    @property
+    def attributes(self) -> dict:
+        """Return attributes."""
+        return dict(last_result=self.vehicle.climater_action_status)
+
+
+class BatteryTargetSOC(Number):
+
+    def __init__(self):
+        super().__init__(
+            attr="battery_target_charge_level",
+            name="Battery target charge level",
+            icon="mdi:battery-arrow-up",
+            unit="%",
+            entity_type="config",
+        )
+
+    @property
+    def state(self):
+        return self.vehicle.battery_target_charge_level
+
+    async def set_value(self, value: int):
+        await self.vehicle.set_charging_settings(setting="battery_target_charge_level", value=value)
+        await self.vehicle.update()
+
+    @property
+    def min_value(self):
+        return 50
+
+    @property
+    def max_value(self):
+        return 100
+
+    @property
+    def native_step(self):
+        return 10
+
+    @property
+    def attributes(self) -> dict:
+        """Return attributes."""
+        return dict(last_result=self.vehicle.charger_action_status)
+
+
+class ClimatisationTargetTemperature(Number):
+
+    def __init__(self):
+        super().__init__(
+            attr="climatisation_target_temperature",
+            name="Climatisation target temperature",
+            icon="mdi:thermometer",
+            device_class=VWDeviceClass.TEMPERATURE,
+            unit=TEMP_CELSIUS,
+        )
+
+    @property
+    def state(self):
+        return self.vehicle.climatisation_target_temperature
+
+    async def set_value(self, value: float):
+        await self.vehicle.set_climatisation_settings(setting="climatisation_target_temperature", value=value)
+        await self.vehicle.update()
+
+    @property
+    def min_value(self):
+        return 15.5
+
+    @property
+    def max_value(self):
+        return 30
+
+    @property
+    def native_step(self):
+        return 0.5
+
+    @property
+    def attributes(self) -> dict:
+        """Return attributes."""
+        return dict(last_result=self.vehicle.climater_action_status)
 
 
 # Switches
@@ -577,7 +576,7 @@ class RequestUpdate(Switch):
 
 class ElectricClimatisation(Switch):
     def __init__(self):
-        super().__init__(attr="electric_climatisation", name="Electric Climatisation", icon="mdi:radiator")
+        super().__init__(attr="electric_climatisation", name="Electric Climatisation", icon="mdi:air-conditioner")
 
     @property
     def state(self):
@@ -671,11 +670,43 @@ class ReducedACCharging(Switch):
         return self.vehicle.reduced_ac_charging
 
     async def turn_on(self):
-        await self.vehicle.set_charging_settings("reduced")
+        await self.vehicle.set_charging_settings(setting="reduced_ac_charging", value="reduced")
         await self.vehicle.update()
 
     async def turn_off(self):
-        await self.vehicle.set_charging_settings("maximum")
+        await self.vehicle.set_charging_settings(setting="reduced_ac_charging", value="maximum")
+        await self.vehicle.update()
+
+    @property
+    def assumed_state(self) -> bool:
+        """Don't assume state."""
+        return False
+
+    @property
+    def attributes(self) -> dict:
+        """Return attributes."""
+        return dict(last_result=self.vehicle.charger_action_status)
+
+
+class AutoReleaseACConnector(Switch):
+    def __init__(self):
+        super().__init__(
+            attr="auto_release_ac_connector",
+            name="Auto-release AC connector",
+            icon="mdi:ev-plug-type2",
+            entity_type="config",
+        )
+
+    @property
+    def state(self):
+        return self.vehicle.auto_release_ac_connector
+
+    async def turn_on(self):
+        await self.vehicle.set_charging_settings(setting="auto_release_ac_connector", value="permanent")
+        await self.vehicle.update()
+
+    async def turn_off(self):
+        await self.vehicle.set_charging_settings(setting="auto_release_ac_connector", value="off")
         await self.vehicle.update()
 
     @property
@@ -695,6 +726,10 @@ class DepartureTimer(Switch):
     def __init__(self, id: Union[str, int]):
         self._id = id
         super().__init__(attr=f"departure_timer{id}", name=f"Departure Timer {id}", icon="mdi:car-clock")
+        self.spin = ""
+
+    def configurate(self, **config):
+        self.spin = config.get("spin", "")
 
     @property
     def state(self):
@@ -703,12 +738,12 @@ class DepartureTimer(Switch):
 
     async def turn_on(self):
         """Enable timer."""
-        await self.vehicle.set_departure_timer(self._id, True)
+        await self.vehicle.set_departure_timer(timer_id=self._id, spin=self.spin, enable=True)
         await self.vehicle.update()
 
     async def turn_off(self):
         """Disable timer."""
-        await self.vehicle.set_departure_timer(self._id, False)
+        await self.vehicle.set_departure_timer(timer_id=self._id, spin=self.spin, enable=False)
         await self.vehicle.update()
 
     @property
@@ -720,18 +755,7 @@ class DepartureTimer(Switch):
     def attributes(self):
         """Timer attributes."""
         data = self.vehicle.timer_attributes(self._id)
-        return dict(
-            timer_id=data.get("timerId"),
-            profile_id=data.get("profileId"),
-            profile_name=data.get("profileName"),
-            timer_type=data.get("timerType"),
-            start_time=data.get("startTime"),
-            recurring_on=data.get("recurringOn"),
-            charging_enabled=data.get("charging"),
-            climatisation_enabled=data.get("climatisation"),
-            target_charge_level_pct=data.get("targetSOC_pct"),
-            charger_max_ac_ampere=data.get("maxChargeCurrentAC"),
-        )
+        return dict(data)
 
 
 class WindowHeater(Switch):
@@ -775,11 +799,11 @@ class BatteryClimatisation(Switch):
         return self.vehicle.climatisation_without_external_power
 
     async def turn_on(self):
-        await self.vehicle.set_battery_climatisation(True)
+        await self.vehicle.set_climatisation_settings(setting="climatisation_without_external_power", value=True)
         await self.vehicle.update()
 
     async def turn_off(self):
-        await self.vehicle.set_battery_climatisation(False)
+        await self.vehicle.set_climatisation_settings(setting="climatisation_without_external_power", value=False)
         await self.vehicle.update()
 
     @property
@@ -793,24 +817,25 @@ class BatteryClimatisation(Switch):
         return dict(last_result=self.vehicle.climater_action_status)
 
 
-class PHeaterHeating(Switch):
+class AuxiliaryAC(Switch):
     def __init__(self):
-        super().__init__(attr="pheater_heating", name="Parking Heater Heating", icon="mdi:radiator")
-
-    def configurate(self, **config):
-        self.spin = config.get("spin", "")
-        self.duration = config.get("combustionengineheatingduration", 30)
+        super().__init__(
+            attr="auxiliary_air_conditioning",
+            name="Auxiliary air conditioning",
+            icon="mdi:air-filter",
+            entity_type="config",
+        )
 
     @property
     def state(self):
-        return self.vehicle.pheater_heating
+        return self.vehicle.auxiliary_air_conditioning
 
     async def turn_on(self):
-        await self.vehicle.set_pheater(mode="heating", spin=self.spin)
+        await self.vehicle.set_climatisation_settings(setting="auxiliary_air_conditioning", value=True)
         await self.vehicle.update()
 
     async def turn_off(self):
-        await self.vehicle.set_pheater(mode="off", spin=self.spin)
+        await self.vehicle.set_climatisation_settings(setting="auxiliary_air_conditioning", value=False)
         await self.vehicle.update()
 
     @property
@@ -821,29 +846,28 @@ class PHeaterHeating(Switch):
     @property
     def attributes(self) -> dict:
         """Return attributes."""
-        return dict(last_result=self.vehicle.pheater_action_status)
+        return dict(last_result=self.vehicle.climater_action_status)
 
 
-class PHeaterVentilation(Switch):
+class AutomaticWindowHeating(Switch):
     def __init__(self):
-        super().__init__(attr="pheater_ventilation", name="Parking Heater Ventilation", icon="mdi:radiator")
-        self.spin = ""
-        self.duration = CLIMA_DEFAULT_DURATION
-
-    def configurate(self, **config):
-        self.spin = config.get("spin", "")
-        self.duration = config.get("combustionengineclimatisationduration", CLIMA_DEFAULT_DURATION)
+        super().__init__(
+            attr="automatic_window_heating",
+            name="Automatic window heating",
+            icon="mdi:car-defrost-rear",
+            entity_type="config",
+        )
 
     @property
     def state(self):
-        return self.vehicle.pheater_ventilation
+        return self.vehicle.automatic_window_heating
 
     async def turn_on(self):
-        await self.vehicle.set_pheater(mode="ventilation", spin=self.spin)
+        await self.vehicle.set_climatisation_settings(setting="automatic_window_heating", value=True)
         await self.vehicle.update()
 
     async def turn_off(self):
-        await self.vehicle.set_pheater(mode="off", spin=self.spin)
+        await self.vehicle.set_climatisation_settings(setting="automatic_window_heating", value=False)
         await self.vehicle.update()
 
     @property
@@ -854,7 +878,71 @@ class PHeaterVentilation(Switch):
     @property
     def attributes(self) -> dict:
         """Return attributes."""
-        return dict(last_result=self.vehicle.pheater_action_status)
+        return dict(last_result=self.vehicle.climater_action_status)
+
+
+class ZoneFrontLeft(Switch):
+    def __init__(self):
+        super().__init__(
+            attr="zone_front_left",
+            name="Zone Front Left",
+            icon="mdi:account-arrow-left",
+            entity_type="config",
+        )
+
+    @property
+    def state(self):
+        return self.vehicle.zone_front_left
+
+    async def turn_on(self):
+        await self.vehicle.set_climatisation_settings(setting="zone_front_left", value=True)
+        await self.vehicle.update()
+
+    async def turn_off(self):
+        await self.vehicle.set_climatisation_settings(setting="zone_front_left", value=False)
+        await self.vehicle.update()
+
+    @property
+    def assumed_state(self) -> bool:
+        """Don't assume state."""
+        return False
+
+    @property
+    def attributes(self) -> dict:
+        """Return attributes."""
+        return dict(last_result=self.vehicle.climater_action_status)
+
+
+class ZoneFrontRight(Switch):
+    def __init__(self):
+        super().__init__(
+            attr="zone_front_right",
+            name="Zone Front Right",
+            icon="mdi:account-arrow-right",
+            entity_type="config",
+        )
+
+    @property
+    def state(self):
+        return self.vehicle.zone_front_right
+
+    async def turn_on(self):
+        await self.vehicle.set_climatisation_settings(setting="zone_front_right", value=True)
+        await self.vehicle.update()
+
+    async def turn_off(self):
+        await self.vehicle.set_climatisation_settings(setting="zone_front_right", value=False)
+        await self.vehicle.update()
+
+    @property
+    def assumed_state(self) -> bool:
+        """Don't assume state."""
+        return False
+
+    @property
+    def attributes(self) -> dict:
+        """Return attributes."""
+        return dict(last_result=self.vehicle.climater_action_status)
 
 
 class RequestResults(Sensor):
@@ -889,19 +977,22 @@ def create_instruments():
     return [
         Position(),
         # AuxiliaryDuration(),
+        BatteryTargetSOC(),
+        ClimatisationTargetTemperature(),
         DoorLock(),
         TrunkLock(),
         RequestUpdate(),
         WindowHeater(),
         BatteryClimatisation(),
-        # ElectricClimatisation(),
+        AuxiliaryAC(),
+        AutomaticWindowHeating(),
+        ZoneFrontLeft(),
+        ZoneFrontRight(),
+        ElectricClimatisation(),
         AuxiliaryClimatisation(),
-        PHeaterVentilation(),
-        PHeaterHeating(),
-        ElectricClimatisationClimate(),
-        # CombustionClimatisationClimate(),
         Charging(),
         ReducedACCharging(),
+        AutoReleaseACConnector(),
         DepartureTimer(1),
         DepartureTimer(2),
         DepartureTimer(3),
@@ -1118,12 +1209,6 @@ def create_instruments():
             state_class=VWStateClass.MEASUREMENT,
         ),
         Sensor(
-            attr="pheater_status",
-            name="Parking Heater heating/ventilation status",
-            icon="mdi:radiator",
-            unit="",
-        ),
-        Sensor(
             attr="auxiliary_duration",
             name="Auxiliary Heater heating/ventilation duration",
             icon="mdi:timer",
@@ -1136,17 +1221,16 @@ def create_instruments():
             unit="minutes",
         ),
         Sensor(
+            attr="electric_remaining_climatisation_time",
+            name="Electric remaining climatisation time",
+            icon="mdi:fan-clock",
+            unit="minutes",
+        ),
+        Sensor(
             attr="car_type",
             name="Car Type",
             icon="mdi:car-select",
             unit="",
-        ),
-        Sensor(
-            attr="requests_remaining",
-            name="Requests remaining",
-            icon="mdi:chat-alert",
-            unit="",
-            entity_type="diag",
         ),
         Sensor(
             attr="api_vehicles_status",

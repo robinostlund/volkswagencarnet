@@ -362,15 +362,11 @@ class Connection:
         if not response:
             raise Exception("Invalid or no response")
         elif response == 429:
-            return dict({"id": None, "state": "Throttled", "rate_limit_remaining": 0})
+            return dict({"id": None, "state": "Throttled"})
         else:
             request_id = response.get("data", {}).get("requestID", 0)
-            remaining = response_raw.headers.get("Vcf-Remaining-Calls")
-            _LOGGER.debug(
-                f"Request for window heating returned with request id: {request_id},"
-                f" remaining requests: {remaining}"
-            )
-            return dict({"id": str(request_id), "rate_limit_remaining": remaining})
+            _LOGGER.debug(f"Request returned with request id: {request_id}")
+            return dict({"id": str(request_id)})
 
     async def terminate(self):
         """Log out from connect services."""
@@ -399,6 +395,8 @@ class Connection:
     async def _request(self, method, url, return_raw=False, **kwargs):
         """Perform a query to the VW-Group API."""
         _LOGGER.debug(f'HTTP {method} "{url}"')
+        if kwargs.get("json", None):
+            _LOGGER.debug(f'Request payload: {kwargs.get("json", None)}')
         try:
             async with self._session.request(
                 method,
@@ -431,8 +429,6 @@ class Connection:
                     else:
                         res = {}
                         _LOGGER.debug(f"Not success status code [{response.status}] response: {response.text}")
-                    if "X-RateLimit-Remaining" in response.headers:
-                        res["rate_limit_remaining"] = response.headers.get("X-RateLimit-Remaining", "")
                 except Exception:
                     res = {}
                     _LOGGER.debug(f"Something went wrong [{response.status}] response: {response.text}")
@@ -442,7 +438,9 @@ class Connection:
                         return res
 
                 if self._session_fulldebug:
-                    _LOGGER.debug(f'Request for "{url}" returned with status code [{response.status}], response: {res}')
+                    _LOGGER.debug(
+                        f'Request for "{url}" returned with status code [{response.status}], headers: {response.headers}, response: {res}'
+                    )
                 else:
                     _LOGGER.debug(f'Request for "{url}" returned with status code [{response.status}]')
 
@@ -813,6 +811,16 @@ class Connection:
             return await self._handle_action_result(response_raw)
         except Exception as e:
             raise Exception("Unknown error during setDepartureTimers") from e
+
+    async def setAuxiliaryHeatingTimers(self, vin, data):
+        """Execute auxiliary heating timers actions."""
+        try:
+            response_raw = await self.put(
+                f"{BASE_API}/vehicle/v1/vehicles/{vin}/auxiliaryheating/timers", json=data, return_raw=True
+            )
+            return await self._handle_action_result(response_raw)
+        except Exception as e:
+            raise Exception("Unknown error during setAuxiliaryHeatingTimers") from e
 
     async def setLock(self, vin, lock, spin):
         """Remote lock and unlock actions."""
