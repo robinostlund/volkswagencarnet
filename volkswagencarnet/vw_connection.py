@@ -812,6 +812,16 @@ class Connection:
         except Exception as e:
             raise Exception("Unknown error during setChargingCareModeSettings") from e
 
+    async def setReadinessBatterySupport(self, vin, data):
+        """Execute readiness battery support actions."""
+        try:
+            response_raw = await self.put(
+                f"{BASE_API}/vehicle/v1/vehicles/{vin}/readiness/batterysupport", json=data, return_raw=True
+            )
+            return await self._handle_action_result(response_raw)
+        except Exception as e:
+            raise Exception("Unknown error during setReadinessBatterySupport") from e
+
     async def setDepartureTimers(self, vin, data):
         """Execute departure timers actions."""
         try:

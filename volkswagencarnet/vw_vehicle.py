@@ -308,7 +308,7 @@ class Vehicle:
             raise Exception("Charging settings are not supported.")
 
     async def set_charging_care_settings(self, value):
-        """Set charging settings."""
+        """Set charging care settings."""
         if self.is_battery_care_mode_supported:
             if value not in ["activated", "deactivated"]:
                 _LOGGER.error(f'Charging care mode "{value}" is not supported.')
@@ -322,6 +322,22 @@ class Vehicle:
         else:
             _LOGGER.error("Charging care settings are not supported.")
             raise Exception("Charging care settings are not supported.")
+
+    async def set_readiness_battery_support(self, value):
+        """Set readiness battery support settings."""
+        if self.is_optimised_battery_use_supported:
+            if value not in [True, False]:
+                _LOGGER.error(f'Battery support mode "{value}" is not supported.')
+                raise Exception(f'Battery support mode "{value}" is not supported.')
+            data = {"batterySupportEnabled": value}
+            self._requests["latest"] = "Batterycharge"
+            response = await self._connection.setReadinessBatterySupport(self.vin, data)
+            return await self._handle_response(
+                response=response, topic="charging", error_msg="Failed to change battery support settings"
+            )
+        else:
+            _LOGGER.error("Battery support settings are not supported.")
+            raise Exception("Battery support settings are not supported.")
 
     # Climatisation electric/auxiliary/windows (CLIMATISATION)
     async def set_climatisation_settings(self, setting, value):
@@ -1161,6 +1177,23 @@ class Vehicle:
     def is_battery_care_mode_supported(self) -> bool:
         """Return true if battery care mode is supported."""
         return is_valid_path(self.attrs, f"{Services.BATTERY_CHARGING_CARE}.chargingCareSettings.value.batteryCareMode")
+
+    @property
+    def optimised_battery_use(self) -> bool:
+        """Return optimised battery use state."""
+        return (
+            find_path(self.attrs, f"{Services.BATTERY_SUPPORT}.batterySupportStatus.value.batterySupport") == "enabled"
+        )
+
+    @property
+    def optimised_battery_use_last_updated(self) -> datetime:
+        """Return attribute last updated timestamp."""
+        return datetime.now(timezone.utc)
+
+    @property
+    def is_optimised_battery_use_supported(self) -> bool:
+        """Return true if optimised battery use is supported."""
+        return is_valid_path(self.attrs, f"{Services.BATTERY_SUPPORT}.batterySupportStatus.value.batterySupport")
 
     @property
     def energy_flow(self):

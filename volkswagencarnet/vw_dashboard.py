@@ -747,6 +747,38 @@ class BatteryCareMode(Switch):
         return dict(last_result=self.vehicle.charger_action_status)
 
 
+class OptimisedBatteryUse(Switch):
+    def __init__(self):
+        super().__init__(
+            attr="optimised_battery_use",
+            name="Optimised battery use",
+            icon="mdi:battery-check",
+            entity_type="config",
+        )
+
+    @property
+    def state(self):
+        return self.vehicle.optimised_battery_use
+
+    async def turn_on(self):
+        await self.vehicle.set_readiness_battery_support(value=True)
+        await self.vehicle.update()
+
+    async def turn_off(self):
+        await self.vehicle.set_readiness_battery_support(value=False)
+        await self.vehicle.update()
+
+    @property
+    def assumed_state(self) -> bool:
+        """Don't assume state."""
+        return False
+
+    @property
+    def attributes(self) -> dict:
+        """Return attributes."""
+        return dict(last_result=self.vehicle.charger_action_status)
+
+
 class DepartureTimer(Switch):
     """Departure timers."""
 
@@ -1021,6 +1053,7 @@ def create_instruments():
         ReducedACCharging(),
         AutoReleaseACConnector(),
         BatteryCareMode(),
+        OptimisedBatteryUse(),
         DepartureTimer(1),
         DepartureTimer(2),
         DepartureTimer(3),
