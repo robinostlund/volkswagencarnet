@@ -8,7 +8,7 @@ from itertools import product
 from os import environ as env
 from os.path import join, dirname, expanduser
 from sys import argv
-from typing import Any, TextIO, Union
+from typing import Any, TextIO
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -49,7 +49,7 @@ def obj_parser(obj: dict) -> dict:
     return obj
 
 
-def find_path(src: Union[dict, list], path: Union[str, list]) -> Any:
+def find_path(src: dict | list, path: str | list) -> Any:
     """
     Return data at path in source.
 

@@ -4,7 +4,7 @@
 
 import logging
 from datetime import datetime
-from typing import Union, Optional, Any
+from typing import Any
 
 from .vw_const import TEMP_CELSIUS, VWDeviceClass, VWStateClass
 from .vw_utilities import camel2slug
@@ -25,10 +25,10 @@ class Instrument:
         component,
         attr: str,
         name: str,
-        icon: Optional[str] = None,
-        entity_type: Optional[str] = None,
-        device_class: Optional[str] = None,
-        state_class: Optional[str] = None,
+        icon: str | None = None,
+        entity_type: str | None = None,
+        device_class: str | None = None,
+        state_class: str | None = None,
     ):
         """Init."""
         self.attr = attr
@@ -108,7 +108,7 @@ class Instrument:
             return False
 
     @property
-    def last_refresh(self) -> Optional[datetime]:
+    def last_refresh(self) -> datetime | None:
         if hasattr(self.vehicle, self.attr + "_last_updated"):
             return getattr(self.vehicle, self.attr + "_last_updated")
         _LOGGER.warning(f"Implement in subclasses. {self.__class__}:{self.attr}_last_updated")
@@ -124,11 +124,11 @@ class Sensor(Instrument):
         self,
         attr: str,
         name: str,
-        icon: Optional[str],
-        unit: Optional[str],
-        entity_type: Optional[str] = None,
-        device_class: Optional[str] = None,
-        state_class: Optional[str] = None,
+        icon: str | None,
+        unit: str | None,
+        entity_type: str | None = None,
+        device_class: str | None = None,
+        state_class: str | None = None,
     ):
         """Init."""
         super().__init__(
@@ -278,11 +278,11 @@ class Number(Instrument):
         self,
         attr: str,
         name: str,
-        icon: Optional[str],
-        unit: Optional[str],
-        entity_type: Optional[str] = None,
-        device_class: Optional[str] = None,
-        state_class: Optional[str] = None,
+        icon: str | None,
+        unit: str | None,
+        entity_type: str | None = None,
+        device_class: str | None = None,
+        state_class: str | None = None,
     ):
         """Init."""
         super().__init__(
@@ -750,7 +750,7 @@ class BatteryCareMode(Switch):
 class DepartureTimer(Switch):
     """Departure timers."""
 
-    def __init__(self, id: Union[str, int]):
+    def __init__(self, id: str | int):
         self._id = id
         super().__init__(attr=f"departure_timer{id}", name=f"Departure Timer {id}", icon="mdi:car-clock")
         self.spin = ""
