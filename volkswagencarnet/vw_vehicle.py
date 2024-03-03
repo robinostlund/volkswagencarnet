@@ -54,14 +54,17 @@ class Vehicle:
         self._services: dict[str, dict[str, Any]] = {
             # TODO needs a complete rework...
             Services.ACCESS: {"active": False},
-            Services.TRIP_STATISTICS: {"active": False},
-            Services.MEASUREMENTS: {"active": False},
-            Services.HONK_AND_FLASH: {"active": False},
-            Services.PARKING_POSITION: {"active": False},
-            Services.CLIMATISATION: {"active": False},
+            Services.BATTERY_CHARGING_CARE: {"active": False},
+            Services.BATTERY_SUPPORT: {"active": False},
             Services.CHARGING: {"active": False},
-            Services.DEPARTURE_PROFILES: {"active": False},
+            Services.CLIMATISATION: {"active": False},
             Services.CLIMATISATION_TIMERS: {"active": False},
+            Services.DEPARTURE_PROFILES: {"active": False},
+            Services.FUEL_STATUS: {"active": False},
+            Services.HONK_AND_FLASH: {"active": False},
+            Services.MEASUREMENTS: {"active": False},
+            Services.PARKING_POSITION: {"active": False},
+            Services.TRIP_STATISTICS: {"active": False},
             Services.USER_CAPABILITIES: {"active": False},
             Services.PARAMETERS: {},
         }
@@ -149,26 +152,25 @@ class Vehicle:
             await self.discover()
         if not self.deactivated:
             await asyncio.gather(
-                # TODO: we don't check against capabilities currently, but this also doesn't seem to be necessary
-                # to be checked if we should still do it for UI purposes
                 self.get_selectivestatus(
                     [
                         Services.ACCESS,
+                        Services.BATTERY_CHARGING_CARE,
+                        Services.BATTERY_SUPPORT,
+                        Services.CHARGING,
+                        Services.CLIMATISATION,
+                        Services.CLIMATISATION_TIMERS,
+                        Services.DEPARTURE_PROFILES,
                         Services.FUEL_STATUS,
+                        Services.MEASUREMENTS,
                         Services.VEHICLE_LIGHTS,
                         Services.VEHICLE_HEALTH_INSPECTION,
-                        Services.MEASUREMENTS,
-                        Services.CLIMATISATION,
-                        Services.CHARGING,
-                        Services.DEPARTURE_PROFILES,
-                        Services.CLIMATISATION_TIMERS,
                         Services.USER_CAPABILITIES,
                     ]
                 ),
                 self.get_vehicle(),
                 self.get_parkingposition(),
                 self.get_trip_last(),
-                #     return_exceptions=True,
             )
             await asyncio.gather(self.get_service_status())
         else:
@@ -304,6 +306,22 @@ class Vehicle:
         else:
             _LOGGER.error("Charging settings are not supported.")
             raise Exception("Charging settings are not supported.")
+
+    async def set_charging_care_settings(self, value):
+        """Set charging settings."""
+        if self.is_battery_care_mode_supported:
+            if value not in ["activated", "deactivated"]:
+                _LOGGER.error(f'Charging care mode "{value}" is not supported.')
+                raise Exception(f'Charging care mode "{value}" is not supported.')
+            data = {"batteryCareMode": value}
+            self._requests["latest"] = "Batterycharge"
+            response = await self._connection.setChargingCareModeSettings(self.vin, data)
+            return await self._handle_response(
+                response=response, topic="charging", error_msg="Failed to change charging care settings"
+            )
+        else:
+            _LOGGER.error("Charging care settings are not supported.")
+            raise Exception("Charging care settings are not supported.")
 
     # Climatisation electric/auxiliary/windows (CLIMATISATION)
     async def set_climatisation_settings(self, setting, value):
@@ -1125,6 +1143,24 @@ class Vehicle:
     def is_auto_release_ac_connector_supported(self) -> bool:
         """Return true if auto release ac connector is supported."""
         return is_valid_path(self.attrs, f"{Services.CHARGING}.chargingSettings.value.autoUnlockPlugWhenChargedAC")
+
+    @property
+    def battery_care_mode(self) -> bool:
+        """Return battery care mode state."""
+        return (
+            find_path(self.attrs, f"{Services.BATTERY_CHARGING_CARE}.chargingCareSettings.value.batteryCareMode")
+            == "activated"
+        )
+
+    @property
+    def battery_care_mode_last_updated(self) -> datetime:
+        """Return attribute last updated timestamp."""
+        return datetime.now(timezone.utc)
+
+    @property
+    def is_battery_care_mode_supported(self) -> bool:
+        """Return true if battery care mode is supported."""
+        return is_valid_path(self.attrs, f"{Services.BATTERY_CHARGING_CARE}.chargingCareSettings.value.batteryCareMode")
 
     @property
     def energy_flow(self):

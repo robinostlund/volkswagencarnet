@@ -714,6 +714,33 @@ class AutoReleaseACConnector(Switch):
         """Don't assume state."""
         return False
 
+
+class BatteryCareMode(Switch):
+    def __init__(self):
+        super().__init__(
+            attr="battery_care_mode",
+            name="Battery care mode",
+            icon="mdi:battery-heart-variant",
+            entity_type="config",
+        )
+
+    @property
+    def state(self):
+        return self.vehicle.battery_care_mode
+
+    async def turn_on(self):
+        await self.vehicle.set_charging_care_settings(value="activated")
+        await self.vehicle.update()
+
+    async def turn_off(self):
+        await self.vehicle.set_charging_care_settings(value="deactivated")
+        await self.vehicle.update()
+
+    @property
+    def assumed_state(self) -> bool:
+        """Don't assume state."""
+        return False
+
     @property
     def attributes(self) -> dict:
         """Return attributes."""
@@ -993,6 +1020,7 @@ def create_instruments():
         Charging(),
         ReducedACCharging(),
         AutoReleaseACConnector(),
+        BatteryCareMode(),
         DepartureTimer(1),
         DepartureTimer(2),
         DepartureTimer(3),
