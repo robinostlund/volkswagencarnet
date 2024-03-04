@@ -34,7 +34,7 @@ from .vw_const import (
     USER_AGENT,
     APP_URI,
 )
-from .vw_utilities import json_loads, read_config
+from .vw_utilities import json_loads
 from .vw_vehicle import Vehicle
 
 MAX_RETRIES_ON_RATE_LIMIT = 3
@@ -1037,7 +1037,7 @@ async def main():
         logging.basicConfig(level=logging.ERROR)
 
     async with ClientSession(headers={"Connection": "keep-alive"}) as session:
-        connection = Connection(session, **read_config())
+        connection = Connection(session)
         if await connection.doLogin():
             if await connection.update():
                 for vehicle in connection.vehicles:

@@ -4,37 +4,11 @@ import json
 import logging
 import re
 from datetime import datetime
-from itertools import product
-from os import environ as env
-from os.path import join, dirname, expanduser
-from sys import argv
-from typing import Any, TextIO
 
 _LOGGER = logging.getLogger(__name__)
 
 
-def read_config() -> dict:
-    """Read config from file."""
-    for directory, filename in product(
-        [
-            dirname(argv[0]),
-            expanduser("~"),
-            env.get("XDG_CONFIG_HOME", join(expanduser("~"), ".config")),
-        ],
-        ["vw.conf", ".vw.conf"],
-    ):
-        try:
-            config_file = join(directory, filename)
-            _LOGGER.debug("checking for config file %s", config_file)
-            config: TextIO
-            with open(config_file) as config:
-                return dict(x.split(": ") for x in config.read().strip().splitlines() if not x.startswith("#"))
-        except OSError:
-            continue
-    return {}
-
-
-def json_loads(s) -> Any:
+def json_loads(s) -> object:
     """Load JSON from string and parse timestamps."""
     return json.loads(s, object_hook=obj_parser)
 
@@ -49,7 +23,7 @@ def obj_parser(obj: dict) -> dict:
     return obj
 
 
-def find_path(src: dict | list, path: str | list) -> Any:
+def find_path(src: dict | list, path: str | list) -> object:
     """
     Return data at path in source.
 

@@ -7,7 +7,6 @@ import logging
 from collections import OrderedDict
 from datetime import datetime, timedelta, timezone
 from json import dumps as to_json
-from typing import Any
 
 from .vw_const import VehicleStatusParameter as P, Services
 from .vw_utilities import find_path, is_valid_path
@@ -40,7 +39,7 @@ class Vehicle:
         self._homeregion = "https://msg.volkswagen.de"
         self._discovered = False
         self._states = {}
-        self._requests: dict[str, Any] = {
+        self._requests: dict[str, object] = {
             "departuretimer": {"status": "", "timestamp": datetime.now(timezone.utc)},
             "batterycharge": {"status": "", "timestamp": datetime.now(timezone.utc)},
             "climatisation": {"status": "", "timestamp": datetime.now(timezone.utc)},
@@ -51,7 +50,7 @@ class Vehicle:
         }
 
         # API Endpoints that might be enabled for car (that we support)
-        self._services: dict[str, dict[str, Any]] = {
+        self._services: dict[str, dict[str, object]] = {
             # TODO needs a complete rework...
             Services.ACCESS: {"active": False},
             Services.BATTERY_CHARGING_CARE: {"active": False},

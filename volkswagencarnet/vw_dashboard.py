@@ -4,13 +4,11 @@
 
 import logging
 from datetime import datetime
-from typing import Any
 
 from .vw_const import TEMP_CELSIUS, VWDeviceClass, VWStateClass
 from .vw_utilities import camel2slug
 from .vw_vehicle import Vehicle
 
-CLIMA_DEFAULT_DURATION = 30
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -85,7 +83,7 @@ class Instrument:
         return self.state
 
     @property
-    def state(self) -> Any:
+    def state(self) -> object:
         """Return current state."""
         if hasattr(self.vehicle, self.attr):
             return getattr(self.vehicle, self.attr)
@@ -1014,7 +1012,7 @@ class RequestResults(Sensor):
         )
 
     @property
-    def state(self) -> Any:
+    def state(self) -> object:
         """Return current state."""
         if self.vehicle.request_results.get("state", False):
             return self.vehicle.request_results.get("state")
