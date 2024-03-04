@@ -5,7 +5,6 @@ from __future__ import annotations
 import hashlib
 import re
 import secrets
-import sys
 import time
 from base64 import b64encode, urlsafe_b64encode
 from datetime import timedelta, datetime, timezone
@@ -15,7 +14,7 @@ from sys import version_info
 import asyncio
 import jwt
 import logging
-from aiohttp import ClientSession, ClientTimeout, client_exceptions
+from aiohttp import ClientTimeout, client_exceptions
 from aiohttp.hdrs import METH_GET, METH_POST, METH_PUT
 from bs4 import BeautifulSoup
 from json import dumps as to_json
@@ -1025,28 +1024,3 @@ class Connection:
         except OSError as error:
             _LOGGER.warning("Could not validate login: %s", error)
             return False
-
-
-async def main():
-    """Run the program."""
-    if "-v" in sys.argv:
-        logging.basicConfig(level=logging.INFO)
-    elif "-vv" in sys.argv:
-        logging.basicConfig(level=logging.DEBUG)
-    else:
-        logging.basicConfig(level=logging.ERROR)
-
-    async with ClientSession(headers={"Connection": "keep-alive"}) as session:
-        connection = Connection(session)
-        if await connection.doLogin():
-            if await connection.update():
-                for vehicle in connection.vehicles:
-                    print(f"Vehicle id: {vehicle}")
-                    print("Supported sensors:")
-                    for instrument in vehicle.dashboard().instruments:
-                        print(f" - {instrument.name} (domain:{instrument.component}) - {instrument.str_state}")
-
-
-if __name__ == "__main__":
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(main())
