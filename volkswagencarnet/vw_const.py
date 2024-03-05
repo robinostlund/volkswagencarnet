@@ -126,6 +126,7 @@ class Services:
     CLIMATISATION = "climatisation"
     CLIMATISATION_TIMERS = "climatisationTimers"
     DEPARTURE_PROFILES = "departureProfiles"
+    DEPARTURE_TIMERS = "departureTimers"
     FUEL_STATUS = "fuelStatus"
     MEASUREMENTS = "measurements"
     USER_CAPABILITIES = "userCapabilities"

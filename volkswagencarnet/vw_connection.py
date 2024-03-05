@@ -821,7 +821,7 @@ class Connection:
         except Exception as e:
             raise Exception("Unknown error during setReadinessBatterySupport") from e
 
-    async def setDepartureTimers(self, vin, data):
+    async def setDepartureProfiles(self, vin, data):
         """Execute departure timers actions."""
         try:
             response_raw = await self.put(
@@ -829,7 +829,7 @@ class Connection:
             )
             return await self._handle_action_result(response_raw)
         except Exception as e:
-            raise Exception("Unknown error during setDepartureTimers") from e
+            raise Exception("Unknown error during setDepartureProfiles") from e
 
     async def setClimatisationTimers(self, vin, data):
         """Execute climatisation timers actions."""
@@ -839,7 +839,7 @@ class Connection:
             )
             return await self._handle_action_result(response_raw)
         except Exception as e:
-            raise Exception("Unknown error during setDepartureTimers") from e
+            raise Exception("Unknown error during setClimatisationTimers") from e
 
     async def setAuxiliaryHeatingTimers(self, vin, data):
         """Execute auxiliary heating timers actions."""
@@ -850,6 +850,16 @@ class Connection:
             return await self._handle_action_result(response_raw)
         except Exception as e:
             raise Exception("Unknown error during setAuxiliaryHeatingTimers") from e
+
+    async def setDepartureTimers(self, vin, data):
+        """Execute departure timers actions."""
+        try:
+            response_raw = await self.put(
+                f"{BASE_API}/vehicle/v1/vehicles/{vin}/departure/timers", json=data, return_raw=True
+            )
+            return await self._handle_action_result(response_raw)
+        except Exception as e:
+            raise Exception("Unknown error during setDepartureTimers") from e
 
     async def setLock(self, vin, lock, spin):
         """Remote lock and unlock actions."""

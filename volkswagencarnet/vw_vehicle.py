@@ -59,6 +59,7 @@ class Vehicle:
             Services.CLIMATISATION: {"active": False},
             Services.CLIMATISATION_TIMERS: {"active": False},
             Services.DEPARTURE_PROFILES: {"active": False},
+            Services.DEPARTURE_TIMERS: {"active": False},
             Services.FUEL_STATUS: {"active": False},
             Services.HONK_AND_FLASH: {"active": False},
             Services.MEASUREMENTS: {"active": False},
@@ -160,6 +161,7 @@ class Vehicle:
                         Services.CLIMATISATION,
                         Services.CLIMATISATION_TIMERS,
                         Services.DEPARTURE_PROFILES,
+                        Services.DEPARTURE_TIMERS,
                         Services.FUEL_STATUS,
                         Services.MEASUREMENTS,
                         Services.VEHICLE_LIGHTS,
@@ -498,7 +500,7 @@ class Vehicle:
                     if timers[i].get("id", 0) == timer_id:
                         timers[i]["enabled"] = enable
                 data = {"timers": timers, "profiles": profiles}
-                response = await self._connection.setDepartureTimers(self.vin, data)
+                response = await self._connection.setDepartureProfiles(self.vin, data)
             if is_valid_path(self.attrs, f"{Services.CLIMATISATION_TIMERS}.auxiliaryHeatingTimersStatus.value.timers"):
                 timers = find_path(
                     self.attrs, f"{Services.CLIMATISATION_TIMERS}.auxiliaryHeatingTimersStatus.value.timers"
@@ -508,6 +510,13 @@ class Vehicle:
                         timers[i]["enabled"] = enable
                 data = {"spin": spin, "timers": timers}
                 response = await self._connection.setAuxiliaryHeatingTimers(self.vin, data)
+            if is_valid_path(self.attrs, f"{Services.DEPARTURE_TIMERS}.departureTimersStatus.value.timers"):
+                timers = find_path(self.attrs, f"{Services.DEPARTURE_TIMERS}.departureTimersStatus.value.timers")
+                for i in range(len(timers)):
+                    if timers[i].get("id", 0) == timer_id:
+                        timers[i]["enabled"] = enable
+                data = {"timers": timers}
+                response = await self._connection.setDepartureTimers(self.vin, data)
             return await self._handle_response(
                 response=response, topic="departuretimer", error_msg="Failed to change departure timers setting."
             )
@@ -2358,6 +2367,10 @@ class Vehicle:
             return find_path(
                 self.attrs, f"{Services.CLIMATISATION_TIMERS}.auxiliaryHeatingTimersStatus.value.carCapturedTimestamp"
             )
+        if is_valid_path(self.attrs, f"{Services.DEPARTURE_TIMERS}.departureTimersStatus.value.carCapturedTimestamp"):
+            return find_path(
+                self.attrs, f"{Services.DEPARTURE_TIMERS}.departureTimersStatus.value.carCapturedTimestamp"
+            )
         return None
 
     @property
@@ -2412,6 +2425,11 @@ class Vehicle:
                 if type(start_date_time) is str:
                     start_date_time = datetime.strptime(start_date_time, "%Y-%m-%dT%H:%M:%S")
                 start_time = start_date_time
+            if timer.get("singleTimer", None).get("departureDateTimeLocal", None):
+                start_date_time = timer.get("singleTimer", None).get("departureDateTimeLocal", None)
+                if type(start_date_time) is str:
+                    start_date_time = datetime.strptime(start_date_time, "%Y-%m-%dT%H:%M:%S")
+                start_time = start_date_time
         elif timer.get("recurringTimer", None):
             timer_type = "recurring"
             if timer.get("recurringTimer", None).get("startTime", None):
@@ -2424,6 +2442,9 @@ class Vehicle:
                 )
             if timer.get("recurringTimer", None).get("startTimeLocal", None):
                 start_date_time = timer.get("recurringTimer", None).get("startTimeLocal", None)
+                start_time = datetime.strptime(start_date_time, "%H:%M").strftime("%H:%M")
+            if timer.get("recurringTimer", None).get("departureTimeLocal", None):
+                start_date_time = timer.get("recurringTimer", None).get("departureTimeLocal", None)
                 start_time = datetime.strptime(start_date_time, "%H:%M").strftime("%H:%M")
             recurring_days = timer.get("recurringTimer", None).get("recurringOn", None)
             for day in recurring_days:
@@ -2442,6 +2463,14 @@ class Vehicle:
             data["climatisation_enabled"] = profile.get("climatisation", False)
             data["target_charge_level_pct"] = profile.get("targetSOC_pct", None)
             data["charger_max_ac_ampere"] = profile.get("maxChargeCurrentAC", None)
+        if timer.get("charging", None) is not None:
+            data["charging_enabled"] = timer.get("charging", False)
+        if timer.get("climatisation", None) is not None:
+            data["climatisation_enabled"] = timer.get("climatisation", False)
+        if timer.get("preferredChargingTimes", None):
+            preferred_charging_times = timer.get("preferredChargingTimes", None)[0]
+            data["preferred_charging_start_time"] = preferred_charging_times.get("startTimeLocal", None)
+            data["preferred_charging_end_time"] = preferred_charging_times.get("endTimeLocal", None)
         return data
 
     def departure_timer(self, timer_id: str | int):
@@ -2453,6 +2482,11 @@ class Vehicle:
                     return timer
         if is_valid_path(self.attrs, f"{Services.CLIMATISATION_TIMERS}.auxiliaryHeatingTimersStatus.value.timers"):
             timers = find_path(self.attrs, f"{Services.CLIMATISATION_TIMERS}.auxiliaryHeatingTimersStatus.value.timers")
+            for timer in timers:
+                if timer.get("id", 0) == timer_id:
+                    return timer
+        if is_valid_path(self.attrs, f"{Services.DEPARTURE_TIMERS}.departureTimersStatus.value.timers"):
+            timers = find_path(self.attrs, f"{Services.DEPARTURE_TIMERS}.departureTimersStatus.value.timers")
             for timer in timers:
                 if timer.get("id", 0) == timer_id:
                     return timer
