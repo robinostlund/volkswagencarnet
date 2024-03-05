@@ -2402,17 +2402,29 @@ class Vehicle:
         start_time = None
         if timer.get("singleTimer", None):
             timer_type = "single"
-            start_date_time = timer.get("singleTimer", None).get("startDateTime", None)
-            start_time = start_date_time.replace(tzinfo=timezone.utc).astimezone(tz=None).strftime("%Y-%m-%dT%H:%M:%S")
+            if timer.get("singleTimer", None).get("startDateTime", None):
+                start_date_time = timer.get("singleTimer", None).get("startDateTime", None)
+                start_time = (
+                    start_date_time.replace(tzinfo=timezone.utc).astimezone(tz=None).strftime("%Y-%m-%dT%H:%M:%S")
+                )
+            if timer.get("singleTimer", None).get("startDateTimeLocal", None):
+                start_date_time = timer.get("singleTimer", None).get("startDateTimeLocal", None)
+                if type(start_date_time) is str:
+                    start_date_time = datetime.strptime(start_date_time, "%Y-%m-%dT%H:%M:%S")
+                start_time = start_date_time
         elif timer.get("recurringTimer", None):
             timer_type = "recurring"
-            start_date_time = timer.get("recurringTimer", None).get("startTime", None)
-            start_time = (
-                datetime.strptime(start_date_time, "%H:%M")
-                .replace(tzinfo=timezone.utc)
-                .astimezone(tz=None)
-                .strftime("%H:%M")
-            )
+            if timer.get("recurringTimer", None).get("startTime", None):
+                start_date_time = timer.get("recurringTimer", None).get("startTime", None)
+                start_time = (
+                    datetime.strptime(start_date_time, "%H:%M")
+                    .replace(tzinfo=timezone.utc)
+                    .astimezone(tz=None)
+                    .strftime("%H:%M")
+                )
+            if timer.get("recurringTimer", None).get("startTimeLocal", None):
+                start_date_time = timer.get("recurringTimer", None).get("startTimeLocal", None)
+                start_time = datetime.strptime(start_date_time, "%H:%M").strftime("%H:%M")
             recurring_days = timer.get("recurringTimer", None).get("recurringOn", None)
             for day in recurring_days:
                 if recurring_days.get(day) is True:
