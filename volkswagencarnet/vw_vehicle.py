@@ -7,7 +7,6 @@ import logging
 from collections import OrderedDict
 from datetime import datetime, timedelta, timezone
 from json import dumps as to_json
-from typing import Any
 
 from .vw_const import VehicleStatusParameter as P, Services
 from .vw_utilities import find_path, is_valid_path
@@ -40,7 +39,7 @@ class Vehicle:
         self._homeregion = "https://msg.volkswagen.de"
         self._discovered = False
         self._states = {}
-        self._requests: dict[str, Any] = {
+        self._requests: dict[str, object] = {
             "departuretimer": {"status": "", "timestamp": datetime.now(timezone.utc)},
             "batterycharge": {"status": "", "timestamp": datetime.now(timezone.utc)},
             "climatisation": {"status": "", "timestamp": datetime.now(timezone.utc)},
@@ -51,17 +50,21 @@ class Vehicle:
         }
 
         # API Endpoints that might be enabled for car (that we support)
-        self._services: dict[str, dict[str, Any]] = {
+        self._services: dict[str, dict[str, object]] = {
             # TODO needs a complete rework...
             Services.ACCESS: {"active": False},
-            Services.TRIP_STATISTICS: {"active": False},
-            Services.MEASUREMENTS: {"active": False},
-            Services.HONK_AND_FLASH: {"active": False},
-            Services.PARKING_POSITION: {"active": False},
-            Services.CLIMATISATION: {"active": False},
+            Services.BATTERY_CHARGING_CARE: {"active": False},
+            Services.BATTERY_SUPPORT: {"active": False},
             Services.CHARGING: {"active": False},
-            Services.DEPARTURE_PROFILES: {"active": False},
+            Services.CLIMATISATION: {"active": False},
             Services.CLIMATISATION_TIMERS: {"active": False},
+            Services.DEPARTURE_PROFILES: {"active": False},
+            Services.DEPARTURE_TIMERS: {"active": False},
+            Services.FUEL_STATUS: {"active": False},
+            Services.HONK_AND_FLASH: {"active": False},
+            Services.MEASUREMENTS: {"active": False},
+            Services.PARKING_POSITION: {"active": False},
+            Services.TRIP_STATISTICS: {"active": False},
             Services.USER_CAPABILITIES: {"active": False},
             Services.PARAMETERS: {},
         }
@@ -149,26 +152,26 @@ class Vehicle:
             await self.discover()
         if not self.deactivated:
             await asyncio.gather(
-                # TODO: we don't check against capabilities currently, but this also doesn't seem to be necessary
-                # to be checked if we should still do it for UI purposes
                 self.get_selectivestatus(
                     [
                         Services.ACCESS,
+                        Services.BATTERY_CHARGING_CARE,
+                        Services.BATTERY_SUPPORT,
+                        Services.CHARGING,
+                        Services.CLIMATISATION,
+                        Services.CLIMATISATION_TIMERS,
+                        Services.DEPARTURE_PROFILES,
+                        Services.DEPARTURE_TIMERS,
                         Services.FUEL_STATUS,
+                        Services.MEASUREMENTS,
                         Services.VEHICLE_LIGHTS,
                         Services.VEHICLE_HEALTH_INSPECTION,
-                        Services.MEASUREMENTS,
-                        Services.CLIMATISATION,
-                        Services.CHARGING,
-                        Services.DEPARTURE_PROFILES,
-                        Services.CLIMATISATION_TIMERS,
                         Services.USER_CAPABILITIES,
                     ]
                 ),
                 self.get_vehicle(),
                 self.get_parkingposition(),
                 self.get_trip_last(),
-                #     return_exceptions=True,
             )
             await asyncio.gather(self.get_service_status())
         else:
@@ -304,6 +307,38 @@ class Vehicle:
         else:
             _LOGGER.error("Charging settings are not supported.")
             raise Exception("Charging settings are not supported.")
+
+    async def set_charging_care_settings(self, value):
+        """Set charging care settings."""
+        if self.is_battery_care_mode_supported:
+            if value not in ["activated", "deactivated"]:
+                _LOGGER.error(f'Charging care mode "{value}" is not supported.')
+                raise Exception(f'Charging care mode "{value}" is not supported.')
+            data = {"batteryCareMode": value}
+            self._requests["latest"] = "Batterycharge"
+            response = await self._connection.setChargingCareModeSettings(self.vin, data)
+            return await self._handle_response(
+                response=response, topic="charging", error_msg="Failed to change charging care settings"
+            )
+        else:
+            _LOGGER.error("Charging care settings are not supported.")
+            raise Exception("Charging care settings are not supported.")
+
+    async def set_readiness_battery_support(self, value):
+        """Set readiness battery support settings."""
+        if self.is_optimised_battery_use_supported:
+            if value not in [True, False]:
+                _LOGGER.error(f'Battery support mode "{value}" is not supported.')
+                raise Exception(f'Battery support mode "{value}" is not supported.')
+            data = {"batterySupportEnabled": value}
+            self._requests["latest"] = "Batterycharge"
+            response = await self._connection.setReadinessBatterySupport(self.vin, data)
+            return await self._handle_response(
+                response=response, topic="charging", error_msg="Failed to change battery support settings"
+            )
+        else:
+            _LOGGER.error("Battery support settings are not supported.")
+            raise Exception("Battery support settings are not supported.")
 
     # Climatisation electric/auxiliary/windows (CLIMATISATION)
     async def set_climatisation_settings(self, setting, value):
@@ -465,7 +500,7 @@ class Vehicle:
                     if timers[i].get("id", 0) == timer_id:
                         timers[i]["enabled"] = enable
                 data = {"timers": timers, "profiles": profiles}
-                response = await self._connection.setDepartureTimers(self.vin, data)
+                response = await self._connection.setDepartureProfiles(self.vin, data)
             if is_valid_path(self.attrs, f"{Services.CLIMATISATION_TIMERS}.auxiliaryHeatingTimersStatus.value.timers"):
                 timers = find_path(
                     self.attrs, f"{Services.CLIMATISATION_TIMERS}.auxiliaryHeatingTimersStatus.value.timers"
@@ -475,12 +510,40 @@ class Vehicle:
                         timers[i]["enabled"] = enable
                 data = {"spin": spin, "timers": timers}
                 response = await self._connection.setAuxiliaryHeatingTimers(self.vin, data)
+            if is_valid_path(self.attrs, f"{Services.DEPARTURE_TIMERS}.departureTimersStatus.value.timers"):
+                timers = find_path(self.attrs, f"{Services.DEPARTURE_TIMERS}.departureTimersStatus.value.timers")
+                for i in range(len(timers)):
+                    if timers[i].get("id", 0) == timer_id:
+                        timers[i]["enabled"] = enable
+                data = {"timers": timers}
+                response = await self._connection.setDepartureTimers(self.vin, data)
             return await self._handle_response(
                 response=response, topic="departuretimer", error_msg="Failed to change departure timers setting."
             )
         else:
             _LOGGER.error("Departure timers are not supported.")
             raise Exception("Departure timers are not supported.")
+
+    async def set_ac_departure_timer(self, timer_id, enable) -> bool:
+        """Turn on/off ac departure timer."""
+        if self.is_ac_departure_timer_supported(timer_id):
+            if type(enable) is not bool:
+                _LOGGER.error("Charging climatisation departure timers setting is not supported.")
+                raise Exception("Charging climatisation departure timers setting is not supported.")
+            timers = find_path(self.attrs, f"{Services.CLIMATISATION_TIMERS}.climatisationTimersStatus.value.timers")
+            for i in range(len(timers)):
+                if timers[i].get("id", 0) == timer_id:
+                    timers[i]["enabled"] = enable
+            data = {"timers": timers}
+            response = await self._connection.setClimatisationTimers(self.vin, data)
+            return await self._handle_response(
+                response=response,
+                topic="departuretimer",
+                error_msg="Failed to change climatisation departure timers setting.",
+            )
+        else:
+            _LOGGER.error("Climatisation departure timers are not supported.")
+            raise Exception("Climatisation departure timers are not supported.")
 
     # Lock (RLU)
     async def set_lock(self, action, spin):
@@ -1125,6 +1188,41 @@ class Vehicle:
     def is_auto_release_ac_connector_supported(self) -> bool:
         """Return true if auto release ac connector is supported."""
         return is_valid_path(self.attrs, f"{Services.CHARGING}.chargingSettings.value.autoUnlockPlugWhenChargedAC")
+
+    @property
+    def battery_care_mode(self) -> bool:
+        """Return battery care mode state."""
+        return (
+            find_path(self.attrs, f"{Services.BATTERY_CHARGING_CARE}.chargingCareSettings.value.batteryCareMode")
+            == "activated"
+        )
+
+    @property
+    def battery_care_mode_last_updated(self) -> datetime:
+        """Return attribute last updated timestamp."""
+        return datetime.now(timezone.utc)
+
+    @property
+    def is_battery_care_mode_supported(self) -> bool:
+        """Return true if battery care mode is supported."""
+        return is_valid_path(self.attrs, f"{Services.BATTERY_CHARGING_CARE}.chargingCareSettings.value.batteryCareMode")
+
+    @property
+    def optimised_battery_use(self) -> bool:
+        """Return optimised battery use state."""
+        return (
+            find_path(self.attrs, f"{Services.BATTERY_SUPPORT}.batterySupportStatus.value.batterySupport") == "enabled"
+        )
+
+    @property
+    def optimised_battery_use_last_updated(self) -> datetime:
+        """Return attribute last updated timestamp."""
+        return datetime.now(timezone.utc)
+
+    @property
+    def is_optimised_battery_use_supported(self) -> bool:
+        """Return true if optimised battery use is supported."""
+        return is_valid_path(self.attrs, f"{Services.BATTERY_SUPPORT}.batterySupportStatus.value.batterySupport")
 
     @property
     def energy_flow(self):
@@ -2269,6 +2367,10 @@ class Vehicle:
             return find_path(
                 self.attrs, f"{Services.CLIMATISATION_TIMERS}.auxiliaryHeatingTimersStatus.value.carCapturedTimestamp"
             )
+        if is_valid_path(self.attrs, f"{Services.DEPARTURE_TIMERS}.departureTimersStatus.value.carCapturedTimestamp"):
+            return find_path(
+                self.attrs, f"{Services.DEPARTURE_TIMERS}.departureTimersStatus.value.carCapturedTimestamp"
+            )
         return None
 
     @property
@@ -2313,6 +2415,150 @@ class Vehicle:
         start_time = None
         if timer.get("singleTimer", None):
             timer_type = "single"
+            if timer.get("singleTimer", None).get("startDateTime", None):
+                start_date_time = timer.get("singleTimer", None).get("startDateTime", None)
+                start_time = (
+                    start_date_time.replace(tzinfo=timezone.utc).astimezone(tz=None).strftime("%Y-%m-%dT%H:%M:%S")
+                )
+            if timer.get("singleTimer", None).get("startDateTimeLocal", None):
+                start_date_time = timer.get("singleTimer", None).get("startDateTimeLocal", None)
+                if type(start_date_time) is str:
+                    start_date_time = datetime.strptime(start_date_time, "%Y-%m-%dT%H:%M:%S")
+                start_time = start_date_time
+            if timer.get("singleTimer", None).get("departureDateTimeLocal", None):
+                start_date_time = timer.get("singleTimer", None).get("departureDateTimeLocal", None)
+                if type(start_date_time) is str:
+                    start_date_time = datetime.strptime(start_date_time, "%Y-%m-%dT%H:%M:%S")
+                start_time = start_date_time
+        elif timer.get("recurringTimer", None):
+            timer_type = "recurring"
+            if timer.get("recurringTimer", None).get("startTime", None):
+                start_date_time = timer.get("recurringTimer", None).get("startTime", None)
+                start_time = (
+                    datetime.strptime(start_date_time, "%H:%M")
+                    .replace(tzinfo=timezone.utc)
+                    .astimezone(tz=None)
+                    .strftime("%H:%M")
+                )
+            if timer.get("recurringTimer", None).get("startTimeLocal", None):
+                start_date_time = timer.get("recurringTimer", None).get("startTimeLocal", None)
+                start_time = datetime.strptime(start_date_time, "%H:%M").strftime("%H:%M")
+            if timer.get("recurringTimer", None).get("departureTimeLocal", None):
+                start_date_time = timer.get("recurringTimer", None).get("departureTimeLocal", None)
+                start_time = datetime.strptime(start_date_time, "%H:%M").strftime("%H:%M")
+            recurring_days = timer.get("recurringTimer", None).get("recurringOn", None)
+            for day in recurring_days:
+                if recurring_days.get(day) is True:
+                    recurring_on.append(day)
+        data = {
+            "timer_id": timer.get("id", None),
+            "timer_type": timer_type,
+            "start_time": start_time,
+            "recurring_on": recurring_on,
+        }
+        if profile is not None:
+            data["profile_id"] = profile.get("id", None)
+            data["profile_name"] = profile.get("name", None)
+            data["charging_enabled"] = profile.get("charging", False)
+            data["climatisation_enabled"] = profile.get("climatisation", False)
+            data["target_charge_level_pct"] = profile.get("targetSOC_pct", None)
+            data["charger_max_ac_ampere"] = profile.get("maxChargeCurrentAC", None)
+        if timer.get("charging", None) is not None:
+            data["charging_enabled"] = timer.get("charging", False)
+        if timer.get("climatisation", None) is not None:
+            data["climatisation_enabled"] = timer.get("climatisation", False)
+        if timer.get("preferredChargingTimes", None):
+            preferred_charging_times = timer.get("preferredChargingTimes", None)[0]
+            data["preferred_charging_start_time"] = preferred_charging_times.get("startTimeLocal", None)
+            data["preferred_charging_end_time"] = preferred_charging_times.get("endTimeLocal", None)
+        return data
+
+    def departure_timer(self, timer_id: str | int):
+        """Return departure timer."""
+        if is_valid_path(self.attrs, f"{Services.DEPARTURE_PROFILES}.departureProfilesStatus.value.timers"):
+            timers = find_path(self.attrs, f"{Services.DEPARTURE_PROFILES}.departureProfilesStatus.value.timers")
+            for timer in timers:
+                if timer.get("id", 0) == timer_id:
+                    return timer
+        if is_valid_path(self.attrs, f"{Services.CLIMATISATION_TIMERS}.auxiliaryHeatingTimersStatus.value.timers"):
+            timers = find_path(self.attrs, f"{Services.CLIMATISATION_TIMERS}.auxiliaryHeatingTimersStatus.value.timers")
+            for timer in timers:
+                if timer.get("id", 0) == timer_id:
+                    return timer
+        if is_valid_path(self.attrs, f"{Services.DEPARTURE_TIMERS}.departureTimersStatus.value.timers"):
+            timers = find_path(self.attrs, f"{Services.DEPARTURE_TIMERS}.departureTimersStatus.value.timers")
+            for timer in timers:
+                if timer.get("id", 0) == timer_id:
+                    return timer
+        return None
+
+    def departure_profile(self, profile_id: str | int):
+        """Return departure profile."""
+        if is_valid_path(self.attrs, f"{Services.DEPARTURE_PROFILES}.departureProfilesStatus.value.profiles"):
+            profiles = find_path(self.attrs, f"{Services.DEPARTURE_PROFILES}.departureProfilesStatus.value.profiles")
+            for profile in profiles:
+                if profile.get("id", 0) == profile_id:
+                    return profile
+        return None
+
+    # AC Departure timers
+    @property
+    def ac_departure_timer1(self):
+        """Return ac timer #1 status."""
+        return self.ac_departure_timer_enabled(1)
+
+    @property
+    def ac_departure_timer2(self):
+        """Return ac timer #2 status."""
+        return self.ac_departure_timer_enabled(2)
+
+    @property
+    def ac_departure_timer1_last_updated(self) -> datetime:
+        """Return last updated timestamp."""
+        return find_path(
+            self.attrs, f"{Services.CLIMATISATION_TIMERS}.climatisationTimersStatus.value.carCapturedTimestamp"
+        )
+
+    @property
+    def ac_departure_timer2_last_updated(self) -> datetime:
+        """Return last updated timestamp."""
+        return self.ac_departure_timer1_last_updated
+
+    @property
+    def is_ac_departure_timer1_supported(self) -> bool:
+        """Check if ac timer 1 is supported."""
+        return self.is_ac_departure_timer_supported(1)
+
+    @property
+    def is_ac_departure_timer2_supported(self) -> bool:
+        """Check if ac timer 2 is supported."""
+        return self.is_ac_departure_timer_supported(2)
+
+    def ac_departure_timer_enabled(self, timer_id: str | int) -> bool:
+        """Return if departure timer is enabled."""
+        return self.ac_departure_timer(timer_id).get("enabled", False)
+
+    def is_ac_departure_timer_supported(self, timer_id: str | int) -> bool:
+        """Return true if ac departure timer is supported."""
+        return self.ac_departure_timer(timer_id) is not None
+
+    def ac_departure_timer(self, timer_id: str | int):
+        """Return ac departure timer."""
+        if is_valid_path(self.attrs, f"{Services.CLIMATISATION_TIMERS}.climatisationTimersStatus.value.timers"):
+            timers = find_path(self.attrs, f"{Services.CLIMATISATION_TIMERS}.climatisationTimersStatus.value.timers")
+            for timer in timers:
+                if timer.get("id", 0) == timer_id:
+                    return timer
+        return None
+
+    def ac_timer_attributes(self, timer_id: str | int):
+        """Return ac departure timer attributes."""
+        timer = self.ac_departure_timer(timer_id)
+        timer_type = None
+        recurring_on = []
+        start_time = None
+        if timer.get("singleTimer", None):
+            timer_type = "single"
             start_date_time = timer.get("singleTimer", None).get("startDateTime", None)
             start_time = start_date_time.replace(tzinfo=timezone.utc).astimezone(tz=None).strftime("%Y-%m-%dT%H:%M:%S")
         elif timer.get("recurringTimer", None):
@@ -2334,37 +2580,7 @@ class Vehicle:
             "start_time": start_time,
             "recurring_on": recurring_on,
         }
-        if profile is not None:
-            data["profile_id"] = profile.get("id", None)
-            data["profile_name"] = profile.get("name", None)
-            data["charging_enabled"] = profile.get("charging", False)
-            data["climatisation_enabled"] = profile.get("climatisation", False)
-            data["target_charge_level_pct"] = profile.get("targetSOC_pct", None)
-            data["charger_max_ac_ampere"] = profile.get("maxChargeCurrentAC", None)
         return data
-
-    def departure_timer(self, timer_id: str | int):
-        """Return departure timer."""
-        if is_valid_path(self.attrs, f"{Services.DEPARTURE_PROFILES}.departureProfilesStatus.value.timers"):
-            timers = find_path(self.attrs, f"{Services.DEPARTURE_PROFILES}.departureProfilesStatus.value.timers")
-            for timer in timers:
-                if timer.get("id", 0) == timer_id:
-                    return timer
-        if is_valid_path(self.attrs, f"{Services.CLIMATISATION_TIMERS}.auxiliaryHeatingTimersStatus.value.timers"):
-            timers = find_path(self.attrs, f"{Services.CLIMATISATION_TIMERS}.auxiliaryHeatingTimersStatus.value.timers")
-            for timer in timers:
-                if timer.get("id", 0) == timer_id:
-                    return timer
-        return None
-
-    def departure_profile(self, profile_id: str | int):
-        """Return departure profile."""
-        if is_valid_path(self.attrs, f"{Services.DEPARTURE_PROFILES}.departureProfilesStatus.value.profiles"):
-            profiles = find_path(self.attrs, f"{Services.DEPARTURE_PROFILES}.departureProfilesStatus.value.profiles")
-            for profile in profiles:
-                if profile.get("id", 0) == profile_id:
-                    return profile
-        return None
 
     # Trip data
     @property

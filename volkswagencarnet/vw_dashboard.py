@@ -4,13 +4,11 @@
 
 import logging
 from datetime import datetime
-from typing import Union, Optional, Any
 
 from .vw_const import TEMP_CELSIUS, VWDeviceClass, VWStateClass
 from .vw_utilities import camel2slug
 from .vw_vehicle import Vehicle
 
-CLIMA_DEFAULT_DURATION = 30
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -25,10 +23,10 @@ class Instrument:
         component,
         attr: str,
         name: str,
-        icon: Optional[str] = None,
-        entity_type: Optional[str] = None,
-        device_class: Optional[str] = None,
-        state_class: Optional[str] = None,
+        icon: str | None = None,
+        entity_type: str | None = None,
+        device_class: str | None = None,
+        state_class: str | None = None,
     ):
         """Init."""
         self.attr = attr
@@ -85,7 +83,7 @@ class Instrument:
         return self.state
 
     @property
-    def state(self) -> Any:
+    def state(self) -> object:
         """Return current state."""
         if hasattr(self.vehicle, self.attr):
             return getattr(self.vehicle, self.attr)
@@ -108,7 +106,7 @@ class Instrument:
             return False
 
     @property
-    def last_refresh(self) -> Optional[datetime]:
+    def last_refresh(self) -> datetime | None:
         if hasattr(self.vehicle, self.attr + "_last_updated"):
             return getattr(self.vehicle, self.attr + "_last_updated")
         _LOGGER.warning(f"Implement in subclasses. {self.__class__}:{self.attr}_last_updated")
@@ -124,11 +122,11 @@ class Sensor(Instrument):
         self,
         attr: str,
         name: str,
-        icon: Optional[str],
-        unit: Optional[str],
-        entity_type: Optional[str] = None,
-        device_class: Optional[str] = None,
-        state_class: Optional[str] = None,
+        icon: str | None,
+        unit: str | None,
+        entity_type: str | None = None,
+        device_class: str | None = None,
+        state_class: str | None = None,
     ):
         """Init."""
         super().__init__(
@@ -278,11 +276,11 @@ class Number(Instrument):
         self,
         attr: str,
         name: str,
-        icon: Optional[str],
-        unit: Optional[str],
-        entity_type: Optional[str] = None,
-        device_class: Optional[str] = None,
-        state_class: Optional[str] = None,
+        icon: str | None,
+        unit: str | None,
+        entity_type: str | None = None,
+        device_class: str | None = None,
+        state_class: str | None = None,
     ):
         """Init."""
         super().__init__(
@@ -714,6 +712,65 @@ class AutoReleaseACConnector(Switch):
         """Don't assume state."""
         return False
 
+
+class BatteryCareMode(Switch):
+    def __init__(self):
+        super().__init__(
+            attr="battery_care_mode",
+            name="Battery care mode",
+            icon="mdi:battery-heart-variant",
+            entity_type="config",
+        )
+
+    @property
+    def state(self):
+        return self.vehicle.battery_care_mode
+
+    async def turn_on(self):
+        await self.vehicle.set_charging_care_settings(value="activated")
+        await self.vehicle.update()
+
+    async def turn_off(self):
+        await self.vehicle.set_charging_care_settings(value="deactivated")
+        await self.vehicle.update()
+
+    @property
+    def assumed_state(self) -> bool:
+        """Don't assume state."""
+        return False
+
+    @property
+    def attributes(self) -> dict:
+        """Return attributes."""
+        return dict(last_result=self.vehicle.charger_action_status)
+
+
+class OptimisedBatteryUse(Switch):
+    def __init__(self):
+        super().__init__(
+            attr="optimised_battery_use",
+            name="Optimised battery use",
+            icon="mdi:battery-check",
+            entity_type="config",
+        )
+
+    @property
+    def state(self):
+        return self.vehicle.optimised_battery_use
+
+    async def turn_on(self):
+        await self.vehicle.set_readiness_battery_support(value=True)
+        await self.vehicle.update()
+
+    async def turn_off(self):
+        await self.vehicle.set_readiness_battery_support(value=False)
+        await self.vehicle.update()
+
+    @property
+    def assumed_state(self) -> bool:
+        """Don't assume state."""
+        return False
+
     @property
     def attributes(self) -> dict:
         """Return attributes."""
@@ -723,9 +780,11 @@ class AutoReleaseACConnector(Switch):
 class DepartureTimer(Switch):
     """Departure timers."""
 
-    def __init__(self, id: Union[str, int]):
+    def __init__(self, id: str | int):
         self._id = id
-        super().__init__(attr=f"departure_timer{id}", name=f"Departure Timer {id}", icon="mdi:car-clock")
+        super().__init__(
+            attr=f"departure_timer{id}", name=f"Departure Timer {id}", icon="mdi:car-clock", entity_type="config"
+        )
         self.spin = ""
 
     def configurate(self, **config):
@@ -755,6 +814,42 @@ class DepartureTimer(Switch):
     def attributes(self):
         """Timer attributes."""
         data = self.vehicle.timer_attributes(self._id)
+        return dict(data)
+
+
+class ACDepartureTimer(Switch):
+    """Air conditioning departure timers."""
+
+    def __init__(self, id: str | int):
+        self._id = id
+        super().__init__(
+            attr=f"ac_departure_timer{id}", name=f"AC Departure Timer {id}", icon="mdi:fan-clock", entity_type="config"
+        )
+
+    @property
+    def state(self):
+        """Return switch state."""
+        return self.vehicle.ac_departure_timer_enabled(self._id)
+
+    async def turn_on(self):
+        """Enable timer."""
+        await self.vehicle.set_ac_departure_timer(timer_id=self._id, enable=True)
+        await self.vehicle.update()
+
+    async def turn_off(self):
+        """Disable timer."""
+        await self.vehicle.set_ac_departure_timer(timer_id=self._id, enable=False)
+        await self.vehicle.update()
+
+    @property
+    def assumed_state(self):
+        """Don't assume state info."""
+        return False
+
+    @property
+    def attributes(self):
+        """Timer attributes."""
+        data = self.vehicle.ac_timer_attributes(self._id)
         return dict(data)
 
 
@@ -955,7 +1050,7 @@ class RequestResults(Sensor):
         )
 
     @property
-    def state(self) -> Any:
+    def state(self) -> object:
         """Return current state."""
         if self.vehicle.request_results.get("state", False):
             return self.vehicle.request_results.get("state")
@@ -993,9 +1088,13 @@ def create_instruments():
         Charging(),
         ReducedACCharging(),
         AutoReleaseACConnector(),
+        BatteryCareMode(),
+        OptimisedBatteryUse(),
         DepartureTimer(1),
         DepartureTimer(2),
         DepartureTimer(3),
+        ACDepartureTimer(1),
+        ACDepartureTimer(2),
         RequestResults(),
         Sensor(
             attr="distance",

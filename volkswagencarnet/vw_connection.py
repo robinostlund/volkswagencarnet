@@ -5,7 +5,6 @@ from __future__ import annotations
 import hashlib
 import re
 import secrets
-import sys
 import time
 from base64 import b64encode, urlsafe_b64encode
 from datetime import timedelta, datetime, timezone
@@ -15,7 +14,7 @@ from sys import version_info
 import asyncio
 import jwt
 import logging
-from aiohttp import ClientSession, ClientTimeout, client_exceptions
+from aiohttp import ClientTimeout, client_exceptions
 from aiohttp.hdrs import METH_GET, METH_POST, METH_PUT
 from bs4 import BeautifulSoup
 from json import dumps as to_json
@@ -34,7 +33,7 @@ from .vw_const import (
     USER_AGENT,
     APP_URI,
 )
-from .vw_utilities import json_loads, read_config
+from .vw_utilities import json_loads
 from .vw_vehicle import Vehicle
 
 MAX_RETRIES_ON_RATE_LIMIT = 3
@@ -802,7 +801,27 @@ class Connection:
         except Exception as e:
             raise Exception("Unknown error during setChargingSettings") from e
 
-    async def setDepartureTimers(self, vin, data):
+    async def setChargingCareModeSettings(self, vin, data):
+        """Execute battery care mode actions."""
+        try:
+            response_raw = await self.put(
+                f"{BASE_API}/vehicle/v1/vehicles/{vin}/charging/care/settings", json=data, return_raw=True
+            )
+            return await self._handle_action_result(response_raw)
+        except Exception as e:
+            raise Exception("Unknown error during setChargingCareModeSettings") from e
+
+    async def setReadinessBatterySupport(self, vin, data):
+        """Execute readiness battery support actions."""
+        try:
+            response_raw = await self.put(
+                f"{BASE_API}/vehicle/v1/vehicles/{vin}/readiness/batterysupport", json=data, return_raw=True
+            )
+            return await self._handle_action_result(response_raw)
+        except Exception as e:
+            raise Exception("Unknown error during setReadinessBatterySupport") from e
+
+    async def setDepartureProfiles(self, vin, data):
         """Execute departure timers actions."""
         try:
             response_raw = await self.put(
@@ -810,7 +829,17 @@ class Connection:
             )
             return await self._handle_action_result(response_raw)
         except Exception as e:
-            raise Exception("Unknown error during setDepartureTimers") from e
+            raise Exception("Unknown error during setDepartureProfiles") from e
+
+    async def setClimatisationTimers(self, vin, data):
+        """Execute climatisation timers actions."""
+        try:
+            response_raw = await self.put(
+                f"{BASE_API}/vehicle/v1/vehicles/{vin}/climatisation/timers", json=data, return_raw=True
+            )
+            return await self._handle_action_result(response_raw)
+        except Exception as e:
+            raise Exception("Unknown error during setClimatisationTimers") from e
 
     async def setAuxiliaryHeatingTimers(self, vin, data):
         """Execute auxiliary heating timers actions."""
@@ -821,6 +850,16 @@ class Connection:
             return await self._handle_action_result(response_raw)
         except Exception as e:
             raise Exception("Unknown error during setAuxiliaryHeatingTimers") from e
+
+    async def setDepartureTimers(self, vin, data):
+        """Execute departure timers actions."""
+        try:
+            response_raw = await self.put(
+                f"{BASE_API}/vehicle/v1/vehicles/{vin}/departure/timers", json=data, return_raw=True
+            )
+            return await self._handle_action_result(response_raw)
+        except Exception as e:
+            raise Exception("Unknown error during setDepartureTimers") from e
 
     async def setLock(self, vin, lock, spin):
         """Remote lock and unlock actions."""
@@ -1005,28 +1044,3 @@ class Connection:
         except OSError as error:
             _LOGGER.warning("Could not validate login: %s", error)
             return False
-
-
-async def main():
-    """Run the program."""
-    if "-v" in sys.argv:
-        logging.basicConfig(level=logging.INFO)
-    elif "-vv" in sys.argv:
-        logging.basicConfig(level=logging.DEBUG)
-    else:
-        logging.basicConfig(level=logging.ERROR)
-
-    async with ClientSession(headers={"Connection": "keep-alive"}) as session:
-        connection = Connection(session, **read_config())
-        if await connection.doLogin():
-            if await connection.update():
-                for vehicle in connection.vehicles:
-                    print(f"Vehicle id: {vehicle}")
-                    print("Supported sensors:")
-                    for instrument in vehicle.dashboard().instruments:
-                        print(f" - {instrument.name} (domain:{instrument.component}) - {instrument.str_state}")
-
-
-if __name__ == "__main__":
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(main())
