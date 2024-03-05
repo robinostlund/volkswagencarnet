@@ -782,7 +782,9 @@ class DepartureTimer(Switch):
 
     def __init__(self, id: str | int):
         self._id = id
-        super().__init__(attr=f"departure_timer{id}", name=f"Departure Timer {id}", icon="mdi:car-clock")
+        super().__init__(
+            attr=f"departure_timer{id}", name=f"Departure Timer {id}", icon="mdi:car-clock", entity_type="config"
+        )
         self.spin = ""
 
     def configurate(self, **config):
@@ -812,6 +814,42 @@ class DepartureTimer(Switch):
     def attributes(self):
         """Timer attributes."""
         data = self.vehicle.timer_attributes(self._id)
+        return dict(data)
+
+
+class ACDepartureTimer(Switch):
+    """Air conditioning departure timers."""
+
+    def __init__(self, id: str | int):
+        self._id = id
+        super().__init__(
+            attr=f"ac_departure_timer{id}", name=f"AC Departure Timer {id}", icon="mdi:fan-clock", entity_type="config"
+        )
+
+    @property
+    def state(self):
+        """Return switch state."""
+        return self.vehicle.ac_departure_timer_enabled(self._id)
+
+    async def turn_on(self):
+        """Enable timer."""
+        await self.vehicle.set_ac_departure_timer(timer_id=self._id, enable=True)
+        await self.vehicle.update()
+
+    async def turn_off(self):
+        """Disable timer."""
+        await self.vehicle.set_ac_departure_timer(timer_id=self._id, enable=False)
+        await self.vehicle.update()
+
+    @property
+    def assumed_state(self):
+        """Don't assume state info."""
+        return False
+
+    @property
+    def attributes(self):
+        """Timer attributes."""
+        data = self.vehicle.ac_timer_attributes(self._id)
         return dict(data)
 
 
@@ -1055,6 +1093,8 @@ def create_instruments():
         DepartureTimer(1),
         DepartureTimer(2),
         DepartureTimer(3),
+        ACDepartureTimer(1),
+        ACDepartureTimer(2),
         RequestResults(),
         Sensor(
             attr="distance",

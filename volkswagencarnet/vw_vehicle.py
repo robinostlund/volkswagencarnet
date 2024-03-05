@@ -515,6 +515,27 @@ class Vehicle:
             _LOGGER.error("Departure timers are not supported.")
             raise Exception("Departure timers are not supported.")
 
+    async def set_ac_departure_timer(self, timer_id, enable) -> bool:
+        """Turn on/off ac departure timer."""
+        if self.is_ac_departure_timer_supported(timer_id):
+            if type(enable) is not bool:
+                _LOGGER.error("Charging climatisation departure timers setting is not supported.")
+                raise Exception("Charging climatisation departure timers setting is not supported.")
+            timers = find_path(self.attrs, f"{Services.CLIMATISATION_TIMERS}.climatisationTimersStatus.value.timers")
+            for i in range(len(timers)):
+                if timers[i].get("id", 0) == timer_id:
+                    timers[i]["enabled"] = enable
+            data = {"timers": timers}
+            response = await self._connection.setClimatisationTimers(self.vin, data)
+            return await self._handle_response(
+                response=response,
+                topic="departuretimer",
+                error_msg="Failed to change climatisation departure timers setting.",
+            )
+        else:
+            _LOGGER.error("Climatisation departure timers are not supported.")
+            raise Exception("Climatisation departure timers are not supported.")
+
     # Lock (RLU)
     async def set_lock(self, action, spin):
         """Remote lock and unlock actions."""
@@ -2433,6 +2454,87 @@ class Vehicle:
                 if profile.get("id", 0) == profile_id:
                     return profile
         return None
+
+    # AC Departure timers
+    @property
+    def ac_departure_timer1(self):
+        """Return ac timer #1 status."""
+        return self.ac_departure_timer_enabled(1)
+
+    @property
+    def ac_departure_timer2(self):
+        """Return ac timer #2 status."""
+        return self.ac_departure_timer_enabled(2)
+
+    @property
+    def ac_departure_timer1_last_updated(self) -> datetime:
+        """Return last updated timestamp."""
+        return find_path(
+            self.attrs, f"{Services.CLIMATISATION_TIMERS}.climatisationTimersStatus.value.carCapturedTimestamp"
+        )
+
+    @property
+    def ac_departure_timer2_last_updated(self) -> datetime:
+        """Return last updated timestamp."""
+        return self.ac_departure_timer1_last_updated
+
+    @property
+    def is_ac_departure_timer1_supported(self) -> bool:
+        """Check if ac timer 1 is supported."""
+        return self.is_ac_departure_timer_supported(1)
+
+    @property
+    def is_ac_departure_timer2_supported(self) -> bool:
+        """Check if ac timer 2 is supported."""
+        return self.is_ac_departure_timer_supported(2)
+
+    def ac_departure_timer_enabled(self, timer_id: str | int) -> bool:
+        """Return if departure timer is enabled."""
+        return self.ac_departure_timer(timer_id).get("enabled", False)
+
+    def is_ac_departure_timer_supported(self, timer_id: str | int) -> bool:
+        """Return true if ac departure timer is supported."""
+        return self.ac_departure_timer(timer_id) is not None
+
+    def ac_departure_timer(self, timer_id: str | int):
+        """Return ac departure timer."""
+        if is_valid_path(self.attrs, f"{Services.CLIMATISATION_TIMERS}.climatisationTimersStatus.value.timers"):
+            timers = find_path(self.attrs, f"{Services.CLIMATISATION_TIMERS}.climatisationTimersStatus.value.timers")
+            for timer in timers:
+                if timer.get("id", 0) == timer_id:
+                    return timer
+        return None
+
+    def ac_timer_attributes(self, timer_id: str | int):
+        """Return ac departure timer attributes."""
+        timer = self.ac_departure_timer(timer_id)
+        timer_type = None
+        recurring_on = []
+        start_time = None
+        if timer.get("singleTimer", None):
+            timer_type = "single"
+            start_date_time = timer.get("singleTimer", None).get("startDateTime", None)
+            start_time = start_date_time.replace(tzinfo=timezone.utc).astimezone(tz=None).strftime("%Y-%m-%dT%H:%M:%S")
+        elif timer.get("recurringTimer", None):
+            timer_type = "recurring"
+            start_date_time = timer.get("recurringTimer", None).get("startTime", None)
+            start_time = (
+                datetime.strptime(start_date_time, "%H:%M")
+                .replace(tzinfo=timezone.utc)
+                .astimezone(tz=None)
+                .strftime("%H:%M")
+            )
+            recurring_days = timer.get("recurringTimer", None).get("recurringOn", None)
+            for day in recurring_days:
+                if recurring_days.get(day) is True:
+                    recurring_on.append(day)
+        data = {
+            "timer_id": timer.get("id", None),
+            "timer_type": timer_type,
+            "start_time": start_time,
+            "recurring_on": recurring_on,
+        }
+        return data
 
     # Trip data
     @property
