@@ -1066,7 +1066,7 @@ class Vehicle:
         """Return true if Charger Max Ampere is supported."""
         if is_valid_path(self.attrs, f"{Services.CHARGING}.chargingSettings.value.maxChargeCurrentAC"):
             value = find_path(self.attrs, f"{Services.CHARGING}.chargingSettings.value.maxChargeCurrentAC")
-            return value in ["reduced", "maximum"]
+            return value in ["reduced", "maximum", "invalid"]
         return False
 
     @property
@@ -1333,7 +1333,9 @@ class Vehicle:
     @property
     def electric_range_last_updated(self) -> datetime:
         """Return electric range last updated."""
-        return find_path(self.attrs, f"{Services.MEASUREMENTS}.rangeStatus.value.carCapturedTimestamp")
+        if is_valid_path(self.attrs, f"{Services.MEASUREMENTS}.rangeStatus.value.carCapturedTimestamp"):
+            return find_path(self.attrs, f"{Services.MEASUREMENTS}.rangeStatus.value.carCapturedTimestamp")
+        return find_path(self.attrs, f"{Services.FUEL_STATUS}.rangeStatus.value.carCapturedTimestamp")
 
     @property
     def is_electric_range_supported(self) -> bool:
