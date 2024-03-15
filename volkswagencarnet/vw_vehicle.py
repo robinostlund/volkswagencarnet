@@ -908,7 +908,7 @@ class Vehicle:
         if not self.has_combustion_engine:
             return False
         return is_valid_path(
-            self.attrs, f"{Services.VEHICLE_HEALTH_INSPECTION}.maintenanceStatus.value.carCapturedTimestamp"
+            self.attrs, f"{Services.VEHICLE_HEALTH_INSPECTION}.maintenanceStatus.value.oilServiceDue_days"
         )
 
     @property
