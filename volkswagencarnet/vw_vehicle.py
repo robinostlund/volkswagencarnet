@@ -837,9 +837,7 @@ class Vehicle:
     @property
     def service_inspection(self):
         """Return time left for service inspection."""
-        return int(
-            find_path(self.attrs, f"{Services.VEHICLE_HEALTH_INSPECTION}.maintenanceStatus.value.inspectionDue_days")
-        )
+        return find_path(self.attrs, f"{Services.VEHICLE_HEALTH_INSPECTION}.maintenanceStatus.value.inspectionDue_days")
 
     @property
     def service_inspection_last_updated(self) -> datetime:
@@ -862,9 +860,7 @@ class Vehicle:
     @property
     def service_inspection_distance(self):
         """Return distance left for service inspection."""
-        return int(
-            find_path(self.attrs, f"{Services.VEHICLE_HEALTH_INSPECTION}.maintenanceStatus.value.inspectionDue_km")
-        )
+        return find_path(self.attrs, f"{Services.VEHICLE_HEALTH_INSPECTION}.maintenanceStatus.value.inspectionDue_km")
 
     @property
     def service_inspection_distance_last_updated(self) -> datetime:
@@ -887,9 +883,7 @@ class Vehicle:
     @property
     def oil_inspection(self):
         """Return time left for oil inspection."""
-        return int(
-            find_path(self.attrs, f"{Services.VEHICLE_HEALTH_INSPECTION}.maintenanceStatus.value.oilServiceDue_days")
-        )
+        return find_path(self.attrs, f"{Services.VEHICLE_HEALTH_INSPECTION}.maintenanceStatus.value.oilServiceDue_days")
 
     @property
     def oil_inspection_last_updated(self) -> datetime:
@@ -914,9 +908,7 @@ class Vehicle:
     @property
     def oil_inspection_distance(self):
         """Return distance left for oil inspection."""
-        return int(
-            find_path(self.attrs, f"{Services.VEHICLE_HEALTH_INSPECTION}.maintenanceStatus.value.oilServiceDue_km")
-        )
+        return find_path(self.attrs, f"{Services.VEHICLE_HEALTH_INSPECTION}.maintenanceStatus.value.oilServiceDue_km")
 
     @property
     def oil_inspection_distance_last_updated(self) -> datetime:
@@ -941,7 +933,7 @@ class Vehicle:
     @property
     def adblue_level(self) -> int:
         """Return adblue level."""
-        return int(find_path(self.attrs, f"{Services.MEASUREMENTS}.rangeStatus.value.adBlueRange"))
+        return find_path(self.attrs, f"{Services.MEASUREMENTS}.rangeStatus.value.adBlueRange")
 
     @property
     def adblue_level_last_updated(self) -> datetime:
@@ -1023,7 +1015,7 @@ class Vehicle:
     @property
     def battery_level(self) -> int:
         """Return battery level."""
-        return int(find_path(self.attrs, f"{Services.CHARGING}.batteryStatus.value.currentSOC_pct"))
+        return find_path(self.attrs, f"{Services.CHARGING}.batteryStatus.value.currentSOC_pct")
 
     @property
     def battery_level_last_updated(self) -> datetime:
@@ -1120,8 +1112,8 @@ class Vehicle:
     def charging_time_left(self) -> int:
         """Return minutes to charging complete."""
         if is_valid_path(self.attrs, f"{Services.CHARGING}.chargingStatus.value.remainingChargingTimeToComplete_min"):
-            return int(
-                find_path(self.attrs, f"{Services.CHARGING}.chargingStatus.value.remainingChargingTimeToComplete_min")
+            return find_path(
+                self.attrs, f"{Services.CHARGING}.chargingStatus.value.remainingChargingTimeToComplete_min"
             )
         return None
 
@@ -1327,8 +1319,8 @@ class Vehicle:
         :return:
         """
         if is_valid_path(self.attrs, f"{Services.MEASUREMENTS}.rangeStatus.value.electricRange"):
-            return int(find_path(self.attrs, f"{Services.MEASUREMENTS}.rangeStatus.value.electricRange"))
-        return int(find_path(self.attrs, f"{Services.FUEL_STATUS}.rangeStatus.value.primaryEngine.remainingRange_km"))
+            return find_path(self.attrs, f"{Services.MEASUREMENTS}.rangeStatus.value.electricRange")
+        return find_path(self.attrs, f"{Services.FUEL_STATUS}.rangeStatus.value.primaryEngine.remainingRange_km")
 
     @property
     def electric_range_last_updated(self) -> datetime:
@@ -1359,9 +1351,9 @@ class Vehicle:
         DIESEL_RANGE = f"{Services.MEASUREMENTS}.rangeStatus.value.dieselRange"
         GASOLINE_RANGE = f"{Services.MEASUREMENTS}.rangeStatus.value.gasolineRange"
         if is_valid_path(self.attrs, DIESEL_RANGE):
-            return int(find_path(self.attrs, DIESEL_RANGE))
+            return find_path(self.attrs, DIESEL_RANGE)
         if is_valid_path(self.attrs, GASOLINE_RANGE):
-            return int(find_path(self.attrs, GASOLINE_RANGE))
+            return find_path(self.attrs, GASOLINE_RANGE)
         return -1
 
     @property
@@ -1387,7 +1379,7 @@ class Vehicle:
 
         :return:
         """
-        return int(find_path(self.attrs, f"{Services.MEASUREMENTS}.rangeStatus.value.totalRange_km"))
+        return find_path(self.attrs, f"{Services.MEASUREMENTS}.rangeStatus.value.totalRange_km")
 
     @property
     def combined_range_last_updated(self) -> datetime | None:
@@ -1412,7 +1404,7 @@ class Vehicle:
 
         :return:
         """
-        return int(find_path(self.attrs, f"{Services.CHARGING}.batteryStatus.value.cruisingRangeElectric_km"))
+        return find_path(self.attrs, f"{Services.CHARGING}.batteryStatus.value.cruisingRangeElectric_km")
 
     @property
     def battery_cruising_range_last_updated(self) -> datetime | None:
@@ -1445,7 +1437,7 @@ class Vehicle:
             fuel_level_pct = find_path(
                 self.attrs, f"{Services.MEASUREMENTS}.fuelLevelStatus.value.currentFuelLevel_pct"
             )
-        return int(fuel_level_pct)
+        return fuel_level_pct
 
     @property
     def fuel_level_last_updated(self) -> datetime:
