@@ -23,33 +23,33 @@ def obj_parser(obj: dict) -> dict:
     return obj
 
 
-def find_path(src: dict | list, path: str | list) -> object:
+def find_path_in_dict(src: dict | list, path: str | list) -> object:
     """
-    Return data at path in source.
+    Return data at path in dictionary source.
 
     Simple navigation of a hierarchical dict structure using XPATH-like syntax.
 
-    >>> find_path(dict(a=1), 'a')
+    >>> find_path_in_dict(dict(a=1), 'a')
     1
 
-    >>> find_path(dict(a=1), '')
+    >>> find_path_in_dict(dict(a=1), '')
     {'a': 1}
 
-    >>> find_path(dict(a=None), 'a')
+    >>> find_path_in_dict(dict(a=None), 'a')
 
 
-    >>> find_path(dict(a=1), 'b')
+    >>> find_path_in_dict(dict(a=1), 'b')
     Traceback (most recent call last):
     ...
     KeyError: 'b'
 
-    >>> find_path(dict(a=dict(b=1)), 'a.b')
+    >>> find_path_in_dict(dict(a=dict(b=1)), 'a.b')
     1
 
-    >>> find_path(dict(a=dict(b=1)), 'a')
+    >>> find_path_in_dict(dict(a=dict(b=1)), 'a')
     {'b': 1}
 
-    >>> find_path(dict(a=dict(b=1)), 'a.c')
+    >>> find_path_in_dict(dict(a=dict(b=1)), 'a.c')
     Traceback (most recent call last):
     ...
     KeyError: 'c'
@@ -63,13 +63,22 @@ def find_path(src: dict | list, path: str | list) -> object:
         try:
             f = float(path[0])
             if f.is_integer() and len(src) > 0:
-                return find_path(src[int(f)], path[1:])
+                return find_path_in_dict(src[int(f)], path[1:])
             raise KeyError("Key not found")
         except ValueError:
             raise KeyError(f"{path[0]} should be an integer")
         except IndexError:
             raise KeyError("Index out of range")
-    return find_path(src[path[0]], path[1:])
+    return find_path_in_dict(src[path[0]], path[1:])
+
+
+def find_path(src: dict | list, path: str | list) -> object:
+    """Return data at path in source."""
+    try:
+        return find_path_in_dict(src, path)
+    except KeyError:
+        _LOGGER.error("Dictionary path: %s is no longer present. Dictionary: %s", path, src)
+        return None
 
 
 def is_valid_path(src, path):
@@ -95,7 +104,7 @@ def is_valid_path(src, path):
     False
     """
     try:
-        find_path(src, path)
+        find_path_in_dict(src, path)
         return True
     except KeyError:
         return False
