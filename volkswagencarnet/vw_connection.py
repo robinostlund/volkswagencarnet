@@ -50,6 +50,8 @@ JWT_ALGORITHMS = ["RS256"]
 class Connection:
     """Connection to VW-Group Connect services."""
 
+    _login_lock = asyncio.Lock()
+
     # Init connection class
     def __init__(self, session, username, password, fulldebug=False, country=COUNTRY, interval=timedelta(minutes=5)):
         """Initialize."""
@@ -87,39 +89,40 @@ class Connection:
     # API Login
     async def doLogin(self, tries: int = 1):
         """Login method, clean login."""
-        _LOGGER.debug("Initiating new login")
+        async with self._login_lock:
+            _LOGGER.debug("Initiating new login")
 
-        for i in range(tries):
-            self._session_logged_in = await self._login("Legacy")
-            if self._session_logged_in:
-                break
-            _LOGGER.info("Something failed")
-            await asyncio.sleep(random() * 5)
+            for i in range(tries):
+                self._session_logged_in = await self._login("Legacy")
+                if self._session_logged_in:
+                    break
+                _LOGGER.info("Something failed")
+                await asyncio.sleep(random() * 5)
 
-        if not self._session_logged_in:
-            return False
+            if not self._session_logged_in:
+                return False
 
-        _LOGGER.info("Successfully logged in")
-        self._session_tokens["identity"] = self._session_tokens["Legacy"].copy()
+            _LOGGER.info("Successfully logged in")
+            self._session_tokens["identity"] = self._session_tokens["Legacy"].copy()
 
-        # Get list of vehicles from account
-        _LOGGER.debug("Fetching vehicles associated with account")
-        self._session_headers.pop("Content-Type", None)
-        loaded_vehicles = await self.get(url=f"{BASE_API}/vehicle/v2/vehicles")
-        # Add Vehicle class object for all VIN-numbers from account
-        if loaded_vehicles.get("data") is not None:
-            _LOGGER.debug("Found vehicle(s) associated with account.")
-            self._vehicles = []
-            for vehicle in loaded_vehicles.get("data"):
-                self._vehicles.append(Vehicle(self, vehicle.get("vin")))
-        else:
-            _LOGGER.warning("Failed to login to We Connect API.")
-            self._session_logged_in = False
-            return False
+            # Get list of vehicles from account
+            _LOGGER.debug("Fetching vehicles associated with account")
+            self._session_headers.pop("Content-Type", None)
+            loaded_vehicles = await self.get(url=f"{BASE_API}/vehicle/v2/vehicles")
+            # Add Vehicle class object for all VIN-numbers from account
+            if loaded_vehicles.get("data") is not None:
+                _LOGGER.debug("Found vehicle(s) associated with account.")
+                self._vehicles = []
+                for vehicle in loaded_vehicles.get("data"):
+                    self._vehicles.append(Vehicle(self, vehicle.get("vin")))
+            else:
+                _LOGGER.warning("Failed to login to We Connect API.")
+                self._session_logged_in = False
+                return False
 
-        # Update all vehicles data before returning
-        await self.update()
-        return True
+            # Update all vehicles data before returning
+            await self.update()
+            return True
 
     async def _login(self, client="Legacy"):
         """Login function."""
@@ -458,7 +461,7 @@ class Connection:
     async def get(self, url, vin="", tries=0):
         """Perform a get query."""
         try:
-            response = await self._request(METH_GET, self._make_url(url, vin))
+            response = await self._request(METH_GET, url)
             return response
         except client_exceptions.ClientResponseError as error:
             if error.status == 400:
@@ -486,9 +489,9 @@ class Connection:
         """Perform a post query."""
         try:
             if data:
-                return await self._request(METH_POST, self._make_url(url, vin), return_raw=return_raw, **data)
+                return await self._request(METH_POST, url, return_raw=return_raw, **data)
             else:
-                return await self._request(METH_POST, self._make_url(url, vin), return_raw=return_raw)
+                return await self._request(METH_POST, url, return_raw=return_raw)
         except client_exceptions.ClientResponseError as error:
             if error.status == 429 and tries < MAX_RETRIES_ON_RATE_LIMIT:
                 delay = randint(1, 3 + tries * 2)
@@ -502,9 +505,9 @@ class Connection:
         """Perform a put query."""
         try:
             if data:
-                return await self._request(METH_PUT, self._make_url(url, vin), return_raw=return_raw, **data)
+                return await self._request(METH_PUT, url, return_raw=return_raw, **data)
             else:
-                return await self._request(METH_PUT, self._make_url(url, vin), return_raw=return_raw)
+                return await self._request(METH_PUT, url, return_raw=return_raw)
         except client_exceptions.ClientResponseError as error:
             if error.status == 429 and tries < MAX_RETRIES_ON_RATE_LIMIT:
                 delay = randint(1, 3 + tries * 2)
@@ -513,19 +516,6 @@ class Connection:
                 return await self.put(url, vin, tries + 1, return_raw=return_raw, **data)
             else:
                 raise
-
-    # Construct URL from request, home region and variables
-    def _make_url(self, ref, vin=""):
-        # TODO after verifying that we don't need home region handling anymore, this method should be completely removed
-        return ref
-        replacedUrl = re.sub("\\$vin", vin, ref)
-        if "://" in replacedUrl:
-            # already server contained in URL
-            return replacedUrl
-        elif "rolesrights" in replacedUrl:
-            return urljoin(self._session_spin_ref_urls[vin], replacedUrl)
-        else:
-            return urljoin(self._session_auth_ref_urls[vin], replacedUrl)
 
     # Update data for all Vehicles
     async def update(self):
