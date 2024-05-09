@@ -1,46 +1,40 @@
 #!/usr/bin/env python3
-"""Communicate with We Connect services."""
+"""Communicate with Volkswagen Connect services."""
+
 from __future__ import annotations
 
-import hashlib
-import re
-import secrets
-import time
-from base64 import b64encode, urlsafe_b64encode
-from datetime import timedelta, datetime, timezone
-from random import random, randint
-from sys import version_info
-
 import asyncio
-import jwt
+from datetime import UTC, datetime, timedelta
+import hashlib
+from json import dumps as to_json
 import logging
+from random import randint, random
+import re
+from urllib.parse import parse_qs, urljoin, urlparse
+
 from aiohttp import ClientTimeout, client_exceptions
 from aiohttp.hdrs import METH_GET, METH_POST, METH_PUT
 from bs4 import BeautifulSoup
-from json import dumps as to_json
-from urllib.parse import urljoin, parse_qs, urlparse
+import jwt
 
-from volkswagencarnet.vw_exceptions import AuthenticationException
 from .vw_const import (
-    BRAND,
-    COUNTRY,
-    HEADERS_SESSION,
-    HEADERS_AUTH,
-    BASE_SESSION,
+    APP_URI,
     BASE_API,
     BASE_AUTH,
+    BASE_SESSION,
+    BRAND,
     CLIENT,
+    COUNTRY,
+    HEADERS_AUTH,
+    HEADERS_SESSION,
     USER_AGENT,
-    APP_URI,
 )
 from .vw_utilities import json_loads
 from .vw_vehicle import Vehicle
 
 MAX_RETRIES_ON_RATE_LIMIT = 3
 
-version_info >= (3, 7) or exit("Python 3.7+ required")
-
-_LOGGER = logging.getLogger(__name__)
+_LOGGER = logging.getLogger(__name__)  # pylint: disable=unreachable
 
 TIMEOUT = timedelta(seconds=30)
 JWT_ALGORITHMS = ["RS256"]
@@ -53,7 +47,15 @@ class Connection:
     _login_lock = asyncio.Lock()
 
     # Init connection class
-    def __init__(self, session, username, password, fulldebug=False, country=COUNTRY, interval=timedelta(minutes=5)):
+    def __init__(
+        self,
+        session,
+        username,
+        password,
+        fulldebug=False,
+        country=COUNTRY,
+        interval=timedelta(minutes=5),
+    ) -> None:
         """Initialize."""
         self._x_client_id = None
         self._session = session
@@ -76,7 +78,7 @@ class Connection:
 
         self._vehicles = []
 
-        _LOGGER.debug(f"Using service {self._session_base}")
+        _LOGGER.debug("Using service %s", self._session_base)
 
         self._jarCookie = ""
         self._state = {}
@@ -84,7 +86,7 @@ class Connection:
         self._service_status = {}
 
     def _clear_cookies(self):
-        self._session._cookie_jar._cookies.clear()
+        self._session._cookie_jar._cookies.clear()  # pylint: disable=protected-access
 
     # API Login
     async def doLogin(self, tries: int = 1):
@@ -96,7 +98,9 @@ class Connection:
                 self._session_logged_in = await self._login("Legacy")
                 if self._session_logged_in:
                     break
-                _LOGGER.info("Something failed")
+                if i > tries:
+                    _LOGGER.error("Login failed after %s tries", tries)
+                    return False
                 await asyncio.sleep(random() * 5)
 
             if not self._session_logged_in:
@@ -111,12 +115,12 @@ class Connection:
             loaded_vehicles = await self.get(url=f"{BASE_API}/vehicle/v2/vehicles")
             # Add Vehicle class object for all VIN-numbers from account
             if loaded_vehicles.get("data") is not None:
-                _LOGGER.debug("Found vehicle(s) associated with account.")
+                _LOGGER.debug("Found vehicle(s) associated with account")
                 self._vehicles = []
                 for vehicle in loaded_vehicles.get("data"):
                     self._vehicles.append(Vehicle(self, vehicle.get("vin")))
             else:
-                _LOGGER.warning("Failed to login to We Connect API.")
+                _LOGGER.warning("Failed to login to Volkswagen Connect API")
                 self._session_logged_in = False
                 return False
 
@@ -124,251 +128,246 @@ class Connection:
             await self.update()
             return True
 
+    async def get_openid_config(self):
+        """Get OpenID config."""
+        if self._session_fulldebug:
+            _LOGGER.debug("Requesting openid config")
+        req = await self._session.get(
+            url=f"{BASE_API}/login/v1/idk/openid-configuration"
+        )
+        if req.status != 200:
+            _LOGGER.error("Failed to get OpenID configuration, status: %s", req.status)
+            raise Exception("OpenID configuration error")  # pylint: disable=broad-exception-raised
+        return await req.json()
+
+    async def get_authorization_page(self, authorization_endpoint, client):
+        """Get authorization page (login page)."""
+        # https://identity.vwgroup.io/oidc/v1/authorize?nonce={NONCE}&state={STATE}&response_type={TOKEN_TYPES}&scope={SCOPE}&redirect_uri={APP_URI}&client_id={CLIENT_ID}
+        # https://identity.vwgroup.io/oidc/v1/authorize?client_id={CLIENT_ID}&scope={SCOPE}&response_type={TOKEN_TYPES}&redirect_uri={APP_URI}
+        if self._session_fulldebug:
+            _LOGGER.debug(
+                'Requesting authorization page from "%s"', authorization_endpoint
+            )
+            self._session_auth_headers.pop("Referer", None)
+            self._session_auth_headers.pop("Origin", None)
+            _LOGGER.debug('Request headers: "%s"', self._session_auth_headers)
+
+        try:
+            req = await self._session.get(
+                url=authorization_endpoint,
+                headers=self._session_auth_headers,
+                allow_redirects=False,
+                params={
+                    "redirect_uri": APP_URI,
+                    "response_type": CLIENT[client].get("TOKEN_TYPES"),
+                    "client_id": CLIENT[client].get("CLIENT_ID"),
+                    "scope": CLIENT[client].get("SCOPE"),
+                },
+            )
+
+            # Check if the response contains a redirect location
+            location = req.headers.get("Location")
+            if not location:
+                # pylint: disable=broad-exception-raised
+                raise Exception(
+                    f"Missing 'Location' header, payload returned: {await req.content.read()}"
+                )
+
+            ref = urljoin(authorization_endpoint, location)
+            if "error" in ref:
+                parsed_query = parse_qs(urlparse(ref).query)
+                error_msg = parsed_query.get("error", ["Unknown error"])[0]
+                error_description = parsed_query.get(
+                    "error_description", ["No description"]
+                )[0]
+                _LOGGER.info("Authorization error: %s", error_description)
+                raise Exception(error_msg)  # pylint: disable=broad-exception-raised
+
+            # If redirected, fetch the new location
+            req = await self._session.get(
+                url=ref, headers=self._session_auth_headers, allow_redirects=False
+            )
+
+            if req.status != 200:
+                raise Exception("Failed to fetch authorization endpoint")  # pylint: disable=broad-exception-raised
+
+            return await req.text()
+
+        except Exception as e:
+            _LOGGER.warning("Error during fetching authorization page: %s", str(e))
+            raise
+
+    def extract_form_data(self, page_content, form_id):
+        """Extract form data from a page."""
+        soup = BeautifulSoup(page_content, "html.parser")
+        form = soup.find("form", id=form_id)
+        if form is None:
+            raise Exception(f"Form with ID '{form_id}' not found.")  # pylint: disable=broad-exception-raised
+        return {
+            input_field["name"]: input_field["value"]
+            for input_field in form.find_all("input", type="hidden")
+        }
+
+    def extract_password_form_data(self, soup):
+        """Extract password form data from a page."""
+        pw_form = {}
+        for script in soup.find_all("script"):
+            if "src" in script.attrs or not script.string:
+                continue
+            script_text = script.string
+
+            if "window._IDK" not in script_text:
+                continue  # Skip scripts that don't contain relevant data
+            if re.match('"errorCode":"', script_text):
+                raise Exception("Error code found in script data.")  # pylint: disable=broad-exception-raised
+
+            pw_form["relayState"] = re.search(
+                '"relayState":"([a-f0-9]*)"', script_text
+            )[1]
+            pw_form["hmac"] = re.search('"hmac":"([a-f0-9]*)"', script_text)[1]
+            pw_form["email"] = re.search('"email":"([^"]*)"', script_text)[1]
+            pw_form["_csrf"] = re.search("csrf_token:\\s*'([^\"']*)'", script_text)[1]
+
+            post_action = re.search('"postAction":\\s*"([^"\']*)"', script_text)[1]
+            client_id = re.search('"clientId":\\s*"([^"\']*)"', script_text)[1]
+            return pw_form, post_action, client_id
+
+        raise Exception("Password form data not found in script.")  # pylint: disable=broad-exception-raised
+
+    async def post_form(self, session, url, headers, form_data, redirect=True):
+        """Post a form and check for success."""
+        req = await session.post(
+            url, headers=headers, data=form_data, allow_redirects=redirect
+        )
+        if not redirect and req.status == 302:
+            return req.headers["Location"]
+        if req.status != 200:
+            raise Exception("Form POST request failed.")  # pylint: disable=broad-exception-raised
+        return await req.text()
+
+    async def handle_login_with_password(self, session, url, auth_headers, form_data):
+        """Handle login with email and password."""
+        return await self.post_form(session, url, auth_headers, form_data, False)
+
+    async def follow_redirects(self, session, pw_url, redirect_location):
+        """Handle redirects."""
+        ref = urljoin(pw_url, redirect_location)
+        max_depth = 10
+        while not ref.startswith(APP_URI):
+            if max_depth == 0:
+                raise Exception("Too many redirects")  # pylint: disable=broad-exception-raised
+            response = await session.get(
+                url=ref, headers=self._session_auth_headers, allow_redirects=False
+            )
+            if "Location" not in response.headers:
+                _LOGGER.warning("Failed to find next redirect location")
+                raise Exception("Redirect error")  # pylint: disable=broad-exception-raised
+            ref = urljoin(ref, response.headers["Location"])
+            max_depth -= 1
+        return ref
+
     async def _login(self, client="Legacy"):
         """Login function."""
 
-        # Helper functions
-        def getNonce():
-            """
-            Get a random nonce.
-
-            :return:
-            """
-            ts = "%d" % (time.time())
-            sha256 = hashlib.sha256()
-            sha256.update(ts.encode())
-            sha256.update(secrets.token_bytes(16))
-            return b64encode(sha256.digest()).decode("utf-8")[:-1]
-
-        def base64URLEncode(s):
-            """
-            Encode string as Base 64 in a URL safe way, stripping trailing '='.
-
-            :param s:
-            :return:
-            """
-            return urlsafe_b64encode(s).rstrip(b"=")
-
-        # Login starts here
         try:
-            # Get OpenID config:
+            # Clear cookies and reset headers
             self._clear_cookies()
             self._session_headers = HEADERS_SESSION.copy()
             self._session_auth_headers = HEADERS_AUTH.copy()
-            if self._session_fulldebug:
-                _LOGGER.debug("Requesting openid config")
-            req = await self._session.get(url=f"{BASE_API}/login/v1/idk/openid-configuration")
-            if req.status != 200:
-                _LOGGER.debug("OpenId config error")
-                return False
-            response_data = await req.json()
-            authorization_endpoint = response_data["authorization_endpoint"]
-            token_endpoint = response_data["token_endpoint"]
-            auth_issuer = response_data["issuer"]
 
-            # Get authorization page (login page)
-            # https://identity.vwgroup.io/oidc/v1/authorize?nonce={NONCE}&state={STATE}&response_type={TOKEN_TYPES}&scope={SCOPE}&redirect_uri={APP_URI}&client_id={CLIENT_ID}
-            # https://identity.vwgroup.io/oidc/v1/authorize?client_id={CLIENT_ID}&scope={SCOPE}&response_type={TOKEN_TYPES}&redirect_uri={APP_URI}
-            if self._session_fulldebug:
-                _LOGGER.debug(f'Get authorization page from "{authorization_endpoint}"')
-                self._session_auth_headers.pop("Referer", None)
-                self._session_auth_headers.pop("Origin", None)
-                _LOGGER.debug(f'Request headers: "{self._session_auth_headers}"')
-            try:
-                code_verifier = base64URLEncode(secrets.token_bytes(32))
-                if len(code_verifier) < 43:
-                    raise ValueError("Verifier too short. n_bytes must be > 30.")
-                elif len(code_verifier) > 128:
-                    raise ValueError("Verifier too long. n_bytes must be < 97.")
+            # Get OpenID configuration
+            openid_config = await self.get_openid_config()
+            authorization_endpoint = openid_config["authorization_endpoint"]
+            token_endpoint = openid_config["token_endpoint"]
+            auth_issuer = openid_config["issuer"]
 
-                req = await self._session.get(
-                    url=authorization_endpoint,
-                    headers=self._session_auth_headers,
-                    allow_redirects=False,
-                    params={
-                        "redirect_uri": APP_URI,
-                        "response_type": CLIENT[client].get("TOKEN_TYPES"),
-                        "client_id": CLIENT[client].get("CLIENT_ID"),
-                        "scope": CLIENT[client].get("SCOPE"),
-                    },
-                )
-                if req.headers.get("Location", False):
-                    ref = urljoin(authorization_endpoint, req.headers.get("Location", ""))
-                    if "error" in ref:
-                        error = parse_qs(urlparse(ref).query).get("error", "")[0]
-                        if "error_description" in ref:
-                            error_description = parse_qs(urlparse(ref).query).get("error_description", "")[0]
-                            _LOGGER.info(f"Unable to login, {error_description}")
-                        else:
-                            _LOGGER.info("Unable to login.")
-                        raise Exception(error)
-                    else:
-                        if self._session_fulldebug:
-                            _LOGGER.debug(f'Got redirect to "{ref}"')
-                        req = await self._session.get(
-                            url=ref, headers=self._session_auth_headers, allow_redirects=False
-                        )
-                else:
-                    _LOGGER.warning("Unable to fetch authorization endpoint.")
-                    raise Exception(f'Missing "location" header, payload returned: {await req.content.read()}')
-            except Exception as error:
-                _LOGGER.warning("Failed to get authorization endpoint")
-                raise error
-            if req.status != 200:
-                raise Exception("Fetching authorization endpoint failed")
-            else:
-                _LOGGER.debug("Got authorization endpoint")
-            try:
-                response_data = await req.text()
-                response_soup = BeautifulSoup(response_data, "html.parser")
-                mailform = {
-                    t["name"]: t["value"]
-                    for t in response_soup.find("form", id="emailPasswordForm").find_all("input", type="hidden")
-                }
-                mailform["email"] = self._session_auth_username
-                pe_url = auth_issuer + response_soup.find("form", id="emailPasswordForm").get("action")
-            except Exception as e:
-                _LOGGER.error("Failed to extract user login form.")
-                raise e
+            # Get authorization page
+            authorization_page = await self.get_authorization_page(
+                authorization_endpoint, client
+            )
+
+            # Extract form data
+            mailform = self.extract_form_data(authorization_page, "emailPasswordForm")
+            mailform["email"] = self._session_auth_username
+            pe_url = auth_issuer + BeautifulSoup(
+                authorization_page, "html.parser"
+            ).find("form", id="emailPasswordForm").get("action")
 
             # POST email
             # https://identity.vwgroup.io/signin-service/v1/{CLIENT_ID}/login/identifier
             self._session_auth_headers["Referer"] = authorization_endpoint
             self._session_auth_headers["Origin"] = auth_issuer
-            req = await self._session.post(url=pe_url, headers=self._session_auth_headers, data=mailform)
-            if req.status != 200:
-                raise Exception("POST password request failed")
-            try:
-                response_data = await req.text()
-                response_soup = BeautifulSoup(response_data, "html.parser")
-                pw_form: dict[str, str] = {}
-                post_action = None
-                client_id = None
-                for d in response_soup.find_all("script"):
-                    if "src" in d.attrs:
-                        continue
-                    if "window._IDK" in d.string:
-                        if re.match('"errorCode":"', d.string) is not None:
-                            raise Exception("Error code in response")
-                        pw_form["relayState"] = re.search('"relayState":"([a-f0-9]*)"', d.string)[1]
-                        pw_form["hmac"] = re.search('"hmac":"([a-f0-9]*)"', d.string)[1]
-                        pw_form["email"] = re.search('"email":"([^"]*)"', d.string)[1]
-                        pw_form["_csrf"] = re.search("csrf_token:\\s*'([^\"']*)'", d.string)[1]
-                        post_action = re.search('"postAction":\\s*"([^"\']*)"', d.string)[1]
-                        client_id = re.search('"clientId":\\s*"([^"\']*)"', d.string)[1]
-                        break
-                if pw_form["hmac"] is None or post_action is None:
-                    raise Exception("Failed to find authentication data in response")
-                pw_form["password"] = self._session_auth_password
-                pw_url = "{host}/signin-service/v1/{clientId}/{postAction}".format(
-                    host=auth_issuer, clientId=client_id, postAction=post_action
-                )
-            except Exception as e:
-                _LOGGER.error("Failed to extract password login form.")
-                raise e
+            response_text = await self.post_form(
+                self._session, pe_url, self._session_auth_headers, mailform
+            )
+
+            # Extract password form data
+            response_soup = BeautifulSoup(response_text, "html.parser")
+            pw_form, post_action, client_id = self.extract_password_form_data(
+                response_soup
+            )
+
+            # Add password to form data
+            pw_form["password"] = self._session_auth_password
+            pw_url = f"{auth_issuer}/signin-service/v1/{client_id}/{post_action}"
 
             # POST password
-            # https://identity.vwgroup.io/signin-service/v1/{CLIENT_ID}/login/authenticate
             self._session_auth_headers["Referer"] = pe_url
-            self._session_auth_headers["Origin"] = auth_issuer
-            _LOGGER.debug("Authenticating with email and password.")
-            if self._session_fulldebug:
-                _LOGGER.debug(f'Using login action url: "{pw_url}"')
-            req = await self._session.post(
-                url=pw_url, headers=self._session_auth_headers, data=pw_form, allow_redirects=False
+            redirect_location = await self.handle_login_with_password(
+                self._session, pw_url, self._session_auth_headers, pw_form
             )
-            _LOGGER.debug("Parsing login response.")
-            # Follow all redirects until we get redirected back to "our app"
-            try:
-                max_depth = 10
-                ref = urljoin(pw_url, req.headers["Location"])
-                while not ref.startswith(APP_URI):
-                    if self._session_fulldebug:
-                        _LOGGER.debug(f'Following redirect to "{ref}"')
-                    response = await self._session.get(
-                        url=ref, headers=self._session_auth_headers, allow_redirects=False
-                    )
-                    if not response.headers.get("Location", False):
-                        _LOGGER.info("Login failed, does this account have any vehicle with connect services enabled?")
-                        raise Exception("User appears unauthorized")
-                    ref = urljoin(ref, response.headers["Location"])
-                    # Set a max limit on requests to prevent forever loop
-                    max_depth -= 1
-                    if max_depth == 0:
-                        _LOGGER.warning("Should have gotten a token by now.")
-                        raise Exception("Too many redirects")
-            except Exception as e:
-                # If we get excepted it should be because we can't redirect to the APP_URI URL
-                if "error" in ref:
-                    error_msg = parse_qs(urlparse(ref).query).get("error", "")[0]
-                    if error_msg == "login.error.throttled":
-                        timeout = parse_qs(urlparse(ref).query).get("enableNextButtonAfterSeconds", "")[0]
-                        _LOGGER.warning(f"Login failed, login is disabled for another {timeout} seconds")
-                    elif error_msg == "login.errors.password_invalid":
-                        _LOGGER.warning("Login failed, invalid password")
-                    else:
-                        _LOGGER.warning(f"Login failed: {error_msg}")
-                    raise AuthenticationException(error_msg)
-                if "code" in ref:
-                    _LOGGER.debug("Got code: %s" % ref)
-                else:
-                    _LOGGER.debug("Exception occurred while logging in.")
-                    raise e
-            _LOGGER.debug("Login successful, received authorization code.")
 
-            # Extract code and tokens
-            parsed_qs = parse_qs(urlparse(ref).query)
-            jwt_auth_code = parsed_qs["code"][0]
-            # jwt_id_token = parsed_qs["id_token"][0]
-            # Exchange Auth code and id_token for new tokens with refresh_token (so we can easier fetch new ones later)
+            # Handle redirects and extract tokens
+            redirect_response = await self.follow_redirects(
+                self._session, pw_url, redirect_location
+            )
+            jwt_auth_code = parse_qs(urlparse(redirect_response).query)["code"][0]
+
+            # Exchange authorization code for tokens
             token_body = {
                 "client_id": CLIENT[client].get("CLIENT_ID"),
                 "grant_type": "authorization_code",
                 "code": jwt_auth_code,
                 "redirect_uri": APP_URI,
-                # "brand": BRAND,
             }
-            _LOGGER.debug("Trying to fetch user identity tokens.")
-            token_url = token_endpoint
-            req = await self._session.post(
-                url=token_url, headers=self._session_auth_headers, data=token_body, allow_redirects=False
+
+            # Token endpoint
+            token_response = await self.post_form(
+                self._session, token_endpoint, self._session_auth_headers, token_body
             )
-            if req.status != 200:
-                raise Exception(f"Token exchange failed. Received message: {await req.content.read()}")
-            self._session_tokens[client] = await req.json()
-            if "error" in self._session_tokens[client]:
-                error_msg = self._session_tokens[client].get("error", "")
-                if "error_description" in self._session_tokens[client]:
-                    error_description = self._session_tokens[client].get("error_description", "")
-                    raise Exception(f"{error_msg} - {error_description}")
-                else:
-                    raise Exception(error_msg)
-            if self._session_fulldebug:
-                for token in self._session_tokens.get(client, {}):
-                    _LOGGER.debug(f"Got token {token}")
-            if not await self.verify_tokens(self._session_tokens[client].get("id_token", ""), "identity"):
+
+            # Store session tokens
+            self._session_tokens[client] = json_loads(token_response)
+
+            # Verify tokens
+            if not await self.verify_tokens(
+                self._session_tokens[client].get("id_token", ""), "identity"
+            ):
                 _LOGGER.warning("User identity token could not be verified!")
             else:
-                _LOGGER.debug("User identity token verified OK.")
-                self._session_logged_in = True
-        except Exception as error:
-            _LOGGER.error(f"Login failed for {BRAND} account, {error}")
-            _LOGGER.exception(error)
+                _LOGGER.debug("User identity token verified successfully")
+
+            # Mark session as logged in
+            self._session_logged_in = True
+
+        except Exception as error:  # pylint: disable=broad-exception-caught
+            _LOGGER.error("Login failed: %s", error)
             self._session_logged_in = False
             return False
-        self._session_headers["Authorization"] = "Bearer " + self._session_tokens[client]["access_token"]
+        self._session_headers["Authorization"] = (
+            "Bearer " + self._session_tokens[client]["access_token"]
+        )
         return True
 
     async def _handle_action_result(self, response_raw):
         response = await response_raw.json(loads=json_loads)
         if not response:
-            raise Exception("Invalid or no response")
-        elif response == 429:
-            return dict({"id": None, "state": "Throttled"})
-        else:
-            request_id = response.get("data", {}).get("requestID", 0)
-            _LOGGER.debug(f"Request returned with request id: {request_id}")
-            return dict({"id": str(request_id)})
+            raise Exception("Invalid or no response")  # pylint: disable=broad-exception-raised
+        if response == 429:
+            return {"id": None, "state": "Throttled"}
+        request_id = response.get("data", {}).get("requestID", 0)
+        _LOGGER.debug("Request returned with request id: %s", request_id)
+        return {"id": str(request_id)}
 
     async def terminate(self):
         """Log out from connect services."""
@@ -377,28 +376,25 @@ class Connection:
 
     async def logout(self):
         """Logout, revoke tokens."""
-        # TODO: not tested yet
         self._session_headers.pop("Authorization", None)
 
         if self._session_logged_in:
             if self._session_headers.get("identity", {}).get("identity_token"):
-                _LOGGER.info("Revoking Identity Access Token...")
-                # params = {
-                #    "token": self._session_tokens['identity']['access_token'],
-                #    "brand": BRAND
-                # }
-                # revoke_at = await self.post('https://emea.bff.cariad.digital/login/v1/idk/revoke', data = params)
+                _LOGGER.info("Revoking Identity Access Token")
+
             if self._session_headers.get("identity", {}).get("refresh_token"):
-                _LOGGER.info("Revoking Identity Refresh Token...")
+                _LOGGER.info("Revoking Identity Refresh Token")
                 params = {"token": self._session_tokens["identity"]["refresh_token"]}
-                await self.post("https://emea.bff.cariad.digital/login/v1/idk/revoke", data=params)
+                await self.post(
+                    "https://emea.bff.cariad.digital/login/v1/idk/revoke", data=params
+                )
 
     # HTTP methods to API
     async def _request(self, method, url, return_raw=False, **kwargs):
         """Perform a query to the VW-Group API."""
-        _LOGGER.debug(f'HTTP {method} "{url}"')
+        _LOGGER.debug('HTTP %s "%s"', method, url)
         if kwargs.get("json", None):
-            _LOGGER.debug(f'Request payload: {kwargs.get("json", None)}')
+            _LOGGER.debug("Request payload: %s", kwargs.get("json", None))
         try:
             async with self._session.request(
                 method,
@@ -430,21 +426,36 @@ class Connection:
                         res = await response.json(loads=json_loads)
                     else:
                         res = {}
-                        _LOGGER.debug(f"Not success status code [{response.status}] response: {response.text}")
-                except Exception:
+                        _LOGGER.debug(
+                            "Not success status code [%s] response: %s",
+                            response.status,
+                            response.text,
+                        )
+                except Exception:  # pylint: disable=broad-exception-caught
                     res = {}
-                    _LOGGER.debug(f"Something went wrong [{response.status}] response: {response.text}")
+                    _LOGGER.debug(
+                        "Something went wrong [%s] response: %s",
+                        response.status,
+                        response.text,
+                    )
                     if return_raw:
                         return response
-                    else:
-                        return res
+                    return res
 
                 if self._session_fulldebug:
                     _LOGGER.debug(
-                        f'Request for "{url}" returned with status code [{response.status}], headers: {response.headers}, response: {res}'
+                        'Request for "%s" returned with status code [%s], headers: %s, response: %s',
+                        url,
+                        response.status,
+                        response.headers,
+                        res,
                     )
                 else:
-                    _LOGGER.debug(f'Request for "{url}" returned with status code [{response.status}]')
+                    _LOGGER.debug(
+                        'Request for "%s" returned with status code [%s]',
+                        url,
+                        response.status,
+                    )
 
                 if return_raw:
                     res = response
@@ -461,8 +472,7 @@ class Connection:
     async def get(self, url, vin="", tries=0):
         """Perform a get query."""
         try:
-            response = await self._request(METH_GET, url)
-            return response
+            return await self._request(METH_GET, url)
         except client_exceptions.ClientResponseError as error:
             if error.status == 400:
                 _LOGGER.error(
@@ -470,78 +480,92 @@ class Connection:
                     " correctly for this vehicle"
                 )
             elif error.status == 401:
-                _LOGGER.warning(f'Received "unauthorized" error while fetching data: {error}')
+                _LOGGER.warning(
+                    'Received "unauthorized" error while fetching data: %s', error
+                )
                 self._session_logged_in = False
             elif error.status == 429 and tries < MAX_RETRIES_ON_RATE_LIMIT:
                 delay = randint(1, 3 + tries * 2)
-                _LOGGER.debug(f"Server side throttled. Waiting {delay}, try {tries + 1}")
+                _LOGGER.debug(
+                    "Server side throttled. Waiting %s, try %s", delay, tries + 1
+                )
                 await asyncio.sleep(delay)
                 return await self.get(url, vin, tries + 1)
             elif error.status == 500:
-                _LOGGER.info("Got HTTP 500 from server, service might be temporarily unavailable")
+                _LOGGER.info(
+                    "Got HTTP 500 from server, service might be temporarily unavailable"
+                )
             elif error.status == 502:
-                _LOGGER.info("Got HTTP 502 from server, this request might not be supported for this vehicle")
+                _LOGGER.info(
+                    "Got HTTP 502 from server, this request might not be supported for this vehicle"
+                )
             else:
-                _LOGGER.error(f"Got unhandled error from server: {error.status}")
+                _LOGGER.error("Got unhandled error from server: %s", error.status)
             return {"status_code": error.status}
 
     async def post(self, url, vin="", tries=0, return_raw=False, **data):
         """Perform a post query."""
         try:
             if data:
-                return await self._request(METH_POST, url, return_raw=return_raw, **data)
-            else:
-                return await self._request(METH_POST, url, return_raw=return_raw)
+                return await self._request(
+                    METH_POST, url, return_raw=return_raw, **data
+                )
+            return await self._request(METH_POST, url, return_raw=return_raw)
         except client_exceptions.ClientResponseError as error:
             if error.status == 429 and tries < MAX_RETRIES_ON_RATE_LIMIT:
                 delay = randint(1, 3 + tries * 2)
-                _LOGGER.debug(f"Server side throttled. Waiting {delay}, try {tries + 1}")
+                _LOGGER.debug(
+                    "Server side throttled. Waiting %s, try %s", delay, tries + 1
+                )
                 await asyncio.sleep(delay)
-                return await self.post(url, vin, tries + 1, return_raw=return_raw, **data)
-            else:
-                raise
+                return await self.post(
+                    url, vin, tries + 1, return_raw=return_raw, **data
+                )
+            raise
 
     async def put(self, url, vin="", tries=0, return_raw=False, **data):
         """Perform a put query."""
         try:
             if data:
                 return await self._request(METH_PUT, url, return_raw=return_raw, **data)
-            else:
-                return await self._request(METH_PUT, url, return_raw=return_raw)
+            return await self._request(METH_PUT, url, return_raw=return_raw)
         except client_exceptions.ClientResponseError as error:
             if error.status == 429 and tries < MAX_RETRIES_ON_RATE_LIMIT:
                 delay = randint(1, 3 + tries * 2)
-                _LOGGER.debug(f"Server side throttled. Waiting {delay}, try {tries + 1}")
+                _LOGGER.debug(
+                    "Server side throttled. Waiting %s, try %s", delay, tries + 1
+                )
                 await asyncio.sleep(delay)
-                return await self.put(url, vin, tries + 1, return_raw=return_raw, **data)
-            else:
-                raise
+                return await self.put(
+                    url, vin, tries + 1, return_raw=return_raw, **data
+                )
+            raise
 
     # Update data for all Vehicles
     async def update(self):
         """Update status."""
         if not self.logged_in:
             if not await self._login():
-                _LOGGER.warning(f"Login for {BRAND} account failed!")
+                _LOGGER.warning("Login for %s account failed!", BRAND)
                 return False
         try:
             if not await self.validate_tokens:
-                _LOGGER.info(f"Session expired. Initiating new login for {BRAND} account.")
+                _LOGGER.info(
+                    "Session expired. Initiating new login for %s account", BRAND
+                )
                 if not await self.doLogin():
-                    _LOGGER.warning(f"Login for {BRAND} account failed!")
-                    raise Exception(f"Login for {BRAND} account failed")
+                    _LOGGER.warning("Login for %s account failed!", BRAND)
+                    raise Exception(f"Login for {BRAND} account failed")  # pylint: disable=broad-exception-raised
+            else:
+                _LOGGER.debug("Going to call vehicle updates")
+                # Get all Vehicle objects and update in parallell
+                updatelist = [vehicle.update() for vehicle in self.vehicles]
+                # Wait for all data updates to complete
+                await asyncio.gather(*updatelist)
 
-            _LOGGER.debug("Going to call vehicle updates")
-            # Get all Vehicle objects and update in parallell
-            updatelist = []
-            for vehicle in self.vehicles:
-                updatelist.append(vehicle.update())
-            # Wait for all data updates to complete
-            await asyncio.gather(*updatelist)
-
-            return True
-        except (OSError, LookupError, Exception) as error:
-            _LOGGER.warning(f"Could not update information: {error}")
+                return True
+        except (OSError, LookupError, Exception) as error:  # pylint: disable=broad-exception-caught
+            _LOGGER.warning("Could not update information: %s", error)
         return False
 
     async def getPendingRequests(self, vin):
@@ -549,15 +573,18 @@ class Connection:
         if not await self.validate_tokens:
             return False
         try:
-            response = await self.get(f"{BASE_API}/vehicle/v1/vehicles/{vin}/pendingrequests")
+            response = await self.get(
+                f"{BASE_API}/vehicle/v1/vehicles/{vin}/pendingrequests"
+            )
 
             if response:
-                response.update({"refreshTimestamp": datetime.now(timezone.utc)})
+                response["refreshTimestamp"] = datetime.now(UTC)
+                return response
 
-            return response
-
-        except Exception as error:
-            _LOGGER.warning(f"Could not fetch information for pending requests, error: {error}")
+        except Exception as error:  # pylint: disable=broad-exception-caught
+            _LOGGER.warning(
+                "Could not fetch information for pending requests, error: %s", error
+            )
         return False
 
     async def getOperationList(self, vin):
@@ -565,17 +592,22 @@ class Connection:
         if not await self.validate_tokens:
             return False
         try:
-            response = await self.get(f"{BASE_API}/vehicle/v1/vehicles/{vin}/capabilities", "")
+            response = await self.get(
+                f"{BASE_API}/vehicle/v1/vehicles/{vin}/capabilities", ""
+            )
             if response.get("capabilities", False):
                 data = response
             elif response.get("status_code", {}):
-                _LOGGER.warning(f'Could not fetch operation list, HTTP status code: {response.get("status_code")}')
+                _LOGGER.warning(
+                    "Could not fetch operation list, HTTP status code: %s",
+                    response.get("status_code"),
+                )
                 data = response
             else:
-                _LOGGER.info(f"Could not fetch operation list: {response}")
+                _LOGGER.info("Could not fetch operation list: %s", response)
                 data = {"error": "unknown"}
-        except Exception as error:
-            _LOGGER.warning(f"Could not fetch operation list, error: {error}")
+        except Exception as error:  # pylint: disable=broad-exception-caught
+            _LOGGER.warning("Could not fetch operation list, error: %s", error)
             data = {"error": "unknown"}
         return data
 
@@ -585,22 +617,23 @@ class Connection:
             return False
         try:
             response = await self.get(
-                f"{BASE_API}/vehicle/v1/vehicles/{vin}/selectivestatus?jobs={','.join(services)}", ""
+                f"{BASE_API}/vehicle/v1/vehicles/{vin}/selectivestatus?jobs={','.join(services)}",
+                "",
             )
 
             for service in services:
                 if not response.get(service):
                     _LOGGER.debug(
-                        f"Did not receive return data for requested service {service}. (This is expected for several service/car combinations)"
+                        "Did not receive return data for requested service %s. (This is expected for several service/car combinations)",
+                        service,
                     )
 
             if response:
-                response.update({"refreshTimestamp": datetime.now(timezone.utc)})
+                response.update({"refreshTimestamp": datetime.now(UTC)})
+                return response
 
-            return response
-
-        except Exception as error:
-            _LOGGER.warning(f"Could not fetch selectivestatus, error: {error}")
+        except Exception as error:  # pylint: disable=broad-exception-caught
+            _LOGGER.warning("Could not fetch selectivestatus, error: %s", error)
         return False
 
     async def getVehicleData(self, vin):
@@ -612,13 +645,12 @@ class Connection:
 
             for vehicle in response.get("data"):
                 if vehicle.get("vin") == vin:
-                    data = {"vehicle": vehicle}
-                    return data
+                    return {"vehicle": vehicle}
 
-            _LOGGER.warning(f"Could not fetch vehicle data for vin {vin}")
+            _LOGGER.warning("Could not fetch vehicle data for vin %s", vin)
 
-        except Exception as error:
-            _LOGGER.warning(f"Could not fetch vehicle data, error: {error}")
+        except Exception as error:  # pylint: disable=broad-exception-caught
+            _LOGGER.warning("Could not fetch vehicle data, error: %s", error)
         return False
 
     async def getParkingPosition(self, vin):
@@ -626,21 +658,29 @@ class Connection:
         if not await self.validate_tokens:
             return False
         try:
-            response = await self.get(f"{BASE_API}/vehicle/v1/vehicles/{vin}/parkingposition", "")
+            response = await self.get(
+                f"{BASE_API}/vehicle/v1/vehicles/{vin}/parkingposition", ""
+            )
 
             if "data" in response:
                 return {"isMoving": False, "parkingposition": response["data"]}
-            elif response.get("status_code", {}):
+            if response.get("status_code", {}):
                 if response.get("status_code", 0) == 204:
-                    _LOGGER.debug("Seems car is moving, HTTP 204 received from parkingposition")
-                    data = {"isMoving": True, "parkingposition": {}}
-                    return data
-                else:
-                    _LOGGER.warning(f'Could not fetch parkingposition, HTTP status code: {response.get("status_code")}')
+                    _LOGGER.debug(
+                        "Seems car is moving, HTTP 204 received from parkingposition"
+                    )
+                    return {"isMoving": True, "parkingposition": {}}
+
+                _LOGGER.warning(
+                    "Could not fetch parkingposition, HTTP status code: %s",
+                    response.get("status_code"),
+                )
             else:
-                _LOGGER.info("Unhandled error while trying to fetch parkingposition data")
-        except Exception as error:
-            _LOGGER.warning(f"Could not fetch parkingposition, error: {error}")
+                _LOGGER.info(
+                    "Unhandled error while trying to fetch parkingposition data"
+                )
+        except Exception as error:  # pylint: disable=broad-exception-caught
+            _LOGGER.warning("Could not fetch parkingposition, error: %s", error)
         return False
 
     async def getTripLast(self, vin):
@@ -648,14 +688,18 @@ class Connection:
         if not await self.validate_tokens:
             return False
         try:
-            response = await self.get(f"{BASE_API}/vehicle/v1/trips/{vin}/shortterm/last", "")
+            response = await self.get(
+                f"{BASE_API}/vehicle/v1/trips/{vin}/shortterm/last", ""
+            )
             if "data" in response:
                 return {"trip_last": response["data"]}
-            else:
-                _LOGGER.warning(f"Could not fetch last trip data, server response: {response}")
 
-        except Exception as error:
-            _LOGGER.warning(f"Could not fetch last trip data, error: {error}")
+            _LOGGER.warning(
+                "Could not fetch last trip data, server response: %s", response
+            )
+
+        except Exception as error:  # pylint: disable=broad-exception-caught
+            _LOGGER.warning("Could not fetch last trip data, error: %s", error)
         return False
 
     async def wakeUpVehicle(self, vin):
@@ -663,27 +707,30 @@ class Connection:
         if not await self.validate_tokens:
             return False
         try:
-            response = await self.post(
-                f"{BASE_API}/vehicle/v1/vehicles/{vin}/vehiclewakeuptrigger", json={}, return_raw=True
+            return await self.post(
+                f"{BASE_API}/vehicle/v1/vehicles/{vin}/vehiclewakeuptrigger",
+                json={},
+                return_raw=True,
             )
-            return response
 
-        except Exception as error:
-            _LOGGER.warning(f"Could not refresh the data, error: {error}")
+        except Exception as error:  # pylint: disable=broad-exception-caught
+            _LOGGER.warning("Could not refresh the data, error: %s", error)
         return False
 
     async def get_request_status(self, vin, requestId, actionId=""):
         """Return status of a request ID for a given section ID."""
         if self.logged_in is False:
             if not await self.doLogin():
-                _LOGGER.warning(f"Login for {BRAND} account failed!")
-                raise Exception(f"Login for {BRAND} account failed")
+                _LOGGER.warning("Login for %s account failed!", BRAND)
+                raise Exception(f"Login for {BRAND} account failed")  # pylint: disable=broad-exception-raised
         try:
             if not await self.validate_tokens:
-                _LOGGER.info(f"Session expired. Initiating new login for {BRAND} account.")
+                _LOGGER.info(
+                    "Session expired. Initiating new login for %s account", BRAND
+                )
                 if not await self.doLogin():
-                    _LOGGER.warning(f"Login for {BRAND} account failed!")
-                    raise Exception(f"Login for {BRAND} account failed")
+                    _LOGGER.warning("Login for %s account failed!", BRAND)
+                    raise Exception(f"Login for {BRAND} account failed")  # pylint: disable=broad-exception-raised
 
             response = await self.getPendingRequests(vin)
 
@@ -694,35 +741,37 @@ class Connection:
                     result = request.get("status")
 
             # Translate status messages to meaningful info
-            if result == "in_progress" or result == "queued" or result == "fetched":
+            if result in ("in_progress", "queued", "fetched"):
                 status = "In Progress"
-            elif result == "request_fail" or result == "failed":
+            elif result in ("request_fail", "failed"):
                 status = "Failed"
             elif result == "unfetched":
                 status = "No response"
-            elif result == "request_successful" or result == "successful":
+            elif result in ("request_successful", "successful"):
                 status = "Success"
             elif result == "fail_ignition_on":
                 status = "Failed because ignition is on"
             else:
                 status = result
-            return status
         except Exception as error:
-            _LOGGER.warning(f"Failure during get request status: {error}")
-            raise Exception(f"Failure during get request status: {error}")
+            _LOGGER.warning("Failure during get request status: %s", error)
+            raise Exception(f"Failure during get request status: {error}") from error  # pylint: disable=broad-exception-raised
+        else:
+            return status
 
     async def check_spin_state(self):
         """Determine SPIN state to prevent lockout due to wrong SPIN."""
         result = await self.get(f"{BASE_API}/vehicle/v1/spin/state")
         remainingTries = result.get("remainingTries", None)
         if remainingTries is None:
-            raise Exception("Couldn't determine S-PIN state.")
+            raise Exception("Couldn't determine S-PIN state.")  # pylint: disable=broad-exception-raised
 
         if remainingTries < 3:
+            # pylint: disable=broad-exception-raised
             raise Exception(
                 "Remaining tries for S-PIN is < 3. Bailing out for security reasons. "
-                + "To resume operation, please make sure the correct S-PIN has been set in the integration "
-                + "and then use the correct S-PIN once via the Volkswagen app."
+                "To resume operation, please make sure the correct S-PIN has been set in the integration "
+                "and then use the correct S-PIN once via the Volkswagen app."
             )
 
         return True
@@ -732,124 +781,148 @@ class Connection:
         action = "start" if action else "stop"
         try:
             response_raw = await self.post(
-                f"{BASE_API}/vehicle/v1/vehicles/{vin}/climatisation/{action}", json=data, return_raw=True
+                f"{BASE_API}/vehicle/v1/vehicles/{vin}/climatisation/{action}",
+                json=data,
+                return_raw=True,
             )
             return await self._handle_action_result(response_raw)
         except Exception as e:
-            raise Exception("Unknown error during setClimater") from e
+            raise Exception("Unknown error during setClimater") from e  # pylint: disable=broad-exception-raised
 
     async def setClimaterSettings(self, vin, data):
         """Execute climatisation settings."""
         try:
             response_raw = await self.put(
-                f"{BASE_API}/vehicle/v1/vehicles/{vin}/climatisation/settings", json=data, return_raw=True
+                f"{BASE_API}/vehicle/v1/vehicles/{vin}/climatisation/settings",
+                json=data,
+                return_raw=True,
             )
             return await self._handle_action_result(response_raw)
         except Exception as e:
-            raise Exception("Unknown error during setClimaterSettings") from e
+            raise Exception("Unknown error during setClimaterSettings") from e  # pylint: disable=broad-exception-raised
 
     async def setAuxiliary(self, vin, data, action):
         """Execute auxiliary climatisation actions."""
         action = "start" if action else "stop"
         try:
             response_raw = await self.post(
-                f"{BASE_API}/vehicle/v1/vehicles/{vin}/auxiliaryheating/{action}", json=data, return_raw=True
+                f"{BASE_API}/vehicle/v1/vehicles/{vin}/auxiliaryheating/{action}",
+                json=data,
+                return_raw=True,
             )
             return await self._handle_action_result(response_raw)
         except Exception as e:
-            raise Exception("Unknown error during setAuxiliary") from e
+            raise Exception("Unknown error during setAuxiliary") from e  # pylint: disable=broad-exception-raised
 
     async def setWindowHeater(self, vin, action):
         """Execute window heating actions."""
         action = "start" if action else "stop"
         try:
             response_raw = await self.post(
-                f"{BASE_API}/vehicle/v1/vehicles/{vin}/windowheating/{action}", json={}, return_raw=True
+                f"{BASE_API}/vehicle/v1/vehicles/{vin}/windowheating/{action}",
+                json={},
+                return_raw=True,
             )
             return await self._handle_action_result(response_raw)
         except Exception as e:
-            raise Exception("Unknown error during setWindowHeater") from e
+            raise Exception("Unknown error during setWindowHeater") from e  # pylint: disable=broad-exception-raised
 
     async def setCharging(self, vin, action):
         """Execute charging actions."""
         action = "start" if action else "stop"
         try:
             response_raw = await self.post(
-                f"{BASE_API}/vehicle/v1/vehicles/{vin}/charging/{action}", json={}, return_raw=True
+                f"{BASE_API}/vehicle/v1/vehicles/{vin}/charging/{action}",
+                json={},
+                return_raw=True,
             )
             return await self._handle_action_result(response_raw)
         except Exception as e:
-            raise Exception("Unknown error during setCharging") from e
+            raise Exception("Unknown error during setCharging") from e  # pylint: disable=broad-exception-raised
 
     async def setChargingSettings(self, vin, data):
         """Execute charging actions."""
         try:
             response_raw = await self.put(
-                f"{BASE_API}/vehicle/v1/vehicles/{vin}/charging/settings", json=data, return_raw=True
+                f"{BASE_API}/vehicle/v1/vehicles/{vin}/charging/settings",
+                json=data,
+                return_raw=True,
             )
             return await self._handle_action_result(response_raw)
         except Exception as e:
-            raise Exception("Unknown error during setChargingSettings") from e
+            raise Exception("Unknown error during setChargingSettings") from e  # pylint: disable=broad-exception-raised
 
     async def setChargingCareModeSettings(self, vin, data):
         """Execute battery care mode actions."""
         try:
             response_raw = await self.put(
-                f"{BASE_API}/vehicle/v1/vehicles/{vin}/charging/care/settings", json=data, return_raw=True
+                f"{BASE_API}/vehicle/v1/vehicles/{vin}/charging/care/settings",
+                json=data,
+                return_raw=True,
             )
             return await self._handle_action_result(response_raw)
         except Exception as e:
-            raise Exception("Unknown error during setChargingCareModeSettings") from e
+            raise Exception("Unknown error during setChargingCareModeSettings") from e  # pylint: disable=broad-exception-raised
 
     async def setReadinessBatterySupport(self, vin, data):
         """Execute readiness battery support actions."""
         try:
             response_raw = await self.put(
-                f"{BASE_API}/vehicle/v1/vehicles/{vin}/readiness/batterysupport", json=data, return_raw=True
+                f"{BASE_API}/vehicle/v1/vehicles/{vin}/readiness/batterysupport",
+                json=data,
+                return_raw=True,
             )
             return await self._handle_action_result(response_raw)
         except Exception as e:
-            raise Exception("Unknown error during setReadinessBatterySupport") from e
+            raise Exception("Unknown error during setReadinessBatterySupport") from e  # pylint: disable=broad-exception-raised
 
     async def setDepartureProfiles(self, vin, data):
         """Execute departure timers actions."""
         try:
             response_raw = await self.put(
-                f"{BASE_API}/vehicle/v1/vehicles/{vin}/departure/profiles", json=data, return_raw=True
+                f"{BASE_API}/vehicle/v1/vehicles/{vin}/departure/profiles",
+                json=data,
+                return_raw=True,
             )
             return await self._handle_action_result(response_raw)
         except Exception as e:
-            raise Exception("Unknown error during setDepartureProfiles") from e
+            raise Exception("Unknown error during setDepartureProfiles") from e  # pylint: disable=broad-exception-raised
 
     async def setClimatisationTimers(self, vin, data):
         """Execute climatisation timers actions."""
         try:
             response_raw = await self.put(
-                f"{BASE_API}/vehicle/v1/vehicles/{vin}/climatisation/timers", json=data, return_raw=True
+                f"{BASE_API}/vehicle/v1/vehicles/{vin}/climatisation/timers",
+                json=data,
+                return_raw=True,
             )
             return await self._handle_action_result(response_raw)
         except Exception as e:
-            raise Exception("Unknown error during setClimatisationTimers") from e
+            raise Exception("Unknown error during setClimatisationTimers") from e  # pylint: disable=broad-exception-raised
 
     async def setAuxiliaryHeatingTimers(self, vin, data):
         """Execute auxiliary heating timers actions."""
         try:
             response_raw = await self.put(
-                f"{BASE_API}/vehicle/v1/vehicles/{vin}/auxiliaryheating/timers", json=data, return_raw=True
+                f"{BASE_API}/vehicle/v1/vehicles/{vin}/auxiliaryheating/timers",
+                json=data,
+                return_raw=True,
             )
             return await self._handle_action_result(response_raw)
         except Exception as e:
-            raise Exception("Unknown error during setAuxiliaryHeatingTimers") from e
+            raise Exception("Unknown error during setAuxiliaryHeatingTimers") from e  # pylint: disable=broad-exception-raised
 
     async def setDepartureTimers(self, vin, data):
         """Execute departure timers actions."""
         try:
             response_raw = await self.put(
-                f"{BASE_API}/vehicle/v1/vehicles/{vin}/departure/timers", json=data, return_raw=True
+                f"{BASE_API}/vehicle/v1/vehicles/{vin}/departure/timers",
+                json=data,
+                return_raw=True,
             )
             return await self._handle_action_result(response_raw)
         except Exception as e:
-            raise Exception("Unknown error during setDepartureTimers") from e
+            raise Exception("Unknown error during setDepartureTimers") from e  # pylint: disable=broad-exception-raised
 
     async def setLock(self, vin, lock, spin):
         """Remote lock and unlock actions."""
@@ -857,11 +930,13 @@ class Connection:
         action = "lock" if lock else "unlock"
         try:
             response_raw = await self.post(
-                f"{BASE_API}/vehicle/v1/vehicles/{vin}/access/{action}", json={"spin": spin}, return_raw=True
+                f"{BASE_API}/vehicle/v1/vehicles/{vin}/access/{action}",
+                json={"spin": spin},
+                return_raw=True,
             )
             return await self._handle_action_result(response_raw)
         except Exception as e:
-            raise Exception("Unknown error during setLock") from e
+            raise Exception("Unknown error during setLock") from e  # pylint: disable=broad-exception-raised
 
     # Token handling #
     @property
@@ -870,10 +945,14 @@ class Connection:
         idtoken = self._session_tokens["identity"]["id_token"]
         atoken = self._session_tokens["identity"]["access_token"]
         id_exp = jwt.decode(
-            idtoken, options={"verify_signature": False, "verify_aud": False}, algorithms=JWT_ALGORITHMS
+            idtoken,
+            options={"verify_signature": False, "verify_aud": False},
+            algorithms=JWT_ALGORITHMS,
         ).get("exp", None)
         at_exp = jwt.decode(
-            atoken, options={"verify_signature": False, "verify_aud": False}, algorithms=JWT_ALGORITHMS
+            atoken,
+            options={"verify_signature": False, "verify_aud": False},
+            algorithms=JWT_ALGORITHMS,
         ).get("exp", None)
         id_dt = datetime.fromtimestamp(int(id_exp))
         at_dt = datetime.fromtimestamp(int(at_exp))
@@ -882,14 +961,14 @@ class Connection:
 
         # Check if tokens have expired, or expires now
         if now >= id_dt or now >= at_dt:
-            _LOGGER.debug("Tokens have expired. Try to fetch new tokens.")
+            _LOGGER.debug("Tokens have expired. Try to fetch new tokens")
             if await self.refresh_tokens():
                 _LOGGER.debug("Successfully refreshed tokens")
             else:
                 return False
         # Check if tokens expires before next update
         elif later >= id_dt or later >= at_dt:
-            _LOGGER.debug("Tokens about to expire. Try to fetch new tokens.")
+            _LOGGER.debug("Tokens about to expire. Try to fetch new tokens")
             if await self.refresh_tokens():
                 _LOGGER.debug("Successfully refreshed tokens")
             else:
@@ -921,10 +1000,10 @@ class Connection:
 
             pubkey = pubkeys[token_kid]
             jwt.decode(token, key=pubkey, algorithms=JWT_ALGORITHMS, audience=audience)
-            return True
-        except Exception as error:
-            _LOGGER.debug(f"Failed to verify token, error: {error}")
+        except Exception as error:  # pylint: disable=broad-exception-caught
+            _LOGGER.debug("Failed to verify token, error: %s", error)
             return False
+        return True
 
     async def refresh_tokens(self):
         """Refresh tokens."""
@@ -942,7 +1021,9 @@ class Connection:
                 "client_id": CLIENT["Legacy"]["CLIENT_ID"],
             }
             response = await self._session.post(
-                url="https://emea.bff.cariad.digital/login/v1/idk/token", headers=tHeaders, data=body
+                url="https://emea.bff.cariad.digital/login/v1/idk/token",
+                headers=tHeaders,
+                data=body,
             )
             await self.update_service_status("token", response.status)
             if response.status == 200:
@@ -952,15 +1033,19 @@ class Connection:
                     _LOGGER.warning("Token could not be verified!")
                 for token in tokens:
                     self._session_tokens["identity"][token] = tokens[token]
-                self._session_headers["Authorization"] = "Bearer " + self._session_tokens["identity"]["access_token"]
+                self._session_headers["Authorization"] = (
+                    "Bearer " + self._session_tokens["identity"]["access_token"]
+                )
             else:
-                _LOGGER.warning(f"Something went wrong when refreshing {BRAND} account tokens.")
+                _LOGGER.warning(
+                    "Something went wrong when refreshing %s account tokens", BRAND
+                )
                 return False
-
-            return True
-        except Exception as error:
-            _LOGGER.warning(f"Could not refresh tokens: {error}")
+        except Exception as error:  # pylint: disable=broad-exception-caught
+            _LOGGER.warning("Could not refresh tokens: %s", error)
             return False
+        else:
+            return True
 
     async def update_service_status(self, url, response_code):
         """Update service status."""
@@ -990,7 +1075,7 @@ class Connection:
         elif "token" in url:
             self._service_status["token"] = status
         else:
-            _LOGGER.debug(f'Unhandled API URL: "{url}"')
+            _LOGGER.debug('Unhandled API URL: "%s"', url)
 
     async def get_service_status(self):
         """Return list of service statuses."""
@@ -1005,8 +1090,7 @@ class Connection:
 
     @property
     def logged_in(self):
-        """
-        Return cached logged in state.
+        """Return cached logged in state.
 
         Not actually checking anything.
         """
@@ -1014,7 +1098,14 @@ class Connection:
 
     def vehicle(self, vin):
         """Return vehicle object for given vin."""
-        return next((vehicle for vehicle in self.vehicles if vehicle.unique_id.lower() == vin.lower()), None)
+        return next(
+            (
+                vehicle
+                for vehicle in self.vehicles
+                if vehicle.unique_id.lower() == vin.lower()
+            ),
+            None,
+        )
 
     def hash_spin(self, challenge, spin):
         """Convert SPIN and challenge to hash."""
@@ -1029,8 +1120,8 @@ class Connection:
         try:
             if not await self.validate_tokens:
                 return False
-
-            return True
         except OSError as error:
             _LOGGER.warning("Could not validate login: %s", error)
             return False
+        else:
+            return True
