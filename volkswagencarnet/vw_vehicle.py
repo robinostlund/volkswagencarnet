@@ -253,11 +253,11 @@ class Vehicle:
         """Set charger current."""
         if self.is_charging_supported:
             if 1 <= int(value) <= 255:
-                data = {"action": {"settings": {"maxChargeCurrent": int(value)}, "type": "setSettings"}}
+                data = {"maxChargeCurrentAC_A" : int(value)}
             else:
                 _LOGGER.error(f"Set charger maximum current to {value} is not supported.")
                 raise Exception(f"Set charger maximum current to {value} is not supported.")
-            return await self.set_charger(data)
+            return await self._connection.setChargingSettings(self.vin, data)
         else:
             _LOGGER.error("No charger support.")
             raise Exception("No charger support.")
