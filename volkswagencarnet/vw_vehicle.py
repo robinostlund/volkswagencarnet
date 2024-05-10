@@ -3642,11 +3642,11 @@ class Vehicle:
         return (
             is_valid_path(
                 self.attrs,
-                f"{Services.MEASUREMENTS}.fuelLevelStatus.value.primaryEngineType",
+                f"{Services.MEASUREMENTS}.fuelLevelStatus.value.secondaryEngineType",
             )
             and find_path(
                 self.attrs,
-                f"{Services.MEASUREMENTS}.fuelLevelStatus.value.primaryEngineType",
+                f"{Services.MEASUREMENTS}.fuelLevelStatus.value.secondaryEngineType",
             )
             == ENGINE_TYPE_ELECTRIC
         )
