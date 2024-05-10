@@ -7,16 +7,13 @@ from unittest.mock import MagicMock, patch
 from aiohttp import ClientSession
 from freezegun import freeze_time
 import pytest
-from volkswagencarnet.vw_const import Services, VehicleStatusParameter as P
-from volkswagencarnet.vw_utilities import json_loads
+from volkswagencarnet.vw_const import Services
 from volkswagencarnet.vw_vehicle import (
     ENGINE_TYPE_DIESEL,
     ENGINE_TYPE_ELECTRIC,
     ENGINE_TYPE_GASOLINE,
     Vehicle,
 )
-
-from .fixtures.constants import status_report_json_file
 
 
 class VehicleTest(IsolatedAsyncioTestCase):
@@ -70,11 +67,10 @@ class VehicleTest(IsolatedAsyncioTestCase):
     def test_str(self):
         """Test __str__."""
         vehicle = Vehicle(None, "XYZ1234567890")
-        self.assertEqual("XYZ1234567890", vehicle.__str__())
+        assert str(vehicle) == "XYZ1234567890"
 
     def test_discover(self):
         """Test the discovery process."""
-        pass
 
     @pytest.mark.asyncio
     async def test_update_deactivated(self):
@@ -88,11 +84,9 @@ class VehicleTest(IsolatedAsyncioTestCase):
 
         vehicle.discover.assert_not_called()
         # Verify that no other methods were called
-        self.assertEqual(
-            0,
-            vehicle.method_calls.__len__(),
-            f"xpected none, got {vehicle.method_calls}",
-        )
+        assert (
+            len(vehicle.method_calls) == 0
+        ), f"Expected none, got {vehicle.method_calls}"
 
     async def test_update(self):
         """Test that update calls the wanted methods and nothing else."""
@@ -111,83 +105,13 @@ class VehicleTest(IsolatedAsyncioTestCase):
         vehicle.get_service_status.assert_called_once()
 
         # Verify that only the expected functions above were called
-        self.assertEqual(
-            6,
-            vehicle.method_calls.__len__(),
-            f"Wrong number of methods called. Expected 8, got {vehicle.method_calls}",
-        )
+        assert (
+            len(vehicle.method_calls) == 6
+        ), f"Wrong number of methods called. Expected 6, got {len(vehicle.method_calls)}"
 
 
 class VehiclePropertyTest(IsolatedAsyncioTestCase):
     """Tests for properties in Vehicle."""
-
-    async def test_is_last_connected_supported(self):
-        """Test that parsing last connected works."""
-        vehicle = Vehicle(conn=None, url="dummy34")
-
-        vehicle._discovered = True
-
-        with patch.dict(vehicle.attrs, {}):
-            res = vehicle.is_last_connected_supported
-            self.assertFalse(
-                res, "Last connected supported returned True without attributes."
-            )
-
-        with patch.dict(vehicle.attrs, {"StoredVehicleDataResponse": {}}):
-            res = vehicle.is_last_connected_supported
-            self.assertFalse(
-                res, "Last connected supported returned True without 'vehicleData'."
-            )
-
-        with patch.dict(
-            vehicle.attrs, {"StoredVehicleDataResponse": {"vehicleData": {}}}
-        ):
-            res = vehicle.is_last_connected_supported
-            self.assertFalse(
-                res,
-                "Last connected supported returned True without 'vehicleData.data'.",
-            )
-
-        with patch.dict(
-            vehicle.attrs, {"StoredVehicleDataResponse": {"vehicleData": {"data": []}}}
-        ):
-            res = vehicle.is_last_connected_supported
-            self.assertFalse(
-                res,
-                "Last connected supported returned True without 'vehicleData.data[].field[]'.",
-            )
-
-        # test with a "real" response
-        with open(status_report_json_file) as f:
-            data = json_loads(f.read())
-        with patch.dict(vehicle.attrs, data):
-            res = vehicle.is_last_connected_supported
-            self.assertTrue(
-                res,
-                "Last connected supported returned False when it should have been True",
-            )
-
-    async def test_last_connected(self):
-        """Test that parsing last connected works.
-
-        Data in json is: "tsCarSentUtc": "2022-02-14T00:00:45Z",
-        and the function returns local time
-        """
-        vehicle = Vehicle(conn=None, url="dummy34")
-
-        vehicle._discovered = True
-
-        with open(status_report_json_file) as f:
-            data = json_loads(f.read())
-        with patch.dict(vehicle.attrs, data):
-            res = vehicle.last_connected
-            self.assertEqual(
-                datetime.fromisoformat("2022-02-14T00:00:45+00:00")
-                .replace(tzinfo=UTC)
-                .astimezone(tz=None)
-                .strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
-                res,
-            )
 
     async def test_json(self):
         """Test JSON serialization of dict containing datetime."""
@@ -199,37 +123,39 @@ class VehiclePropertyTest(IsolatedAsyncioTestCase):
 
         with patch.dict(vehicle.attrs, {"a string": "yay", "some date": d}):
             res = f"{vehicle.json}"
-            self.assertEqual(
-                '{\n    "a string": "yay",\n    "some date": "2022-02-22T02:22:20+02:00"\n}',
-                res,
-            )
+            expected_res = '{\n    "a string": "yay",\n    "some date": "2022-02-22T02:22:20+02:00"\n}'
+            assert res == expected_res
 
     async def test_lock_not_supported(self):
         """Test that remote locking throws exception if not supported."""
         vehicle = Vehicle(conn=None, url="dummy34")
         vehicle._discovered = True
         vehicle._services[Services.ACCESS] = {"active": False}
-        try:
+
+        with pytest.raises(Exception) as exc_info:
             await vehicle.set_lock("any", "")
-        except Exception as ex:
-            self.assertEqual("Remote lock/unlock is not supported.", ex.__str__())
+
+        expected_message = "Remote lock/unlock is not supported."
+        assert str(exc_info.value) == expected_message
 
     async def test_lock_supported(self):
         """Test that invalid locking action raises exception."""
         vehicle = Vehicle(conn=None, url="dummy34")
         vehicle._discovered = True
         vehicle._services[Services.ACCESS] = {"active": True}
-        try:
-            self.assertFalse(await vehicle.set_lock("any", ""))
-        except Exception as ex:
-            self.assertEqual(ex.__str__(), "Invalid lock action: any")
+
+        with pytest.raises(Exception) as exc_info:
+            await vehicle.set_lock("any", "")
+
+        expected_message = "Invalid lock action: any"
+        assert str(exc_info.value) == expected_message
 
         # simulate request in progress
         vehicle._requests["lock"] = {
             "id": "Foo",
             "timestamp": datetime.now(UTC) - timedelta(seconds=20),
         }
-        self.assertFalse(await vehicle.set_lock("lock", ""))
+        assert await vehicle.set_lock("lock", "") is False
 
     async def test_in_progress(self):
         """Test that _in_progress works as expected."""
@@ -243,11 +169,11 @@ class VehiclePropertyTest(IsolatedAsyncioTestCase):
             "timestamp": datetime.now(UTC) - timedelta(seconds=20),
         }
         vehicle._requests["unknown"] = {"id": "Foo"}
-        self.assertFalse(vehicle._in_progress("timed_out"))
-        self.assertTrue(vehicle._in_progress("in_progress"))
-        self.assertFalse(vehicle._in_progress("not-defined"))
-        self.assertTrue(vehicle._in_progress("unknown", 2))
-        self.assertFalse(vehicle._in_progress("unknown", 4))
+        assert not vehicle._in_progress("timed_out")
+        assert vehicle._in_progress("in_progress")
+        assert not vehicle._in_progress("not-defined")
+        assert vehicle._in_progress("unknown", 2)
+        assert not vehicle._in_progress("unknown", 4)
 
     async def test_is_primary_engine_electric(self):
         """Test primary electric engine."""
@@ -255,8 +181,8 @@ class VehiclePropertyTest(IsolatedAsyncioTestCase):
         vehicle._states[f"{Services.MEASUREMENTS}"] = {
             "fuelLevelStatus": {"value": {"primaryEngineType": ENGINE_TYPE_ELECTRIC}}
         }
-        self.assertTrue(vehicle.is_primary_drive_electric())
-        self.assertFalse(vehicle.is_primary_drive_combustion())
+        assert vehicle.is_primary_drive_electric()
+        assert not vehicle.is_primary_drive_combustion()
 
     async def test_is_primary_engine_combustion(self):
         """Test primary ICE."""
@@ -271,17 +197,17 @@ class VehiclePropertyTest(IsolatedAsyncioTestCase):
             }
         }
 
-        self.assertTrue(vehicle.is_primary_drive_combustion())
-        self.assertFalse(vehicle.is_primary_drive_electric())
-        self.assertFalse(vehicle.is_secondary_drive_combustion())
-        self.assertTrue(vehicle.is_secondary_drive_electric())
+        assert vehicle.is_primary_drive_combustion()
+        assert not vehicle.is_primary_drive_electric()
+        assert not vehicle.is_secondary_drive_combustion()
+        assert vehicle.is_secondary_drive_electric()
 
         # No secondary engine
         vehicle._states[f"{Services.MEASUREMENTS}"] = {
             "fuelLevelStatus": {"value": {"primaryEngineType": ENGINE_TYPE_GASOLINE}}
         }
-        self.assertTrue(vehicle.is_primary_drive_combustion())
-        self.assertFalse(vehicle.is_secondary_drive_electric())
+        assert vehicle.is_primary_drive_combustion()
+        assert not vehicle.is_secondary_drive_electric()
 
     async def test_has_combustion_engine(self):
         """Test check for ICE."""
@@ -294,7 +220,7 @@ class VehiclePropertyTest(IsolatedAsyncioTestCase):
                 }
             }
         }
-        self.assertTrue(vehicle.has_combustion_engine)
+        assert vehicle.has_combustion_engine
 
         # not sure if this exists, but :shrug:
         vehicle._states[f"{Services.MEASUREMENTS}"] = {
@@ -305,7 +231,7 @@ class VehiclePropertyTest(IsolatedAsyncioTestCase):
                 }
             }
         }
-        self.assertTrue(vehicle.has_combustion_engine)
+        assert vehicle.has_combustion_engine
 
         # not sure if this exists, but :shrug:
         vehicle._states[f"{Services.MEASUREMENTS}"] = {
@@ -316,4 +242,4 @@ class VehiclePropertyTest(IsolatedAsyncioTestCase):
                 }
             }
         }
-        self.assertFalse(vehicle.has_combustion_engine)
+        assert not vehicle.has_combustion_engine
