@@ -1,0 +1,1 @@
+"""Tests fixtures namespace."""
