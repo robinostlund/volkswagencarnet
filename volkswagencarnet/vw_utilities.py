@@ -1,9 +1,9 @@
 """Common utility functions."""
 
+from datetime import datetime
 import json
 import logging
 import re
-from datetime import datetime
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -19,13 +19,12 @@ def obj_parser(obj: dict) -> dict:
         try:
             obj[key] = datetime.strptime(val, "%Y-%m-%dT%H:%M:%S%z")
         except (TypeError, ValueError):
-            """The value was not a date."""
+            """The value was not a date."""  # pylint: disable=pointless-string-statement
     return obj
 
 
 def find_path_in_dict(src: dict | list, path: str | list) -> object:
-    """
-    Return data at path in dictionary source.
+    """Return data at path in dictionary source.
 
     Simple navigation of a hierarchical dict structure using XPATH-like syntax.
 
@@ -65,10 +64,10 @@ def find_path_in_dict(src: dict | list, path: str | list) -> object:
             if f.is_integer() and len(src) > 0:
                 return find_path_in_dict(src[int(f)], path[1:])
             raise KeyError("Key not found")
-        except ValueError:
-            raise KeyError(f"{path[0]} should be an integer")
-        except IndexError:
-            raise KeyError("Index out of range")
+        except ValueError as valerr:
+            raise KeyError(f"{path[0]} should be an integer") from valerr
+        except IndexError as idxerr:
+            raise KeyError("Index out of range") from idxerr
     return find_path_in_dict(src[path[0]], path[1:])
 
 
@@ -77,13 +76,14 @@ def find_path(src: dict | list, path: str | list) -> object:
     try:
         return find_path_in_dict(src, path)
     except KeyError:
-        _LOGGER.error("Dictionary path: %s is no longer present. Dictionary: %s", path, src)
+        _LOGGER.error(
+            "Dictionary path: %s is no longer present. Dictionary: %s", path, src
+        )
         return None
 
 
 def is_valid_path(src, path):
-    """
-    Check if path exists in source.
+    """Check if path exists in source.
 
     >>> is_valid_path(dict(a=1), 'a')
     True
@@ -105,9 +105,10 @@ def is_valid_path(src, path):
     """
     try:
         find_path_in_dict(src, path)
-        return True
     except KeyError:
         return False
+    else:
+        return True
 
 
 def camel2slug(s: str) -> str:
@@ -121,33 +122,16 @@ def camel2slug(s: str) -> str:
     return re.sub("((?<!_)[A-Z])", "_\\1", s).lower().strip("_ \n\t\r")
 
 
-def make_url(url: str, **kwargs):
-    """Replace placeholders in URLs."""
-    for a in kwargs:
-        url = url.replace("{" + a + "}", str(kwargs[a]))
-        url = url.replace("$" + a, str(kwargs[a]))
+def make_url(url: str, **kwargs: str) -> str:
+    """Replace placeholders in a URL with given keyword arguments."""
+
+    # Replace both `{key}` and `$key` in the URL
+    for key, value in kwargs.items():
+        placeholder1 = f"{{{key}}}"
+        placeholder2 = f"${key}"
+        url = url.replace(placeholder1, str(value)).replace(placeholder2, str(value))
+
+    # Check if any unreplaced placeholders remain
     if "{" in url or "}" in url:
-        raise ValueError("Not all values were substituted")
+        raise ValueError("Not all placeholders were replaced in the URL")
     return url
-
-
-# TODO: is VW using 273.15 or 273? :)
-def celsius_to_vw(val: float) -> int:
-    """Convert Celsius to VW format."""
-    return int(5 * round(2 * (273.15 + val)))
-
-
-def fahrenheit_to_vw(val: float) -> int:
-    """Convert Fahrenheit to VW format."""
-    return int(5 * round(2 * (273.15 + (val - 32) * 5 / 9)))
-
-
-def vw_to_celsius(val: int) -> float:
-    """Convert Celsius to VW format."""
-    return round(2 * ((val / 10) - 273.15)) / 2
-
-
-# TODO: are F ints of floats?
-def vw_to_fahrenheit(val: int) -> int:
-    """Convert Fahrenheit to VW format."""
-    return int(round((val / 10 - 273.15) * 9 / 5 + 32))
