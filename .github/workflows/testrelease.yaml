@@ -9,6 +9,9 @@ jobs:
   build:
     name: Upload Package to PyPi Test Repository
     runs-on: ubuntu-latest
+    environment: testrelease
+    permissions:
+      id-token: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -33,7 +36,6 @@ jobs:
       - name: Publish package to Test PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          password: ${{ secrets.PYPI_TOKEN_TEST }}
           repository-url: https://test.pypi.org/legacy/
           print-hash: true
           skip-existing: true

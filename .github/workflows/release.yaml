@@ -9,6 +9,9 @@ jobs:
     if: "!github.event.release.prerelease"
     name: Upload Package to PyPi Repository
     runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      id-token: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -34,5 +37,4 @@ jobs:
         if: startsWith(github.ref, 'refs/tags')
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          password: ${{ secrets.PYPI_TOKEN_PROD }}
           print-hash: true
