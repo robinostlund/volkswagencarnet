@@ -1364,6 +1364,12 @@ def create_instruments():
             unit="%",
         ),
         Sensor(
+            attr="gas_level",
+            name="Gas level",
+            icon="mdi:gas-cylinder",
+            unit="%",
+        ),
+        Sensor(
             attr="service_inspection",
             name="Service inspection days",
             icon="mdi:garage",
@@ -1418,6 +1424,18 @@ def create_instruments():
         Sensor(
             attr="combustion_range",
             name="Combustion range",
+            icon="mdi:car",
+            unit="km",
+        ),
+        Sensor(
+            attr="fuel_range",
+            name="Fuel range",
+            icon="mdi:car",
+            unit="km",
+        ),
+        Sensor(
+            attr="gas_range",
+            name="Gas range",
             icon="mdi:car",
             unit="km",
         ),
@@ -1490,6 +1508,13 @@ def create_instruments():
             name="Last trip average fuel consumption",
             icon="mdi:fuel",
             unit="l/100 km",
+            state_class=VWStateClass.MEASUREMENT,
+        ),
+        Sensor(
+            attr="trip_last_average_gas_consumption",
+            name="Last trip average gas consumption",
+            icon="mdi:gas-cylinder",
+            unit="m3/100km",
             state_class=VWStateClass.MEASUREMENT,
         ),
         Sensor(
