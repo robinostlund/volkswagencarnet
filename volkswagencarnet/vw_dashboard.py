@@ -1352,6 +1352,18 @@ def create_instruments():
             unit="%",
         ),
         Sensor(
+            attr="hv_battery_min_temperature",
+            name="HV battery min temperature",
+            icon="mdi:thermometer-chevron-down",
+            unit=TEMP_CELSIUS,
+        ),
+        Sensor(
+            attr="hv_battery_max_temperature",
+            name="HV battery max temperature",
+            icon="mdi:thermometer-chevron-up",
+            unit=TEMP_CELSIUS,
+        ),
+        Sensor(
             attr="adblue_level",
             name="Adblue level",
             icon="mdi:fuel",

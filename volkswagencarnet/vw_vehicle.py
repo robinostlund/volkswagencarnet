@@ -298,28 +298,6 @@ class Vehicle:
 
     # Data set functions
     # Charging (BATTERYCHARGE)
-    async def set_charger_current(self, value):
-        """Set charger current."""
-        if self.is_charging_supported:
-            if 1 <= int(value) <= 255:
-                data = {
-                    "action": {
-                        "settings": {"maxChargeCurrent": int(value)},
-                        "type": "setSettings",
-                    }
-                }
-            else:
-                _LOGGER.error(
-                    "Set charger maximum current to %s is not supported", value
-                )
-                # pylint: disable=broad-exception-raised
-                raise Exception(
-                    f"Set charger maximum current to {value} is not supported."
-                )
-            return await self.set_charger(data)
-        _LOGGER.error("No charger support")
-        raise Exception("No charger support.")  # pylint: disable=broad-exception-raised
-
     async def set_charger(self, action) -> bool:
         """Turn on/off charging."""
         if self.is_charging_supported:
@@ -342,12 +320,24 @@ class Vehicle:
             self.is_charge_max_ac_setting_supported
             or self.is_auto_release_ac_connector_supported
             or self.is_battery_target_charge_level_supported
+            or self.is_charge_max_ac_ampere_supported
         ):
             if setting == "reduced_ac_charging" and value not in ["reduced", "maximum"]:
                 _LOGGER.error('Charging setting "%s" is not supported', value)
                 raise Exception(f'Charging setting "{value}" is not supported.')  # pylint: disable=broad-exception-raised
+            if setting == "max_charge_amperage" and int(value) not in [5, 10, 13, 32]:
+                _LOGGER.error(
+                    "Setting maximum charge amperage to %s is not supported", value
+                )
+                # pylint: disable=broad-exception-raised
+                raise Exception(
+                    f"Setting maximum charge amperage to {value} is not supported."
+                )
             data = {}
-            if self.is_charge_max_ac_setting_supported:
+            if (
+                self.is_charge_max_ac_setting_supported
+                and setting != "max_charge_amperage"
+            ):
                 data["maxChargeCurrentAC"] = (
                     value
                     if setting == "reduced_ac_charging"
@@ -365,6 +355,15 @@ class Vehicle:
                     value
                     if setting == "battery_target_charge_level"
                     else self.battery_target_charge_level
+                )
+            if (
+                self.is_charge_max_ac_ampere_supported
+                and setting != "reduced_ac_charging"
+            ):
+                data["maxChargeCurrentAC_A"] = (
+                    int(value)
+                    if setting == "max_charge_amperage"
+                    else self.charge_max_ac_ampere
                 )
             self._requests["latest"] = "Batterycharge"
             response = await self._connection.setChargingSettings(self.vin, data)
@@ -893,7 +892,7 @@ class Vehicle:
         for light in lights:
             if light["status"] == "on":
                 lights_on_count = lights_on_count + 1
-        return lights_on_count == 1
+        return lights_on_count == 2
 
     @property
     def parking_light_last_updated(self) -> datetime:
@@ -1243,6 +1242,64 @@ class Vehicle:
         """Return true if target charge level is supported."""
         return is_valid_path(
             self.attrs, f"{Services.CHARGING}.chargingSettings.value.targetSOC_pct"
+        )
+
+    @property
+    def hv_battery_min_temperature(self) -> int:
+        """Return HV battery min temperature."""
+        return (
+            float(
+                find_path(
+                    self.attrs,
+                    f"{Services.MEASUREMENTS}.temperatureBatteryStatus.value.temperatureHvBatteryMin_K",
+                )
+            )
+            - 273.15
+        )
+
+    @property
+    def hv_battery_min_temperature_last_updated(self) -> datetime:
+        """Return attribute last updated timestamp."""
+        return find_path(
+            self.attrs,
+            f"{Services.MEASUREMENTS}.temperatureBatteryStatus.value.carCapturedTimestamp",
+        )
+
+    @property
+    def is_hv_battery_min_temperature_supported(self) -> bool:
+        """Return true if HV battery min temperature is supported."""
+        return is_valid_path(
+            self.attrs,
+            f"{Services.MEASUREMENTS}.temperatureBatteryStatus.value.temperatureHvBatteryMin_K",
+        )
+
+    @property
+    def hv_battery_max_temperature(self) -> int:
+        """Return HV battery max temperature."""
+        return (
+            float(
+                find_path(
+                    self.attrs,
+                    f"{Services.MEASUREMENTS}.temperatureBatteryStatus.value.temperatureHvBatteryMax_K",
+                )
+            )
+            - 273.15
+        )
+
+    @property
+    def hv_battery_max_temperature_last_updated(self) -> datetime:
+        """Return attribute last updated timestamp."""
+        return find_path(
+            self.attrs,
+            f"{Services.MEASUREMENTS}.temperatureBatteryStatus.value.carCapturedTimestamp",
+        )
+
+    @property
+    def is_hv_battery_max_temperature_supported(self) -> bool:
+        """Return true if HV battery max temperature is supported."""
+        return is_valid_path(
+            self.attrs,
+            f"{Services.MEASUREMENTS}.temperatureBatteryStatus.value.temperatureHvBatteryMax_K",
         )
 
     @property
