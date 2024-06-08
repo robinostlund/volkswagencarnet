@@ -349,6 +349,52 @@ class Number(Instrument):
         raise NotImplementedError
 
 
+class Select(Instrument):
+    """Select instrument."""
+
+    def __init__(
+        self,
+        attr: str,
+        name: str,
+        icon: str | None,
+        unit: str | None,
+        entity_type: str | None = None,
+        device_class: str | None = None,
+        state_class: str | None = None,
+    ) -> None:
+        """Init."""
+        super().__init__(
+            component="select",
+            attr=attr,
+            name=name,
+            icon=icon,
+            entity_type=entity_type,
+            device_class=device_class,
+            state_class=state_class,
+        )
+        self.unit = unit
+
+    @property
+    def is_mutable(self):
+        """Return boolean is_mutable."""
+        return False
+
+    @property
+    def state(self):
+        """Return current state."""
+        raise NotImplementedError
+
+    @property
+    def current_option(self):
+        """Return current option."""
+        raise NotImplementedError
+
+    @property
+    def options(self):
+        """Return options."""
+        raise NotImplementedError
+
+
 class Position(Instrument):
     """Position instrument."""
 
@@ -629,6 +675,45 @@ class ClimatisationTargetTemperature(Number):
     def attributes(self) -> dict:
         """Return attributes."""
         return {"last_result": self.vehicle.climater_action_status}
+
+
+# Select
+
+
+class ChargeMaxACAmpere(Select):
+    """Maximum charge ampere."""
+
+    def __init__(self) -> None:
+        """Init."""
+        super().__init__(
+            attr="charge_max_ac_ampere",
+            name="Charger max AC ampere",
+            icon="mdi:flash-auto",
+            unit="A",
+            entity_type="config",
+        )
+
+    @property
+    def state(self):
+        """Return current state."""
+        return self.vehicle.charge_max_ac_ampere
+
+    @property
+    def current_option(self):
+        """Return current option."""
+        return str(self.vehicle.charge_max_ac_ampere)
+
+    @property
+    def options(self) -> dict:
+        """Return options."""
+        return ["5", "10", "13", "32"]
+
+    async def set_value(self, ampere: str):
+        """Set value."""
+        await self.vehicle.set_charging_settings(
+            setting="max_charge_amperage", value=ampere
+        )
+        await self.vehicle.update()
 
 
 # Switches
@@ -1310,6 +1395,7 @@ def create_instruments():
         ClimatisationTargetTemperature(),
         DoorLock(),
         TrunkLock(),
+        ChargeMaxACAmpere(),
         RequestUpdate(),
         WindowHeater(),
         BatteryClimatisation(),
