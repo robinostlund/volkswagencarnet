@@ -5,7 +5,7 @@
 ![Release](https://img.shields.io/github/workflow/status/robinostlund/volkswagencarnet/Release)
 ![PyPi](https://img.shields.io/pypi/v/volkswagencarnet)
 ![Version](https://img.shields.io/github/v/release/robinostlund/volkswagencarnet)
-![CodeStyle](https://img.shields.io/badge/code%20style-black-black)
+![CodeStyle](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)
 ![Known Vulnerabilities](https://snyk.io/test/github/robinostlund/volkswagencarnet/badge.svg)
 [![CodeQL](https://github.com/robinostlund/volkswagencarnet/actions/workflows/codeql-analysis.yml/badge.svg)](https://github.com/robinostlund/volkswagencarnet/actions/workflows/codeql-analysis.yml)
 [![codecov](https://codecov.io/gh/robinostlund/volkswagencarnet/branch/master/graph/badge.svg?token=NH1Q1GH4I3)](https://codecov.io/gh/robinostlund/volkswagencarnet)
@@ -17,7 +17,7 @@
 
 ## Help Wanted
 
-As i don't have a car with we connect anymore i would appreciate if it would be possible to get help to keep this repository maintained. So if you feel that you have some time over and is interested in helping out with this. Please feel to contact me! Thanks
+As i don't have a car with Volkswagen Connect anymore i would appreciate if it would be possible to get help to keep this repository maintained. So if you feel that you have some time over and is interested in helping out with this. Please feel to contact me! Thanks
 
 ## Information
 

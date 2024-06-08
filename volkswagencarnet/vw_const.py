@@ -1,4 +1,4 @@
-"""Constants for We Connect library."""
+"""Constants for Volkswagen Connect library."""
 
 BASE_SESSION = "https://msg.volkswagen.de"
 BASE_AUTH = "https://identity.vwgroup.io"

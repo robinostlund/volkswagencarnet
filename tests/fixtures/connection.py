@@ -2,11 +2,11 @@
 
 import os
 
+from aiohttp import ClientSession, CookieJar
 import pytest
 import pytest_asyncio
-from aiohttp import CookieJar, ClientSession
-
 from volkswagencarnet.vw_connection import Connection
+
 from .constants import resource_path
 
 
@@ -23,4 +23,11 @@ async def session():
 @pytest.fixture
 def connection(session):
     """Real connection for integration tests."""
-    return Connection(session=session, username="", password="", country="DE", interval=999, fulldebug=True)
+    return Connection(
+        session=session,
+        username="",
+        password="",
+        country="DE",
+        interval=999,
+        fulldebug=True,
+    )

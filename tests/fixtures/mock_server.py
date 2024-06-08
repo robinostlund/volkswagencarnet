@@ -1,8 +1,8 @@
 """Mock HTTP server."""
 
+from http.server import BaseHTTPRequestHandler, HTTPServer
 import json
 import socket
-from http.server import BaseHTTPRequestHandler, HTTPServer
 from threading import Thread
 
 

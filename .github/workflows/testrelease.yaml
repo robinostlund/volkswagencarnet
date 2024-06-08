@@ -36,6 +36,6 @@ jobs:
       - name: Publish package to Test PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          repository_url: https://test.pypi.org/legacy/
-          print_hash: true
-          skip_existing: true
+          repository-url: https://test.pypi.org/legacy/
+          print-hash: true
+          skip-existing: true

@@ -10,19 +10,6 @@ build-backend = "setuptools.build_meta"
 fallback_version = "0.0.0"
 write_to = "volkswagencarnet/version.py"
 
-[tool.black]
-line-length = 120
-target-version = ['py37', 'py38', 'py39', 'py310']
-include = '\.pyi?$'
-extend-exclude = '''
-/(
-  # The following are specific to Black, you probably don't want those.
-  | blib2to3
-  | tests/data
-  | profiling
-)/
-'''
-
 [tool.pytest.ini_options]
 minversion = "6.0"
 addopts = "-ra"
