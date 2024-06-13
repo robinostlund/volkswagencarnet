@@ -350,7 +350,6 @@ class Vehicle:
                     else self.auto_release_ac_connector_state
                 )
             if self.is_battery_target_charge_level_supported:
-                self.battery_target_charge_level = value
                 data["targetSOC_pct"] = (
                     value
                     if setting == "battery_target_charge_level"
