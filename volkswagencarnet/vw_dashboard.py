@@ -157,7 +157,7 @@ class Sensor(Instrument):
                 self.unit = "l/100 mi"
                 self.convert = True
             elif self.unit == "kWh/100 km":
-                self.unit = "kWh/100 mi"
+                self.unit = "mi/kWh"
                 self.convert = True
         elif self.unit and scandinavian_miles:
             if self.unit == "km":
@@ -194,8 +194,10 @@ class Sensor(Instrument):
             if "mi" in self.unit:
                 if self.unit in ["mi", "mi/h"]:
                     return round(int(val) * 0.6213712)
-            if "gal/100 mi" in self.unit or "kWh/100 mi" in self.unit:
+            if "gal/100 mi" in self.unit:
                 return round(val * 0.4251438, 1)
+            if "mi/kWh" in self.unit:
+                return round((100 / val) * 0.6213712, 1)
             if "°F" in self.unit:
                 return round((val * 9 / 5) + 32, 1)
             if self.unit in ["mil", "mil/h"]:
