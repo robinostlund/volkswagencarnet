@@ -6,6 +6,7 @@ from __future__ import annotations
 import asyncio
 from collections import OrderedDict
 from datetime import UTC, datetime, timedelta
+from zoneinfo import ZoneInfo
 from json import dumps as to_json
 import logging
 
@@ -3209,6 +3210,7 @@ class Vehicle:
         timer_type = None
         recurring_on = []
         start_time = None
+        default_date = datetime.now().date()
         if timer.get("singleTimer", None):
             timer_type = "single"
             if timer.get("singleTimer", None).get("startDateTime", None):
@@ -3216,8 +3218,8 @@ class Vehicle:
                     "startDateTime", None
                 )
                 start_time = (
-                    start_date_time.replace(tzinfo=UTC)
-                    .astimezone(tz=None)
+                    start_date_time.replace(tzinfo=ZoneInfo("UTC"))
+                    .astimezone()
                     .strftime("%Y-%m-%dT%H:%M:%S")
                 )
             if timer.get("singleTimer", None).get("startDateTimeLocal", None):
@@ -3245,11 +3247,13 @@ class Vehicle:
                     "startTime", None
                 )
                 start_time = (
-                    datetime.strptime(start_date_time, "%H:%M")
-                    .replace(tzinfo=UTC)
-                    .astimezone(tz=None)
+                    datetime.strptime(f"{default_date} {start_date_time}", "%Y-%m-%d %H:%M")
+                    .replace(tzinfo=ZoneInfo("UTC"))
+                    .astimezone()
                     .strftime("%H:%M")
                 )
+
+
             if timer.get("recurringTimer", None).get("startTimeLocal", None):
                 start_date_time = timer.get("recurringTimer", None).get(
                     "startTimeLocal", None
