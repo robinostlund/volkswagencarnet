@@ -1456,18 +1456,21 @@ def create_instruments():
             name="Adblue level",
             icon="mdi:fuel",
             unit="km",
+            state_class=VWStateClass.MEASUREMENT,
         ),
         Sensor(
             attr="fuel_level",
             name="Fuel level",
             icon="mdi:fuel",
             unit="%",
+            state_class=VWStateClass.MEASUREMENT,
         ),
         Sensor(
             attr="gas_level",
             name="Gas level",
             icon="mdi:gas-cylinder",
             unit="%",
+            state_class=VWStateClass.MEASUREMENT,
         ),
         Sensor(
             attr="service_inspection",
