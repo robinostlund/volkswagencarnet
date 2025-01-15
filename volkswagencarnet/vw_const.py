@@ -62,6 +62,7 @@ class VWDeviceClass:
     TEMPERATURE = "temperature"
     TIMESTAMP = "timestamp"
     WINDOW = "window"
+    DISTANCE = "distance"
 
 
 class VehicleStatusParameter:
