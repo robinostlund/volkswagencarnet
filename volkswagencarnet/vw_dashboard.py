@@ -1483,6 +1483,7 @@ def create_instruments():
             name="Service inspection distance",
             icon="mdi:garage",
             unit="km",
+            device_class=VWDeviceClass.DISTANCE,
         ),
         Sensor(
             attr="oil_inspection",
@@ -1495,6 +1496,7 @@ def create_instruments():
             name="Oil inspection distance",
             icon="mdi:oil",
             unit="km",
+            device_class=VWDeviceClass.DISTANCE,
         ),
         Sensor(
             attr="last_connected",
@@ -1523,6 +1525,7 @@ def create_instruments():
             name="Electric range",
             icon="mdi:car-electric",
             unit="km",
+            device_class=VWDeviceClass.DISTANCE,
             state_class=VWStateClass.MEASUREMENT,
         ),
         Sensor(
@@ -1530,6 +1533,7 @@ def create_instruments():
             name="Combustion range",
             icon="mdi:car",
             unit="km",
+            device_class=VWDeviceClass.DISTANCE,
             state_class=VWStateClass.MEASUREMENT,
         ),
         Sensor(
@@ -1537,6 +1541,7 @@ def create_instruments():
             name="Fuel range",
             icon="mdi:car",
             unit="km",
+            device_class=VWDeviceClass.DISTANCE,
             state_class=VWStateClass.MEASUREMENT,
         ),
         Sensor(
@@ -1544,6 +1549,7 @@ def create_instruments():
             name="Gas range",
             icon="mdi:car",
             unit="km",
+            device_class=VWDeviceClass.DISTANCE,
             state_class=VWStateClass.MEASUREMENT,
         ),
         Sensor(
@@ -1551,6 +1557,7 @@ def create_instruments():
             name="Combined range",
             icon="mdi:car",
             unit="km",
+            device_class=VWDeviceClass.DISTANCE,
             state_class=VWStateClass.MEASUREMENT,
         ),
         Sensor(
@@ -1558,6 +1565,7 @@ def create_instruments():
             name="Battery cruising range",
             icon="mdi:car-settings",
             unit="km",
+            device_class=VWDeviceClass.DISTANCE,
             state_class=VWStateClass.MEASUREMENT,
         ),
         Sensor(
@@ -1834,7 +1842,9 @@ def create_instruments():
             device_class=VWDeviceClass.POWER,
         ),
         BinarySensor(
-            attr="energy_flow", name="Energy flow", device_class=VWDeviceClass.POWER
+            attr="energy_flow",
+            name="Energy flow",
+            device_class=VWDeviceClass.POWER
         ),
         BinarySensor(
             attr="parking_light",
