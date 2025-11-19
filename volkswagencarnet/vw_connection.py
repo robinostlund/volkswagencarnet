@@ -702,6 +702,25 @@ class Connection:
             _LOGGER.warning("Could not fetch last trip data, error: %s", error)
         return False
 
+    async def getTripRefuel(self, vin):
+        """Get information about the trip since last refuel"""
+        if not await self.validate_tokens:
+            return False
+        try:
+            response = await self.get(
+                f"{BASE_API}/vehicle/v1/trips/{vin}/cyclic", ""
+            )
+            if "data" in response:
+                return {"trip_refuel": response["data"][0]}
+
+            _LOGGER.warning(
+                "Could not fetch refuel trip data, server response: %s", response
+            )
+
+        except Exception as error:  # pylint: disable=broad-exception-caught
+            _LOGGER.warning("Could not fetch last trip data, error: %s", error)
+        return False
+
     async def wakeUpVehicle(self, vin):
         """Wake up vehicle to send updated data to VW Backend."""
         if not await self.validate_tokens:

@@ -142,3 +142,4 @@ class Services:
     PARAMETERS = "parameters"
     SERVICE_STATUS = "service_status"
     TRIP_LAST = "trip_last"
+    TRIP_REFUEL = "trip_refuel"
