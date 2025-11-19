@@ -6,6 +6,7 @@ from __future__ import annotations
 import asyncio
 from collections import OrderedDict
 from datetime import UTC, datetime, timedelta
+from zoneinfo import ZoneInfo
 from json import dumps as to_json
 import logging
 
@@ -3202,6 +3203,28 @@ class Vehicle:
         """Return true if departure timer is supported."""
         return self.departure_timer(timer_id) is not None
 
+    @staticmethod
+    def _convert_utc_time_to_local(time_str: str) -> str:
+        """
+        Convert a UTC time-only string (HH:MM) to local time.
+        
+        Uses today's date to ensure correct DST offset for the current time of year.
+        The date is only used for timezone conversion and is discarded in the result.
+        
+        Args:
+            time_str: Time string in format "HH:MM" (assumed to be in UTC)
+            
+        Returns:
+            Time string in format "HH:MM" (converted to local timezone)
+        """
+        # Use today's date to get correct DST offset for current time of year
+        today = datetime.now().date()
+        utc_time = datetime.strptime(f"{today} {time_str}", "%Y-%m-%d %H:%M").replace(
+            tzinfo=ZoneInfo("UTC")
+        )
+        local_time = utc_time.astimezone(tz=None)
+        return local_time.strftime("%H:%M")
+
     def timer_attributes(self, timer_id: str | int):
         """Return departure timer attributes."""
         timer = self.departure_timer(timer_id)
@@ -3216,7 +3239,7 @@ class Vehicle:
                     "startDateTime", None
                 )
                 start_time = (
-                    start_date_time.replace(tzinfo=UTC)
+                    start_date_time.replace(tzinfo=ZoneInfo("UTC"))
                     .astimezone(tz=None)
                     .strftime("%Y-%m-%dT%H:%M:%S")
                 )
@@ -3241,14 +3264,8 @@ class Vehicle:
         elif timer.get("recurringTimer", None):
             timer_type = "recurring"
             if timer.get("recurringTimer", None).get("startTime", None):
-                start_date_time = timer.get("recurringTimer", None).get(
-                    "startTime", None
-                )
-                start_time = (
-                    datetime.strptime(start_date_time, "%H:%M")
-                    .replace(tzinfo=UTC)
-                    .astimezone(tz=None)
-                    .strftime("%H:%M")
+                start_time = self._convert_utc_time_to_local(
+                    timer.get("recurringTimer", None).get("startTime", None)
                 )
             if timer.get("recurringTimer", None).get("startTimeLocal", None):
                 start_date_time = timer.get("recurringTimer", None).get(
@@ -3413,19 +3430,14 @@ class Vehicle:
             timer_type = "single"
             start_date_time = timer.get("singleTimer", None).get("startDateTime", None)
             start_time = (
-                start_date_time.replace(tzinfo=UTC)
+                start_date_time.replace(tzinfo=ZoneInfo("UTC"))
                 .astimezone(tz=None)
                 .strftime("%Y-%m-%dT%H:%M:%S")
             )
         elif timer.get("recurringTimer", None):
             timer_type = "recurring"
             start_date_time = timer.get("recurringTimer", None).get("startTime", None)
-            start_time = (
-                datetime.strptime(start_date_time, "%H:%M")
-                .replace(tzinfo=UTC)
-                .astimezone(tz=None)
-                .strftime("%H:%M")
-            )
+            start_time = self._convert_utc_time_to_local(start_date_time)
             recurring_days = timer.get("recurringTimer", None).get("recurringOn", None)
             recurring_on = [day for day in recurring_days if recurring_days.get(day)]
         return {
