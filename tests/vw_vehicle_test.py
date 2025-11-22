@@ -105,8 +105,8 @@ class VehicleTest(IsolatedAsyncioTestCase):
         vehicle.get_service_status.assert_called_once()
 
         # Verify that only the expected functions above were called
-        assert len(vehicle.method_calls) == 6, (
-            f"Wrong number of methods called. Expected 6, got {len(vehicle.method_calls)}"
+        assert len(vehicle.method_calls) == 7, (
+            f"Wrong number of methods called. Expected 7, got {len(vehicle.method_calls)}"
         )
 
 
