@@ -104,7 +104,12 @@ RESOURCES = [
     'trip_last_average_electric_consumption',
     'trip_last_average_fuel_consumption',
     'trip_last_duration',
-    'trip_last_length'
+    'trip_last_length',
+    'trip_refuel_average_speed',
+    'trip_refuel_average_electric_consumption',
+    'trip_refuel_average_fuel_consumption',
+    'trip_refuel_duration',
+    'trip_refuel_length'
 ]
 
 def is_enabled(attr):

@@ -52,16 +52,16 @@ class UtilitiesTest(TestCase):
 
                 if isinstance(expected, bool):
                     # If expected is a boolean, assert the result of is_valid_path
-                    assert (
-                        is_valid_path(source, path) == expected
-                    ), f"Path validation error for '{path}' in '{source}'."
+                    assert is_valid_path(source, path) == expected, (
+                        f"Path validation error for '{path}' in '{source}'."
+                    )
                 else:
                     # If expected is an exception, assert it is raised
                     with pytest.raises(expected) as exc_info:
                         is_valid_path(source, path)
-                    assert isinstance(
-                        exc_info.value, expected
-                    ), f"Expected {expected.__name__}, but got {type(exc_info.value).__name__}. Exception: {str(exc_info.value)}"
+                    assert isinstance(exc_info.value, expected), (
+                        f"Expected {expected.__name__}, but got {type(exc_info.value).__name__}. Exception: {str(exc_info.value)}"
+                    )
 
     def test_is_valid_path_with_lists(self):
         """Test that is_valid_path can process lists."""
