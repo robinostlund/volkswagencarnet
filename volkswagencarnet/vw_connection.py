@@ -707,9 +707,7 @@ class Connection:
         if not await self.validate_tokens:
             return False
         try:
-            response = await self.get(
-                f"{BASE_API}/vehicle/v1/trips/{vin}/cyclic", ""
-            )
+            response = await self.get(f"{BASE_API}/vehicle/v1/trips/{vin}/cyclic", "")
             if "data" in response:
                 return {"trip_refuel": response["data"][0]}
 

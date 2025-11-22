@@ -1842,9 +1842,7 @@ def create_instruments():
             device_class=VWDeviceClass.POWER,
         ),
         BinarySensor(
-            attr="energy_flow",
-            name="Energy flow",
-            device_class=VWDeviceClass.POWER
+            attr="energy_flow", name="Energy flow", device_class=VWDeviceClass.POWER
         ),
         BinarySensor(
             attr="parking_light",

@@ -84,9 +84,9 @@ class VehicleTest(IsolatedAsyncioTestCase):
 
         vehicle.discover.assert_not_called()
         # Verify that no other methods were called
-        assert (
-            len(vehicle.method_calls) == 0
-        ), f"Expected none, got {vehicle.method_calls}"
+        assert len(vehicle.method_calls) == 0, (
+            f"Expected none, got {vehicle.method_calls}"
+        )
 
     async def test_update(self):
         """Test that update calls the wanted methods and nothing else."""
@@ -105,9 +105,9 @@ class VehicleTest(IsolatedAsyncioTestCase):
         vehicle.get_service_status.assert_called_once()
 
         # Verify that only the expected functions above were called
-        assert (
-            len(vehicle.method_calls) == 6
-        ), f"Wrong number of methods called. Expected 6, got {len(vehicle.method_calls)}"
+        assert len(vehicle.method_calls) == 6, (
+            f"Wrong number of methods called. Expected 6, got {len(vehicle.method_calls)}"
+        )
 
 
 class VehiclePropertyTest(IsolatedAsyncioTestCase):
