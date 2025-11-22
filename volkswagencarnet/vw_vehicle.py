@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import asyncio
 from collections import OrderedDict
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime, timedelta, date
 from json import dumps as to_json
 import logging
 
@@ -3256,8 +3256,9 @@ class Vehicle:
                 start_date_time = timer.get("recurringTimer", None).get(
                     "startTime", None
                 )
+                utc_time = datetime.strptime(start_date_time, "%H:%M").time()
                 start_time = (
-                    datetime.strptime(start_date_time, "%H:%M")
+                    datetime.combine(date.today(), utc_time)
                     .replace(tzinfo=UTC)
                     .astimezone(tz=None)
                     .strftime("%H:%M")
@@ -3432,8 +3433,9 @@ class Vehicle:
         elif timer.get("recurringTimer", None):
             timer_type = "recurring"
             start_date_time = timer.get("recurringTimer", None).get("startTime", None)
+            utc_time = datetime.strptime(start_date_time, "%H:%M").time()
             start_time = (
-                datetime.strptime(start_date_time, "%H:%M")
+                datetime.combine(date.today(), utc_time)
                 .replace(tzinfo=UTC)
                 .astimezone(tz=None)
                 .strftime("%H:%M")
@@ -3735,7 +3737,7 @@ class Vehicle:
             float,
             int,
         )
-    
+
     # Trip since last refuel data
     @property
     def trip_refuel_entry(self):
@@ -3900,7 +3902,9 @@ class Vehicle:
         return is_valid_path(
             self.attrs, f"{Services.TRIP_REFUEL}.averageAuxConsumerConsumption"
         ) and type(
-            find_path(self.attrs, f"{Services.TRIP_REFUEL}.averageAuxConsumerConsumption")
+            find_path(
+                self.attrs, f"{Services.TRIP_REFUEL}.averageAuxConsumerConsumption"
+            )
         ) in (float, int)
 
     @property
