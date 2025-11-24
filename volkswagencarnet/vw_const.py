@@ -15,8 +15,9 @@ CLIENT = {
     }
 }
 
-USER_AGENT = "Volkswagen/2.20.0 iOS/17.1.1"
+USER_AGENT = "Volkswagen/3.51.1-android/14"
 APP_URI = "weconnect://authenticated"
+ANDROID_PACKAGE_NAME = "com.volkswagen.weconnect"
 
 # Used when fetching data
 HEADERS_SESSION = {
@@ -26,6 +27,7 @@ HEADERS_SESSION = {
     "Accept": "application/json",
     "User-Agent": USER_AGENT,
     "tokentype": "IDK_TECHNICAL",
+    "x-android-package-name": ANDROID_PACKAGE_NAME,
 }
 
 # Used for authentication
@@ -34,6 +36,7 @@ HEADERS_AUTH = {
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9",
     "Accept-Encoding": "gzip, deflate",
     "Content-Type": "application/x-www-form-urlencoded",
+    "x-android-package-name": ANDROID_PACKAGE_NAME,
 }
 
 TEMP_CELSIUS: str = "°C"
