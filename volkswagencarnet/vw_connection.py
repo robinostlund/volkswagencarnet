@@ -203,12 +203,21 @@ class Connection:
         soup = BeautifulSoup(page_content, "html.parser")
         form = soup.find("form", id=form_id)
         if form is None:
-            _LOGGER.error(f"Form with ID '{form_id}' not found.")  # pylint: disable=broad-exception-raised
-            return False
+            _LOGGER.debug(f"Form with ID '{form_id}' not found.")  # pylint: disable=broad-exception-raised
+            return None
         return {
             input_field["name"]: input_field["value"]
             for input_field in form.find_all("input", type="hidden")
         }
+
+    def extract_state_token(self, page_content):
+        """Extract state token from a page."""
+        soup = BeautifulSoup(page_content, "html.parser")
+        state_input = soup.select_one('input[name="state"]')
+        if not state_input or not state_input.get("value"):
+            _LOGGER.debug("State token not found.")
+            return None
+        return state_input["value"]
 
     def extract_password_form_data(self, soup):
         """Extract password form data from a page."""
@@ -290,6 +299,7 @@ class Connection:
 
             # Extract form data
             mailform = self.extract_form_data(authorization_page, "emailPasswordForm")
+            state_token = self.extract_state_token(authorization_page)
             if mailform:
                 _LOGGER.debug("Legacy authentication found.")
                 mailform["email"] = self._session_auth_username
@@ -326,26 +336,17 @@ class Connection:
                     self._session, pw_url, redirect_location
                 )
                 jwt_auth_code = parse_qs(urlparse(redirect_response).query)["code"][0]
-            else:
+            elif state_token:
                 _LOGGER.debug(
                     "Legacy authentication not found. Trying new authentication flow."
                 )
-
-                # Get state token
-                authorization_page_response = BeautifulSoup(
-                    authorization_page, "html.parser"
-                )
-                state_input = authorization_page_response.select_one(
-                    'input[name="state"]'
-                )
-                state = state_input["value"] if state_input else None
 
                 # Do login
                 login_form = {}
                 login_form["username"] = self._session_auth_username
                 login_form["password"] = self._session_auth_password
-                login_form["state"] = state
-                login_url = f"{auth_issuer}/u/login?state={state}"
+                login_form["state"] = state_token
+                login_url = f"{auth_issuer}/u/login?state={state_token}"
 
                 redirect_location = await self.post_form(
                     self._session,
@@ -360,6 +361,12 @@ class Connection:
                     self._session, auth_issuer, redirect_location
                 )
                 jwt_auth_code = parse_qs(urlparse(redirect_response).query)["code"][0]
+            else:
+                _LOGGER.error(
+                    "Unable to find valid login page."
+                    "Try logging in to the portal: https://www.myvolkswagen.net/"
+                )
+                return False
 
             # Exchange authorization code for tokens
             token_body = {
