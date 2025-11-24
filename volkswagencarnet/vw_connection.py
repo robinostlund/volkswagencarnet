@@ -18,6 +18,7 @@ from bs4 import BeautifulSoup
 import jwt
 
 from .vw_const import (
+    ANDROID_PACKAGE_NAME,
     APP_URI,
     BASE_API,
     BASE_AUTH,
@@ -202,7 +203,8 @@ class Connection:
         soup = BeautifulSoup(page_content, "html.parser")
         form = soup.find("form", id=form_id)
         if form is None:
-            raise Exception(f"Form with ID '{form_id}' not found.")  # pylint: disable=broad-exception-raised
+            _LOGGER.error(f"Form with ID '{form_id}' not found.")  # pylint: disable=broad-exception-raised
+            return False
         return {
             input_field["name"]: input_field["value"]
             for input_field in form.find_all("input", type="hidden")
@@ -288,40 +290,76 @@ class Connection:
 
             # Extract form data
             mailform = self.extract_form_data(authorization_page, "emailPasswordForm")
-            mailform["email"] = self._session_auth_username
-            pe_url = auth_issuer + BeautifulSoup(
-                authorization_page, "html.parser"
-            ).find("form", id="emailPasswordForm").get("action")
+            if mailform:
+                _LOGGER.debug("Legacy authentication found.")
+                mailform["email"] = self._session_auth_username
+                pe_url = auth_issuer + BeautifulSoup(
+                    authorization_page, "html.parser"
+                ).find("form", id="emailPasswordForm").get("action")
 
-            # POST email
-            # https://identity.vwgroup.io/signin-service/v1/{CLIENT_ID}/login/identifier
-            self._session_auth_headers["Referer"] = authorization_endpoint
-            self._session_auth_headers["Origin"] = auth_issuer
-            response_text = await self.post_form(
-                self._session, pe_url, self._session_auth_headers, mailform
-            )
+                # POST email
+                # https://identity.vwgroup.io/signin-service/v1/{CLIENT_ID}/login/identifier
+                self._session_auth_headers["Referer"] = authorization_endpoint
+                self._session_auth_headers["Origin"] = auth_issuer
+                response_text = await self.post_form(
+                    self._session, pe_url, self._session_auth_headers, mailform
+                )
 
-            # Extract password form data
-            response_soup = BeautifulSoup(response_text, "html.parser")
-            pw_form, post_action, client_id = self.extract_password_form_data(
-                response_soup
-            )
+                # Extract password form data
+                response_soup = BeautifulSoup(response_text, "html.parser")
+                pw_form, post_action, client_id = self.extract_password_form_data(
+                    response_soup
+                )
 
-            # Add password to form data
-            pw_form["password"] = self._session_auth_password
-            pw_url = f"{auth_issuer}/signin-service/v1/{client_id}/{post_action}"
+                # Add password to form data
+                pw_form["password"] = self._session_auth_password
+                pw_url = f"{auth_issuer}/signin-service/v1/{client_id}/{post_action}"
 
-            # POST password
-            self._session_auth_headers["Referer"] = pe_url
-            redirect_location = await self.handle_login_with_password(
-                self._session, pw_url, self._session_auth_headers, pw_form
-            )
+                # POST password
+                self._session_auth_headers["Referer"] = pe_url
+                redirect_location = await self.handle_login_with_password(
+                    self._session, pw_url, self._session_auth_headers, pw_form
+                )
 
-            # Handle redirects and extract tokens
-            redirect_response = await self.follow_redirects(
-                self._session, pw_url, redirect_location
-            )
-            jwt_auth_code = parse_qs(urlparse(redirect_response).query)["code"][0]
+                # Handle redirects and extract tokens
+                redirect_response = await self.follow_redirects(
+                    self._session, pw_url, redirect_location
+                )
+                jwt_auth_code = parse_qs(urlparse(redirect_response).query)["code"][0]
+            else:
+                _LOGGER.debug(
+                    "Legacy authentication not found. Trying new authentication flow."
+                )
+
+                # Get state token
+                authorization_page_response = BeautifulSoup(
+                    authorization_page, "html.parser"
+                )
+                state_input = authorization_page_response.select_one(
+                    'input[name="state"]'
+                )
+                state = state_input["value"] if state_input else None
+
+                # Do login
+                login_form = {}
+                login_form["username"] = self._session_auth_username
+                login_form["password"] = self._session_auth_password
+                login_form["state"] = state
+                login_url = f"{auth_issuer}/u/login?state={state}"
+
+                redirect_location = await self.post_form(
+                    self._session,
+                    login_url,
+                    self._session_auth_headers,
+                    login_form,
+                    False,
+                )
+
+                # Handle redirects and extract tokens
+                redirect_response = await self.follow_redirects(
+                    self._session, auth_issuer, redirect_location
+                )
+                jwt_auth_code = parse_qs(urlparse(redirect_response).query)["code"][0]
 
             # Exchange authorization code for tokens
             token_body = {
@@ -1030,6 +1068,7 @@ class Connection:
                 "Connection": "keep-alive",
                 "Content-Type": "application/x-www-form-urlencoded",
                 "User-Agent": USER_AGENT,
+                "x-android-package-name": ANDROID_PACKAGE_NAME,
             }
 
             body = {
