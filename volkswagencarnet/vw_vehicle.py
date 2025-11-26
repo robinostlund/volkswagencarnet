@@ -2427,10 +2427,25 @@ class Vehicle:
     @property
     def is_window_heater_front_supported(self) -> bool:
         """Return true if vehicle has heater."""
-        return is_valid_path(
-            self.attrs,
-            f"{Services.CLIMATISATION}.windowHeatingStatus.value.windowHeatingStatus",
-        )
+        path = f"{Services.CLIMATISATION}.windowHeatingStatus.value.windowHeatingStatus"
+
+        # Check that path exists
+        if not is_valid_path(self.attrs, path):
+            return False
+
+        # Find the front window in the list
+        window_status_list = find_path(self.attrs, path)
+        if not isinstance(window_status_list, list):
+            return False
+
+        for window_status in window_status_list:
+            if (
+                window_status.get("windowLocation") == "front"
+                and "windowHeatingState" in window_status
+            ):
+                return True
+
+        return False
 
     @property
     def window_heater_back(self) -> bool:
@@ -2456,15 +2471,32 @@ class Vehicle:
     @property
     def is_window_heater_back_supported(self) -> bool:
         """Return true if vehicle has heater."""
-        return is_valid_path(
-            self.attrs,
-            f"{Services.CLIMATISATION}.windowHeatingStatus.value.windowHeatingStatus",
-        )
+        path = f"{Services.CLIMATISATION}.windowHeatingStatus.value.windowHeatingStatus"
+
+        # Check that path exists
+        if not is_valid_path(self.attrs, path):
+            return False
+
+        # Find the rear window in the list
+        window_status_list = find_path(self.attrs, path)
+        if not isinstance(window_status_list, list):
+            return False
+
+        for window_status in window_status_list:
+            if (
+                window_status.get("windowLocation") == "rear"
+                and "windowHeatingState" in window_status
+            ):
+                return True
+
+        return False
 
     @property
     def window_heater(self) -> bool:
         """Return status of window heater."""
-        return self.window_heater_front or self.window_heater_back
+        if self.is_window_heater_front_supported:
+            return self.window_heater_front
+        return self.window_heater_back
 
     @property
     def window_heater_last_updated(self) -> datetime:
@@ -3424,24 +3456,50 @@ class Vehicle:
         start_time = None
         if timer.get("singleTimer", None):
             timer_type = "single"
-            start_date_time = timer.get("singleTimer", None).get("startDateTime", None)
-            start_time = (
-                start_date_time.replace(tzinfo=UTC)
-                .astimezone(tz=None)
-                .strftime("%Y-%m-%dT%H:%M:%S")
-            )
+            if timer.get("singleTimer", None).get("startDateTime", None):
+                start_date_time = timer.get("singleTimer", None).get(
+                    "startDateTime", None
+                )
+                start_time = (
+                    start_date_time.replace(tzinfo=UTC)
+                    .astimezone(tz=None)
+                    .strftime("%Y-%m-%dT%H:%M:%S")
+                )
+            if timer.get("singleTimer", None).get("startDateTimeLocal", None):
+                start_date_time = timer.get("singleTimer", None).get(
+                    "startDateTimeLocal", None
+                )
+                if isinstance(start_date_time, str):
+                    start_date_time = datetime.strptime(
+                        start_date_time, "%Y-%m-%dT%H:%M:%S"
+                    )
+                start_time = start_date_time
         elif timer.get("recurringTimer", None):
             timer_type = "recurring"
-            start_date_time = timer.get("recurringTimer", None).get("startTime", None)
-            utc_time = datetime.strptime(start_date_time, "%H:%M").time()
-            start_time = (
-                datetime.combine(date.today(), utc_time)
-                .replace(tzinfo=UTC)
-                .astimezone(tz=None)
-                .strftime("%H:%M")
-            )
-            recurring_days = timer.get("recurringTimer", None).get("recurringOn", None)
-            recurring_on = [day for day in recurring_days if recurring_days.get(day)]
+            if timer.get("recurringTimer", None).get("startTime", None):
+                start_date_time = timer.get("recurringTimer", None).get(
+                    "startTime", None
+                )
+                utc_time = datetime.strptime(start_date_time, "%H:%M").time()
+                start_time = (
+                    datetime.combine(date.today(), utc_time)
+                    .replace(tzinfo=UTC)
+                    .astimezone(tz=None)
+                    .strftime("%H:%M")
+                )
+                recurring_days = timer.get("recurringTimer", None).get(
+                    "recurringOn", None
+                )
+                recurring_on = [
+                    day for day in recurring_days if recurring_days.get(day)
+                ]
+            if timer.get("recurringTimer", None).get("startTimeLocal", None):
+                start_date_time = timer.get("recurringTimer", None).get(
+                    "startTimeLocal", None
+                )
+                start_time = datetime.strptime(start_date_time, "%H:%M").strftime(
+                    "%H:%M"
+                )
         return {
             "timer_id": timer.get("id", None),
             "timer_type": timer_type,
