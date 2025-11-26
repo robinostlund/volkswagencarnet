@@ -752,9 +752,11 @@ class Connection:
         if not await self.validate_tokens:
             return False
         try:
-            response = await self.get(f"{BASE_API}/vehicle/v1/trips/{vin}/cyclic", "")
+            response = await self.get(
+                f"{BASE_API}/vehicle/v1/trips/{vin}/cyclic/last", ""
+            )
             if "data" in response:
-                return {"trip_refuel": response["data"][0]}
+                return {"trip_refuel": response["data"]}
 
             _LOGGER.warning(
                 "Could not fetch refuel trip data, server response: %s", response
