@@ -1799,6 +1799,14 @@ def create_instruments():
             state_class=VWStateClass.MEASUREMENT,
         ),
         Sensor(
+            attr="trip_refuel_total_fuel_consumption",
+            name="Refuel trip total fuel consumption",
+            icon="mdi:fuel",
+            unit="l",
+            device_class=VWDeviceClass.VOLUME,
+            state_class=VWStateClass.MEASUREMENT,
+        ),
+        Sensor(
             attr="auxiliary_duration",
             name="Auxiliary Heater heating/ventilation duration",
             icon="mdi:timer",

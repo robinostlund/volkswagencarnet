@@ -4038,7 +4038,6 @@ class Vehicle:
             find_path(self.attrs, f"{Services.TRIP_REFUEL}.mileage_km")
         ) in (float, int)
 
-    # Could not find these in my API results. Maybe because I drive a gasoline powered car? ~DerLev
     @property
     def trip_refuel_recuperation(self):
         """Return trip since refuel recuperation.
@@ -4088,7 +4087,6 @@ class Vehicle:
             int,
         )
 
-    # Could not find these in my API results. Maybe because I drive a gasoline powered car? ~DerLev
     @property
     def trip_refuel_total_electric_consumption(self):
         """Return trip since refuel total electric consumption.
@@ -4096,7 +4094,7 @@ class Vehicle:
         :return:
         """
         # Not implemented
-        return self.trip_refuel_entry.get("totalElectricConsumption")
+        return self.trip_refuel_entry.get("totalElectricConsumption_kwh")
 
     @property
     def trip_refuel_total_electric_consumption_last_updated(self) -> datetime:
@@ -4111,7 +4109,36 @@ class Vehicle:
         """
         # Not implemented
         response = self.trip_refuel_entry
-        return response and type(response.get("totalElectricConsumption", None)) in (
+        return response and type(
+            response.get("totalElectricConsumption_kwh", None)
+        ) in (
+            float,
+            int,
+        )
+
+    @property
+    def trip_refuel_total_fuel_consumption(self):
+        """Return trip since refuel total fuel consumption.
+
+        :return:
+        """
+        # Not implemented
+        return self.trip_refuel_entry.get("totalFuelConsumption_L")
+
+    @property
+    def trip_refuel_total_fuel_consumption_last_updated(self) -> datetime:
+        """Return last updated timestamp."""
+        return find_path(self.attrs, f"{Services.TRIP_REFUEL}.tripEndTimestamp")
+
+    @property
+    def is_trip_refuel_total_fuel_consumption_supported(self) -> bool:
+        """Return true if supported.
+
+        :return:
+        """
+        # Not implemented
+        response = self.trip_refuel_entry
+        return response and type(response.get("totalFuelConsumption_L", None)) in (
             float,
             int,
         )
