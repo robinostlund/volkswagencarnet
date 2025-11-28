@@ -766,6 +766,25 @@ class Connection:
             _LOGGER.warning("Could not fetch last trip data, error: %s", error)
         return False
 
+    async def getTripLongterm(self, vin):
+        """Get information about the trip last longterm"""
+        if not await self.validate_tokens:
+            return False
+        try:
+            response = await self.get(
+                f"{BASE_API}/vehicle/v1/trips/{vin}/longterm/last", ""
+            )
+            if "data" in response:
+                return {"trip_longterm": response["data"]}
+
+            _LOGGER.warning(
+                "Could not fetch longterm trip data, server response: %s", response
+            )
+
+        except Exception as error:  # pylint: disable=broad-exception-caught
+            _LOGGER.warning("Could not fetch last trip data, error: %s", error)
+        return False
+
     async def wakeUpVehicle(self, vin):
         """Wake up vehicle to send updated data to VW Backend."""
         if not await self.validate_tokens:
