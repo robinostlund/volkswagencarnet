@@ -3507,7 +3507,7 @@ class Vehicle:
             "recurring_on": recurring_on,
         }
 
-    # Trip data
+    # Trip last data
     @property
     def trip_last_entry(self):
         """Return last trip data entry.
@@ -3792,6 +3792,33 @@ class Vehicle:
         # Not implemented
         response = self.trip_last_entry
         return response and type(response.get("totalElectricConsumption", None)) in (
+            float,
+            int,
+        )
+
+    @property
+    def trip_last_total_fuel_consumption(self):
+        """Return last trip total fuel consumption.
+
+        :return:
+        """
+        # Not implemented
+        return self.trip_last_entry.get("totalFuelConsumption_L")
+
+    @property
+    def trip_last_total_fuel_consumption_last_updated(self) -> datetime:
+        """Return last updated timestamp."""
+        return find_path(self.attrs, f"{Services.TRIP_LAST}.tripEndTimestamp")
+
+    @property
+    def is_trip_last_total_fuel_consumption_supported(self) -> bool:
+        """Return true if supported.
+
+        :return:
+        """
+        # Not implemented
+        response = self.trip_last_entry
+        return response and type(response.get("totalFuelConsumption_L", None)) in (
             float,
             int,
         )

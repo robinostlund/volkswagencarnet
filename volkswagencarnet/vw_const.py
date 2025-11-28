@@ -56,7 +56,9 @@ class VWDeviceClass:
 
     BATTERY = "battery"
     CONNECTIVITY = "connectivity"
+    DISTANCE = "distance"
     DOOR = "door"
+    ENERGY = "energy"
     LIGHT = "light"
     LOCK = "lock"
     MOVING = "moving"
@@ -64,8 +66,8 @@ class VWDeviceClass:
     POWER = "power"
     TEMPERATURE = "temperature"
     TIMESTAMP = "timestamp"
+    VOLUME = "volume"
     WINDOW = "window"
-    DISTANCE = "distance"
 
 
 class VehicleStatusParameter:
@@ -146,4 +148,5 @@ class Services:
     PARAMETERS = "parameters"
     SERVICE_STATUS = "service_status"
     TRIP_LAST = "trip_last"
+    TRIP_LONGTERM = "trip_longterm"
     TRIP_REFUEL = "trip_refuel"

@@ -1682,7 +1682,16 @@ def create_instruments():
             attr="trip_last_total_electric_consumption",
             name="Last trip total electric consumption",
             icon="mdi:car-battery",
-            unit="kWh/100 km",
+            unit="kWh",
+            device_class=VWDeviceClass.ENERGY,
+            state_class=VWStateClass.MEASUREMENT,
+        ),
+        Sensor(
+            attr="trip_last_total_fuel_consumption",
+            name="Last trip total fuel consumption",
+            icon="mdi:fuel",
+            unit="l",
+            device_class=VWDeviceClass.VOLUME,
             state_class=VWStateClass.MEASUREMENT,
         ),
         Sensor(
