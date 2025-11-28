@@ -1524,6 +1524,7 @@ def create_instruments():
             name="Charging time left",
             icon="mdi:battery-charging-100",
             unit="min",
+            device_class=VWDeviceClass.DURATION,
             state_class=VWStateClass.MEASUREMENT,
         ),
         Sensor(
