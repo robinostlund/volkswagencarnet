@@ -3513,7 +3513,7 @@ class Vehicle:
 
     # Trip last data
     @property
-    def trip_last_entry(self):
+    def last_trip_entry(self):
         """Return last trip data entry.
 
         :return:
@@ -3521,7 +3521,7 @@ class Vehicle:
         return self.attrs.get(Services.TRIP_LAST, {})
 
     @property
-    def trip_last_average_speed(self):
+    def last_trip_average_speed(self):
         """Return last trip average speed.
 
         :return:
@@ -3529,12 +3529,12 @@ class Vehicle:
         return find_path(self.attrs, f"{Services.TRIP_LAST}.averageSpeed_kmph")
 
     @property
-    def trip_last_average_speed_last_updated(self) -> datetime:
+    def last_trip_average_speed_last_updated(self) -> datetime:
         """Return last updated timestamp."""
         return find_path(self.attrs, f"{Services.TRIP_LAST}.tripEndTimestamp")
 
     @property
-    def is_trip_last_average_speed_supported(self) -> bool:
+    def is_last_trip_average_speed_supported(self) -> bool:
         """Return true if supported.
 
         :return:
@@ -3546,7 +3546,7 @@ class Vehicle:
         ) in (float, int)
 
     @property
-    def trip_last_average_electric_engine_consumption(self):
+    def last_trip_average_electric_engine_consumption(self):
         """Return last trip average electric consumption.
 
         :return:
@@ -3556,12 +3556,12 @@ class Vehicle:
         )
 
     @property
-    def trip_last_average_electric_engine_consumption_last_updated(self) -> datetime:
+    def last_trip_average_electric_engine_consumption_last_updated(self) -> datetime:
         """Return last updated timestamp."""
         return find_path(self.attrs, f"{Services.TRIP_LAST}.tripEndTimestamp")
 
     @property
-    def is_trip_last_average_electric_engine_consumption_supported(self) -> bool:
+    def is_last_trip_average_electric_engine_consumption_supported(self) -> bool:
         """Return true if supported.
 
         :return:
@@ -3573,7 +3573,7 @@ class Vehicle:
         ) in (float, int)
 
     @property
-    def trip_last_average_fuel_consumption(self):
+    def last_trip_average_fuel_consumption(self):
         """Return last trip average fuel consumption.
 
         :return:
@@ -3583,12 +3583,12 @@ class Vehicle:
         )
 
     @property
-    def trip_last_average_fuel_consumption_last_updated(self) -> datetime:
+    def last_trip_average_fuel_consumption_last_updated(self) -> datetime:
         """Return last updated timestamp."""
         return find_path(self.attrs, f"{Services.TRIP_LAST}.tripEndTimestamp")
 
     @property
-    def is_trip_last_average_fuel_consumption_supported(self) -> bool:
+    def is_last_trip_average_fuel_consumption_supported(self) -> bool:
         """Return true if supported.
 
         :return:
@@ -3600,7 +3600,7 @@ class Vehicle:
         ) in (float, int)
 
     @property
-    def trip_last_average_gas_consumption(self):
+    def last_trip_average_gas_consumption(self):
         """Return last trip average gas consumption.
 
         :return:
@@ -3610,12 +3610,12 @@ class Vehicle:
         )
 
     @property
-    def trip_last_average_gas_consumption_last_updated(self) -> datetime:
+    def last_trip_average_gas_consumption_last_updated(self) -> datetime:
         """Return last updated timestamp."""
         return find_path(self.attrs, f"{Services.TRIP_LAST}.tripEndTimestamp")
 
     @property
-    def is_trip_last_average_gas_consumption_supported(self) -> bool:
+    def is_last_trip_average_gas_consumption_supported(self) -> bool:
         """Return true if supported.
 
         :return:
@@ -3627,21 +3627,21 @@ class Vehicle:
         ) in (float, int)
 
     @property
-    def trip_last_average_auxillary_consumption(self):
+    def last_trip_average_auxillary_consumption(self):
         """Return last trip average auxiliary consumption.
 
         :return:
         """
         # no example verified yet
-        return self.trip_last_entry.get("averageAuxiliaryConsumption")
+        return self.last_trip_entry.get("averageAuxiliaryConsumption")
 
     @property
-    def trip_last_average_auxillary_consumption_last_updated(self) -> datetime:
+    def last_trip_average_auxillary_consumption_last_updated(self) -> datetime:
         """Return last updated timestamp."""
         return find_path(self.attrs, f"{Services.TRIP_LAST}.tripEndTimestamp")
 
     @property
-    def is_trip_last_average_auxillary_consumption_supported(self) -> bool:
+    def is_last_trip_average_auxillary_consumption_supported(self) -> bool:
         """Return true if supported.
 
         :return:
@@ -3653,21 +3653,21 @@ class Vehicle:
         ) in (float, int)
 
     @property
-    def trip_last_average_aux_consumer_consumption(self):
+    def last_trip_average_aux_consumer_consumption(self):
         """Return last trip average auxiliary consumer consumption.
 
         :return:
         """
         # no example verified yet
-        return self.trip_last_entry.get("averageAuxConsumerConsumption")
+        return self.last_trip_entry.get("averageAuxConsumerConsumption")
 
     @property
-    def trip_last_average_aux_consumer_consumption_last_updated(self) -> datetime:
+    def last_trip_average_aux_consumer_consumption_last_updated(self) -> datetime:
         """Return last updated timestamp."""
         return find_path(self.attrs, f"{Services.TRIP_LAST}.tripEndTimestamp")
 
     @property
-    def is_trip_last_average_aux_consumer_consumption_supported(self) -> bool:
+    def is_last_trip_average_aux_consumer_consumption_supported(self) -> bool:
         """Return true if supported.
 
         :return:
@@ -3679,7 +3679,7 @@ class Vehicle:
         ) in (float, int)
 
     @property
-    def trip_last_duration(self):
+    def last_trip_duration(self):
         """Return last trip duration in minutes(?).
 
         :return:
@@ -3687,12 +3687,12 @@ class Vehicle:
         return find_path(self.attrs, f"{Services.TRIP_LAST}.travelTime")
 
     @property
-    def trip_last_duration_last_updated(self) -> datetime:
+    def last_trip_duration_last_updated(self) -> datetime:
         """Return last updated timestamp."""
         return find_path(self.attrs, f"{Services.TRIP_LAST}.tripEndTimestamp")
 
     @property
-    def is_trip_last_duration_supported(self) -> bool:
+    def is_last_trip_duration_supported(self) -> bool:
         """Return true if supported.
 
         :return:
@@ -3702,7 +3702,7 @@ class Vehicle:
         ) in (float, int)
 
     @property
-    def trip_last_length(self):
+    def last_trip_length(self):
         """Return last trip length.
 
         :return:
@@ -3710,12 +3710,12 @@ class Vehicle:
         return find_path(self.attrs, f"{Services.TRIP_LAST}.mileage_km")
 
     @property
-    def trip_last_length_last_updated(self) -> datetime:
+    def last_trip_length_last_updated(self) -> datetime:
         """Return last updated timestamp."""
         return find_path(self.attrs, f"{Services.TRIP_LAST}.tripEndTimestamp")
 
     @property
-    def is_trip_last_length_supported(self) -> bool:
+    def is_last_trip_length_supported(self) -> bool:
         """Return true if supported.
 
         :return:
@@ -3725,103 +3725,103 @@ class Vehicle:
         ) in (float, int)
 
     @property
-    def trip_last_recuperation(self):
+    def last_trip_recuperation(self):
         """Return last trip recuperation.
 
         :return:
         """
         # Not implemented
-        return self.trip_last_entry.get("recuperation")
+        return self.last_trip_entry.get("recuperation")
 
     @property
-    def trip_last_recuperation_last_updated(self) -> datetime:
+    def last_trip_recuperation_last_updated(self) -> datetime:
         """Return last updated timestamp."""
         return find_path(self.attrs, f"{Services.TRIP_LAST}.tripEndTimestamp")
 
     @property
-    def is_trip_last_recuperation_supported(self) -> bool:
+    def is_last_trip_recuperation_supported(self) -> bool:
         """Return true if supported.
 
         :return:
         """
         # Not implemented
-        response = self.trip_last_entry
+        response = self.last_trip_entry
         return response and type(response.get("recuperation", None)) in (float, int)
 
     @property
-    def trip_last_average_recuperation(self):
+    def last_trip_average_recuperation(self):
         """Return last trip total recuperation.
 
         :return:
         """
-        return self.trip_last_entry.get("averageRecuperation")
+        return self.last_trip_entry.get("averageRecuperation")
 
     @property
-    def trip_last_average_recuperation_last_updated(self) -> datetime:
+    def last_trip_average_recuperation_last_updated(self) -> datetime:
         """Return last updated timestamp."""
         return find_path(self.attrs, f"{Services.TRIP_LAST}.tripEndTimestamp")
 
     @property
-    def is_trip_last_average_recuperation_supported(self) -> bool:
+    def is_last_trip_average_recuperation_supported(self) -> bool:
         """Return true if supported.
 
         :return:
         """
-        response = self.trip_last_entry
+        response = self.last_trip_entry
         return response and type(response.get("averageRecuperation", None)) in (
             float,
             int,
         )
 
     @property
-    def trip_last_total_electric_consumption(self):
+    def last_trip_total_electric_consumption(self):
         """Return last trip total electric consumption.
 
         :return:
         """
         # Not implemented
-        return self.trip_last_entry.get("totalElectricConsumption")
+        return self.last_trip_entry.get("totalElectricConsumption")
 
     @property
-    def trip_last_total_electric_consumption_last_updated(self) -> datetime:
+    def last_trip_total_electric_consumption_last_updated(self) -> datetime:
         """Return last updated timestamp."""
         return find_path(self.attrs, f"{Services.TRIP_LAST}.tripEndTimestamp")
 
     @property
-    def is_trip_last_total_electric_consumption_supported(self) -> bool:
+    def is_last_trip_total_electric_consumption_supported(self) -> bool:
         """Return true if supported.
 
         :return:
         """
         # Not implemented
-        response = self.trip_last_entry
+        response = self.last_trip_entry
         return response and type(response.get("totalElectricConsumption", None)) in (
             float,
             int,
         )
 
     @property
-    def trip_last_total_fuel_consumption(self):
+    def last_trip_total_fuel_consumption(self):
         """Return last trip total fuel consumption.
 
         :return:
         """
         # Not implemented
-        return self.trip_last_entry.get("totalFuelConsumption_L")
+        return self.last_trip_entry.get("totalFuelConsumption_L")
 
     @property
-    def trip_last_total_fuel_consumption_last_updated(self) -> datetime:
+    def last_trip_total_fuel_consumption_last_updated(self) -> datetime:
         """Return last updated timestamp."""
         return find_path(self.attrs, f"{Services.TRIP_LAST}.tripEndTimestamp")
 
     @property
-    def is_trip_last_total_fuel_consumption_supported(self) -> bool:
+    def is_last_trip_total_fuel_consumption_supported(self) -> bool:
         """Return true if supported.
 
         :return:
         """
         # Not implemented
-        response = self.trip_last_entry
+        response = self.last_trip_entry
         return response and type(response.get("totalFuelConsumption_L", None)) in (
             float,
             int,
@@ -3829,7 +3829,7 @@ class Vehicle:
 
     # Trip since last refuel data
     @property
-    def trip_refuel_entry(self):
+    def refuel_trip_entry(self):
         """Return trip since refuel data entry.
 
         :return:
@@ -3837,7 +3837,7 @@ class Vehicle:
         return self.attrs.get(Services.TRIP_REFUEL, {})
 
     @property
-    def trip_refuel_average_speed(self):
+    def refuel_trip_average_speed(self):
         """Return trip since refuel average speed.
 
         :return:
@@ -3845,12 +3845,12 @@ class Vehicle:
         return find_path(self.attrs, f"{Services.TRIP_REFUEL}.averageSpeed_kmph")
 
     @property
-    def trip_refuel_average_speed_last_updated(self) -> datetime:
+    def refuel_trip_average_speed_last_updated(self) -> datetime:
         """Return last updated timestamp."""
         return find_path(self.attrs, f"{Services.TRIP_REFUEL}.tripEndTimestamp")
 
     @property
-    def is_trip_refuel_average_speed_supported(self) -> bool:
+    def is_refuel_trip_average_speed_supported(self) -> bool:
         """Return true if supported.
 
         :return:
@@ -3862,7 +3862,7 @@ class Vehicle:
         ) in (float, int)
 
     @property
-    def trip_refuel_average_electric_engine_consumption(self):
+    def refuel_trip_average_electric_engine_consumption(self):
         """Return trip since refuel average electric consumption.
 
         :return:
@@ -3872,12 +3872,12 @@ class Vehicle:
         )
 
     @property
-    def trip_refuel_average_electric_engine_consumption_last_updated(self) -> datetime:
+    def refuel_trip_average_electric_engine_consumption_last_updated(self) -> datetime:
         """Return last updated timestamp."""
         return find_path(self.attrs, f"{Services.TRIP_REFUEL}.tripEndTimestamp")
 
     @property
-    def is_trip_refuel_average_electric_engine_consumption_supported(self) -> bool:
+    def is_refuel_trip_average_electric_engine_consumption_supported(self) -> bool:
         """Return true if supported.
 
         :return:
@@ -3889,7 +3889,7 @@ class Vehicle:
         ) in (float, int)
 
     @property
-    def trip_refuel_average_fuel_consumption(self):
+    def refuel_trip_average_fuel_consumption(self):
         """Return trip since refuel average fuel consumption.
 
         :return:
@@ -3899,12 +3899,12 @@ class Vehicle:
         )
 
     @property
-    def trip_refuel_average_fuel_consumption_last_updated(self) -> datetime:
+    def refuel_trip_average_fuel_consumption_last_updated(self) -> datetime:
         """Return last updated timestamp."""
         return find_path(self.attrs, f"{Services.TRIP_REFUEL}.tripEndTimestamp")
 
     @property
-    def is_trip_refuel_average_fuel_consumption_supported(self) -> bool:
+    def is_refuel_trip_average_fuel_consumption_supported(self) -> bool:
         """Return true if supported.
 
         :return:
@@ -3916,7 +3916,7 @@ class Vehicle:
         ) in (float, int)
 
     @property
-    def trip_refuel_average_gas_consumption(self):
+    def refuel_trip_average_gas_consumption(self):
         """Return trip since refuel average gas consumption.
 
         :return:
@@ -3926,12 +3926,12 @@ class Vehicle:
         )
 
     @property
-    def trip_refuel_average_gas_consumption_last_updated(self) -> datetime:
+    def refuel_trip_average_gas_consumption_last_updated(self) -> datetime:
         """Return last updated timestamp."""
         return find_path(self.attrs, f"{Services.TRIP_REFUEL}.tripEndTimestamp")
 
     @property
-    def is_trip_refuel_average_gas_consumption_supported(self) -> bool:
+    def is_refuel_trip_average_gas_consumption_supported(self) -> bool:
         """Return true if supported.
 
         :return:
@@ -3943,21 +3943,21 @@ class Vehicle:
         ) in (float, int)
 
     @property
-    def trip_refuel_average_auxillary_consumption(self):
+    def refuel_trip_average_auxillary_consumption(self):
         """Return trip since refuel average auxiliary consumption.
 
         :return:
         """
         # no example verified yet
-        return self.trip_refuel_entry.get("averageAuxConsumption")
+        return self.refuel_trip_entry.get("averageAuxConsumption")
 
     @property
-    def trip_refuel_average_auxillary_consumption_last_updated(self) -> datetime:
+    def refuel_trip_average_auxillary_consumption_last_updated(self) -> datetime:
         """Return last updated timestamp."""
         return find_path(self.attrs, f"{Services.TRIP_REFUEL}.tripEndTimestamp")
 
     @property
-    def is_trip_refuel_average_auxillary_consumption_supported(self) -> bool:
+    def is_refuel_trip_average_auxillary_consumption_supported(self) -> bool:
         """Return true if supported.
 
         :return:
@@ -3969,21 +3969,21 @@ class Vehicle:
         ) in (float, int)
 
     @property
-    def trip_refuel_average_aux_consumer_consumption(self):
+    def refuel_trip_average_aux_consumer_consumption(self):
         """Return trip since refuel average auxiliary consumer consumption.
 
         :return:
         """
         # no example verified yet
-        return self.trip_refuel_entry.get("averageAuxConsumerConsumption")
+        return self.refuel_trip_entry.get("averageAuxConsumerConsumption")
 
     @property
-    def trip_refuel_average_aux_consumer_consumption_last_updated(self) -> datetime:
+    def refuel_trip_average_aux_consumer_consumption_last_updated(self) -> datetime:
         """Return last updated timestamp."""
         return find_path(self.attrs, f"{Services.TRIP_REFUEL}.tripEndTimestamp")
 
     @property
-    def is_trip_refuel_average_aux_consumer_consumption_supported(self) -> bool:
+    def is_refuel_trip_average_aux_consumer_consumption_supported(self) -> bool:
         """Return true if supported.
 
         :return:
@@ -3997,7 +3997,7 @@ class Vehicle:
         ) in (float, int)
 
     @property
-    def trip_refuel_duration(self):
+    def refuel_trip_duration(self):
         """Return trip since refuel duration in minutes.
 
         :return:
@@ -4005,12 +4005,12 @@ class Vehicle:
         return find_path(self.attrs, f"{Services.TRIP_REFUEL}.travelTime")
 
     @property
-    def trip_refuel_duration_last_updated(self) -> datetime:
+    def refuel_trip_duration_last_updated(self) -> datetime:
         """Return last updated timestamp."""
         return find_path(self.attrs, f"{Services.TRIP_REFUEL}.tripEndTimestamp")
 
     @property
-    def is_trip_refuel_duration_supported(self) -> bool:
+    def is_refuel_trip_duration_supported(self) -> bool:
         """Return true if supported.
 
         :return:
@@ -4020,7 +4020,7 @@ class Vehicle:
         ) in (float, int)
 
     @property
-    def trip_refuel_length(self):
+    def refuel_trip_length(self):
         """Return trip since refuel length.
 
         :return:
@@ -4028,12 +4028,12 @@ class Vehicle:
         return find_path(self.attrs, f"{Services.TRIP_REFUEL}.mileage_km")
 
     @property
-    def trip_refuel_length_last_updated(self) -> datetime:
+    def refuel_trip_length_last_updated(self) -> datetime:
         """Return last updated timestamp."""
         return find_path(self.attrs, f"{Services.TRIP_REFUEL}.tripEndTimestamp")
 
     @property
-    def is_trip_refuel_length_supported(self) -> bool:
+    def is_refuel_trip_length_supported(self) -> bool:
         """Return true if supported.
 
         :return:
@@ -4043,76 +4043,76 @@ class Vehicle:
         ) in (float, int)
 
     @property
-    def trip_refuel_recuperation(self):
+    def refuel_trip_recuperation(self):
         """Return trip since refuel recuperation.
 
         :return:
         """
         # Not implemented
-        return self.trip_refuel_entry.get("recuperation")
+        return self.refuel_trip_entry.get("recuperation")
 
     @property
-    def trip_refuel_recuperation_last_updated(self) -> datetime:
+    def refuel_trip_recuperation_last_updated(self) -> datetime:
         """Return last updated timestamp."""
         return find_path(self.attrs, f"{Services.TRIP_REFUEL}.tripEndTimestamp")
 
     @property
-    def is_trip_refuel_recuperation_supported(self) -> bool:
+    def is_refuel_trip_recuperation_supported(self) -> bool:
         """Return true if supported.
 
         :return:
         """
         # Not implemented
-        response = self.trip_refuel_entry
+        response = self.refuel_trip_entry
         return response and type(response.get("recuperation", None)) in (float, int)
 
     @property
-    def trip_refuel_average_recuperation(self):
+    def refuel_trip_average_recuperation(self):
         """Return trip since refuel total recuperation.
 
         :return:
         """
-        return self.trip_refuel_entry.get("averageRecuperation")
+        return self.refuel_trip_entry.get("averageRecuperation")
 
     @property
-    def trip_refuel_average_recuperation_last_updated(self) -> datetime:
+    def refuel_trip_average_recuperation_last_updated(self) -> datetime:
         """Return last updated timestamp."""
         return find_path(self.attrs, f"{Services.TRIP_REFUEL}.tripEndTimestamp")
 
     @property
-    def is_trip_refuel_average_recuperation_supported(self) -> bool:
+    def is_refuel_trip_average_recuperation_supported(self) -> bool:
         """Return true if supported.
 
         :return:
         """
-        response = self.trip_refuel_entry
+        response = self.refuel_trip_entry
         return response and type(response.get("averageRecuperation", None)) in (
             float,
             int,
         )
 
     @property
-    def trip_refuel_total_electric_consumption(self):
+    def refuel_trip_total_electric_consumption(self):
         """Return trip since refuel total electric consumption.
 
         :return:
         """
         # Not implemented
-        return self.trip_refuel_entry.get("totalElectricConsumption_kwh")
+        return self.refuel_trip_entry.get("totalElectricConsumption_kwh")
 
     @property
-    def trip_refuel_total_electric_consumption_last_updated(self) -> datetime:
+    def refuel_trip_total_electric_consumption_last_updated(self) -> datetime:
         """Return last updated timestamp."""
         return find_path(self.attrs, f"{Services.TRIP_REFUEL}.tripEndTimestamp")
 
     @property
-    def is_trip_refuel_total_electric_consumption_supported(self) -> bool:
+    def is_refuel_trip_total_electric_consumption_supported(self) -> bool:
         """Return true if supported.
 
         :return:
         """
         # Not implemented
-        response = self.trip_refuel_entry
+        response = self.refuel_trip_entry
         return response and type(
             response.get("totalElectricConsumption_kwh", None)
         ) in (
@@ -4121,27 +4121,27 @@ class Vehicle:
         )
 
     @property
-    def trip_refuel_total_fuel_consumption(self):
+    def refuel_trip_total_fuel_consumption(self):
         """Return trip since refuel total fuel consumption.
 
         :return:
         """
         # Not implemented
-        return self.trip_refuel_entry.get("totalFuelConsumption_L")
+        return self.refuel_trip_entry.get("totalFuelConsumption_L")
 
     @property
-    def trip_refuel_total_fuel_consumption_last_updated(self) -> datetime:
+    def refuel_trip_total_fuel_consumption_last_updated(self) -> datetime:
         """Return last updated timestamp."""
         return find_path(self.attrs, f"{Services.TRIP_REFUEL}.tripEndTimestamp")
 
     @property
-    def is_trip_refuel_total_fuel_consumption_supported(self) -> bool:
+    def is_refuel_trip_total_fuel_consumption_supported(self) -> bool:
         """Return true if supported.
 
         :return:
         """
         # Not implemented
-        response = self.trip_refuel_entry
+        response = self.refuel_trip_entry
         return response and type(response.get("totalFuelConsumption_L", None)) in (
             float,
             int,
@@ -4149,7 +4149,7 @@ class Vehicle:
 
     # Trip longterm data
     @property
-    def trip_longterm_entry(self):
+    def longterm_trip_entry(self):
         """Return trip longterm data entry.
 
         :return:
@@ -4157,7 +4157,7 @@ class Vehicle:
         return self.attrs.get(Services.TRIP_LONGTERM, {})
 
     @property
-    def trip_longterm_average_speed(self):
+    def longterm_trip_average_speed(self):
         """Return trip longterm average speed.
 
         :return:
@@ -4165,12 +4165,12 @@ class Vehicle:
         return find_path(self.attrs, f"{Services.TRIP_LONGTERM}.averageSpeed_kmph")
 
     @property
-    def trip_longterm_average_speed_last_updated(self) -> datetime:
+    def longterm_trip_average_speed_last_updated(self) -> datetime:
         """Return last updated timestamp."""
         return find_path(self.attrs, f"{Services.TRIP_LONGTERM}.tripEndTimestamp")
 
     @property
-    def is_trip_longterm_average_speed_supported(self) -> bool:
+    def is_longterm_trip_average_speed_supported(self) -> bool:
         """Return true if supported.
 
         :return:
@@ -4182,7 +4182,7 @@ class Vehicle:
         ) in (float, int)
 
     @property
-    def trip_longterm_average_electric_engine_consumption(self):
+    def longterm_trip_average_electric_engine_consumption(self):
         """Return trip longterm average electric consumption.
 
         :return:
@@ -4194,14 +4194,14 @@ class Vehicle:
         )
 
     @property
-    def trip_longterm_average_electric_engine_consumption_last_updated(
+    def longterm_trip_average_electric_engine_consumption_last_updated(
         self,
     ) -> datetime:
         """Return last updated timestamp."""
         return find_path(self.attrs, f"{Services.TRIP_LONGTERM}.tripEndTimestamp")
 
     @property
-    def is_trip_longterm_average_electric_engine_consumption_supported(self) -> bool:
+    def is_longterm_trip_average_electric_engine_consumption_supported(self) -> bool:
         """Return true if supported.
 
         :return:
@@ -4215,7 +4215,7 @@ class Vehicle:
         ) in (float, int)
 
     @property
-    def trip_longterm_average_fuel_consumption(self):
+    def longterm_trip_average_fuel_consumption(self):
         """Return trip longterm average fuel consumption.
 
         :return:
@@ -4225,12 +4225,12 @@ class Vehicle:
         )
 
     @property
-    def trip_longterm_average_fuel_consumption_last_updated(self) -> datetime:
+    def longterm_trip_average_fuel_consumption_last_updated(self) -> datetime:
         """Return last updated timestamp."""
         return find_path(self.attrs, f"{Services.TRIP_LONGTERM}.tripEndTimestamp")
 
     @property
-    def is_trip_longterm_average_fuel_consumption_supported(self) -> bool:
+    def is_longterm_trip_average_fuel_consumption_supported(self) -> bool:
         """Return true if supported.
 
         :return:
@@ -4242,7 +4242,7 @@ class Vehicle:
         ) in (float, int)
 
     @property
-    def trip_longterm_average_gas_consumption(self):
+    def longterm_trip_average_gas_consumption(self):
         """Return trip longterm average gas consumption.
 
         :return:
@@ -4252,12 +4252,12 @@ class Vehicle:
         )
 
     @property
-    def trip_longterm_average_gas_consumption_last_updated(self) -> datetime:
+    def longterm_trip_average_gas_consumption_last_updated(self) -> datetime:
         """Return last updated timestamp."""
         return find_path(self.attrs, f"{Services.TRIP_LONGTERM}.tripEndTimestamp")
 
     @property
-    def is_trip_longterm_average_gas_consumption_supported(self) -> bool:
+    def is_longterm_trip_average_gas_consumption_supported(self) -> bool:
         """Return true if supported.
 
         :return:
@@ -4269,21 +4269,21 @@ class Vehicle:
         ) in (float, int)
 
     @property
-    def trip_longterm_average_auxillary_consumption(self):
+    def longterm_trip_average_auxillary_consumption(self):
         """Return trip longterm average auxiliary consumption.
 
         :return:
         """
         # no example verified yet
-        return self.trip_longterm_entry.get("averageAuxConsumption")
+        return self.longterm_trip_entry.get("averageAuxConsumption")
 
     @property
-    def trip_longterm_average_auxillary_consumption_last_updated(self) -> datetime:
+    def longterm_trip_average_auxillary_consumption_last_updated(self) -> datetime:
         """Return last updated timestamp."""
         return find_path(self.attrs, f"{Services.TRIP_LONGTERM}.tripEndTimestamp")
 
     @property
-    def is_trip_longterm_average_auxillary_consumption_supported(self) -> bool:
+    def is_longterm_trip_average_auxillary_consumption_supported(self) -> bool:
         """Return true if supported.
 
         :return:
@@ -4295,21 +4295,21 @@ class Vehicle:
         ) in (float, int)
 
     @property
-    def trip_longterm_average_aux_consumer_consumption(self):
+    def longterm_trip_average_aux_consumer_consumption(self):
         """Return trip longterm average auxiliary consumer consumption.
 
         :return:
         """
         # no example verified yet
-        return self.trip_longterm_entry.get("averageAuxConsumerConsumption")
+        return self.longterm_trip_entry.get("averageAuxConsumerConsumption")
 
     @property
-    def trip_longterm_average_aux_consumer_consumption_last_updated(self) -> datetime:
+    def longterm_trip_average_aux_consumer_consumption_last_updated(self) -> datetime:
         """Return last updated timestamp."""
         return find_path(self.attrs, f"{Services.TRIP_LONGTERM}.tripEndTimestamp")
 
     @property
-    def is_trip_longterm_average_aux_consumer_consumption_supported(self) -> bool:
+    def is_longterm_trip_average_aux_consumer_consumption_supported(self) -> bool:
         """Return true if supported.
 
         :return:
@@ -4323,7 +4323,7 @@ class Vehicle:
         ) in (float, int)
 
     @property
-    def trip_longterm_duration(self):
+    def longterm_trip_duration(self):
         """Return trip longterm duration in minutes.
 
         :return:
@@ -4331,12 +4331,12 @@ class Vehicle:
         return find_path(self.attrs, f"{Services.TRIP_LONGTERM}.travelTime")
 
     @property
-    def trip_longterm_duration_last_updated(self) -> datetime:
+    def longterm_trip_duration_last_updated(self) -> datetime:
         """Return last updated timestamp."""
         return find_path(self.attrs, f"{Services.TRIP_LONGTERM}.tripEndTimestamp")
 
     @property
-    def is_trip_longterm_duration_supported(self) -> bool:
+    def is_longterm_trip_duration_supported(self) -> bool:
         """Return true if supported.
 
         :return:
@@ -4349,7 +4349,7 @@ class Vehicle:
         )
 
     @property
-    def trip_longterm_length(self):
+    def longterm_trip_length(self):
         """Return trip longterm length.
 
         :return:
@@ -4357,12 +4357,12 @@ class Vehicle:
         return find_path(self.attrs, f"{Services.TRIP_LONGTERM}.mileage_km")
 
     @property
-    def trip_longterm_length_last_updated(self) -> datetime:
+    def longterm_trip_length_last_updated(self) -> datetime:
         """Return last updated timestamp."""
         return find_path(self.attrs, f"{Services.TRIP_LONGTERM}.tripEndTimestamp")
 
     @property
-    def is_trip_longterm_length_supported(self) -> bool:
+    def is_longterm_trip_length_supported(self) -> bool:
         """Return true if supported.
 
         :return:
@@ -4375,76 +4375,76 @@ class Vehicle:
         )
 
     @property
-    def trip_longterm_recuperation(self):
+    def longterm_trip_recuperation(self):
         """Return trip longterm recuperation.
 
         :return:
         """
         # Not implemented
-        return self.trip_longterm_entry.get("recuperation")
+        return self.longterm_trip_entry.get("recuperation")
 
     @property
-    def trip_longterm_recuperation_last_updated(self) -> datetime:
+    def longterm_trip_recuperation_last_updated(self) -> datetime:
         """Return last updated timestamp."""
         return find_path(self.attrs, f"{Services.TRIP_LONGTERM}.tripEndTimestamp")
 
     @property
-    def is_trip_longterm_recuperation_supported(self) -> bool:
+    def is_longterm_trip_recuperation_supported(self) -> bool:
         """Return true if supported.
 
         :return:
         """
         # Not implemented
-        response = self.trip_longterm_entry
+        response = self.longterm_trip_entry
         return response and type(response.get("recuperation", None)) in (float, int)
 
     @property
-    def trip_longterm_average_recuperation(self):
+    def longterm_trip_average_recuperation(self):
         """Return trip longterm total recuperation.
 
         :return:
         """
-        return self.trip_longterm_entry.get("averageRecuperation")
+        return self.longterm_trip_entry.get("averageRecuperation")
 
     @property
-    def trip_longterm_average_recuperation_last_updated(self) -> datetime:
+    def longterm_trip_average_recuperation_last_updated(self) -> datetime:
         """Return last updated timestamp."""
         return find_path(self.attrs, f"{Services.TRIP_LONGTERM}.tripEndTimestamp")
 
     @property
-    def is_trip_longterm_average_recuperation_supported(self) -> bool:
+    def is_longterm_trip_average_recuperation_supported(self) -> bool:
         """Return true if supported.
 
         :return:
         """
-        response = self.trip_longterm_entry
+        response = self.longterm_trip_entry
         return response and type(response.get("averageRecuperation", None)) in (
             float,
             int,
         )
 
     @property
-    def trip_longterm_total_electric_consumption(self):
+    def longterm_trip_total_electric_consumption(self):
         """Return trip longterm total electric consumption.
 
         :return:
         """
         # Not implemented
-        return self.trip_longterm_entry.get("totalElectricConsumption_kwh")
+        return self.longterm_trip_entry.get("totalElectricConsumption_kwh")
 
     @property
-    def trip_longterm_total_electric_consumption_last_updated(self) -> datetime:
+    def longterm_trip_total_electric_consumption_last_updated(self) -> datetime:
         """Return last updated timestamp."""
         return find_path(self.attrs, f"{Services.TRIP_LONGTERM}.tripEndTimestamp")
 
     @property
-    def is_trip_longterm_total_electric_consumption_supported(self) -> bool:
+    def is_longterm_trip_total_electric_consumption_supported(self) -> bool:
         """Return true if supported.
 
         :return:
         """
         # Not implemented
-        response = self.trip_longterm_entry
+        response = self.longterm_trip_entry
         return response and type(
             response.get("totalElectricConsumption_kwh", None)
         ) in (
@@ -4453,27 +4453,27 @@ class Vehicle:
         )
 
     @property
-    def trip_longterm_total_fuel_consumption(self):
+    def longterm_trip_total_fuel_consumption(self):
         """Return trip longterm total fuel consumption.
 
         :return:
         """
         # Not implemented
-        return self.trip_longterm_entry.get("totalFuelConsumption_L")
+        return self.longterm_trip_entry.get("totalFuelConsumption_L")
 
     @property
-    def trip_longterm_total_fuel_consumption_last_updated(self) -> datetime:
+    def longterm_trip_total_fuel_consumption_last_updated(self) -> datetime:
         """Return last updated timestamp."""
         return find_path(self.attrs, f"{Services.TRIP_LONGTERM}.tripEndTimestamp")
 
     @property
-    def is_trip_longterm_total_fuel_consumption_supported(self) -> bool:
+    def is_longterm_trip_total_fuel_consumption_supported(self) -> bool:
         """Return true if supported.
 
         :return:
         """
         # Not implemented
-        response = self.trip_longterm_entry
+        response = self.longterm_trip_entry
         return response and type(response.get("totalFuelConsumption_L", None)) in (
             float,
             int,
