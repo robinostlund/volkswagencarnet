@@ -1473,6 +1473,17 @@ _INSTRUMENT_DEFS = [
             "entity_type": "diag",
         },
     ),
+    (
+        Sensor,
+        [],
+        {
+            "attr": "parking_time",
+            "name": "Parking time",
+            "icon": "mdi:clock",
+            "unit": "",
+            "device_class": VWDeviceClass.TIMESTAMP,
+        },
+    ),
     # Sensors - battery / ranges / charging
     (
         Sensor,
@@ -2197,6 +2208,18 @@ _INSTRUMENT_DEFS = [
             "icon": "mdi:fan-clock",
             "unit": "min",
             "device_class": VWDeviceClass.DURATION,
+        },
+    ),
+    (
+        Sensor,
+        [],
+        {
+            "attr": "climatisation_target_temperature",
+            "name": "Climatisation target temperature",
+            "icon": "mdi:thermometer",
+            "unit": TEMP_CELSIUS,
+            "device_class": VWDeviceClass.TEMPERATURE,
+            "state_class": VWStateClass.MEASUREMENT,
         },
     ),
     # Sensors - API / diagnostics
