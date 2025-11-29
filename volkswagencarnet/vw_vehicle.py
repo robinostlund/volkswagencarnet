@@ -2572,15 +2572,14 @@ class Vehicle:
             or self.is_window_closed_right_back_supported
         )
 
-    @property
-    def window_closed_left_front(self) -> bool:
-        """Return left front window closed state.
-
-        :return:
-        """
+    # HELPERS
+    def _get_window_state(self, window_name: str) -> bool | None:
+        """Get window state by name."""
         windows = find_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.windows")
+        if not windows:
+            return False
         for window in windows:
-            if window["name"] == "frontLeft":
+            if window["name"] == window_name:
                 if not any(
                     valid_status in window["status"]
                     for valid_status in P.VALID_WINDOW_STATUS
@@ -2588,6 +2587,48 @@ class Vehicle:
                     return None
                 return "closed" in window["status"]
         return False
+
+    def _get_door_state(self, door_name: str) -> bool | None:
+        """Get door state by name."""
+        doors = find_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.doors")
+        if not doors:
+            return False
+        for door in doors:
+            if door["name"] == door_name:
+                if not any(
+                    valid_status in door["status"]
+                    for valid_status in P.VALID_DOOR_STATUS
+                ):
+                    return None
+                return "closed" in door["status"]
+        return False
+
+    def _is_window_supported(self, window_name: str) -> bool:
+        """Check if a window is supported by name."""
+        if is_valid_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.windows"):
+            windows = find_path(
+                self.attrs, f"{Services.ACCESS}.accessStatus.value.windows"
+            )
+            for window in windows:
+                if (
+                    window["name"] == window_name
+                    and "unsupported" not in window["status"]
+                ):
+                    return True
+        return False
+
+    def _is_door_supported(self, door_name: str) -> bool:
+        """Check if a door is supported by name."""
+        if is_valid_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.doors"):
+            doors = find_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.doors")
+            for door in doors:
+                if door["name"] == door_name and "unsupported" not in door["status"]:
+                    return True
+        return False
+
+    @property
+    def window_closed_left_front(self) -> bool | None:
+        return self._get_window_state("frontLeft")
 
     @property
     def window_closed_left_front_last_updated(self) -> datetime:
@@ -2598,35 +2639,11 @@ class Vehicle:
 
     @property
     def is_window_closed_left_front_supported(self) -> bool:
-        """Return true if supported."""
-        if is_valid_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.windows"):
-            windows = find_path(
-                self.attrs, f"{Services.ACCESS}.accessStatus.value.windows"
-            )
-            for window in windows:
-                if (
-                    window["name"] == "frontLeft"
-                    and "unsupported" not in window["status"]
-                ):
-                    return True
-        return False
+        return self._is_window_supported("frontLeft")
 
     @property
-    def window_closed_right_front(self) -> bool:
-        """Return right front window closed state.
-
-        :return:
-        """
-        windows = find_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.windows")
-        for window in windows:
-            if window["name"] == "frontRight":
-                if not any(
-                    valid_status in window["status"]
-                    for valid_status in P.VALID_WINDOW_STATUS
-                ):
-                    return None
-                return "closed" in window["status"]
-        return False
+    def window_closed_right_front(self) -> bool | None:
+        return self._get_window_state("frontRight")
 
     @property
     def window_closed_right_front_last_updated(self) -> datetime:
@@ -2637,35 +2654,11 @@ class Vehicle:
 
     @property
     def is_window_closed_right_front_supported(self) -> bool:
-        """Return true if supported."""
-        if is_valid_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.windows"):
-            windows = find_path(
-                self.attrs, f"{Services.ACCESS}.accessStatus.value.windows"
-            )
-            for window in windows:
-                if (
-                    window["name"] == "frontRight"
-                    and "unsupported" not in window["status"]
-                ):
-                    return True
-        return False
+        return self._is_window_supported("frontRight")
 
     @property
-    def window_closed_left_back(self) -> bool:
-        """Return left back window closed state.
-
-        :return:
-        """
-        windows = find_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.windows")
-        for window in windows:
-            if window["name"] == "rearLeft":
-                if not any(
-                    valid_status in window["status"]
-                    for valid_status in P.VALID_WINDOW_STATUS
-                ):
-                    return None
-                return "closed" in window["status"]
-        return False
+    def window_closed_left_back(self) -> bool | None:
+        return self._get_window_state("rearLeft")
 
     @property
     def window_closed_left_back_last_updated(self) -> datetime:
@@ -2676,35 +2669,11 @@ class Vehicle:
 
     @property
     def is_window_closed_left_back_supported(self) -> bool:
-        """Return true if supported."""
-        if is_valid_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.windows"):
-            windows = find_path(
-                self.attrs, f"{Services.ACCESS}.accessStatus.value.windows"
-            )
-            for window in windows:
-                if (
-                    window["name"] == "rearLeft"
-                    and "unsupported" not in window["status"]
-                ):
-                    return True
-        return False
+        return self._is_window_supported("rearLeft")
 
     @property
-    def window_closed_right_back(self) -> bool:
-        """Return right back window closed state.
-
-        :return:
-        """
-        windows = find_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.windows")
-        for window in windows:
-            if window["name"] == "rearRight":
-                if not any(
-                    valid_status in window["status"]
-                    for valid_status in P.VALID_WINDOW_STATUS
-                ):
-                    return None
-                return "closed" in window["status"]
-        return False
+    def window_closed_right_back(self) -> bool | None:
+        return self._get_window_state("rearRight")
 
     @property
     def window_closed_right_back_last_updated(self) -> datetime:
@@ -2715,35 +2684,11 @@ class Vehicle:
 
     @property
     def is_window_closed_right_back_supported(self) -> bool:
-        """Return true if supported."""
-        if is_valid_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.windows"):
-            windows = find_path(
-                self.attrs, f"{Services.ACCESS}.accessStatus.value.windows"
-            )
-            for window in windows:
-                if (
-                    window["name"] == "rearRight"
-                    and "unsupported" not in window["status"]
-                ):
-                    return True
-        return False
+        return self._is_window_supported("rearRight")
 
     @property
-    def sunroof_closed(self) -> bool:
-        """Return sunroof closed state.
-
-        :return:
-        """
-        windows = find_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.windows")
-        for window in windows:
-            if window["name"] == "sunRoof":
-                if not any(
-                    valid_status in window["status"]
-                    for valid_status in P.VALID_WINDOW_STATUS
-                ):
-                    return None
-                return "closed" in window["status"]
-        return False
+    def sunroof_closed(self) -> bool | None:
+        return self._get_window_state("sunRoof")
 
     @property
     def sunroof_closed_last_updated(self) -> datetime:
@@ -2754,35 +2699,11 @@ class Vehicle:
 
     @property
     def is_sunroof_closed_supported(self) -> bool:
-        """Return true if supported."""
-        if is_valid_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.windows"):
-            windows = find_path(
-                self.attrs, f"{Services.ACCESS}.accessStatus.value.windows"
-            )
-            for window in windows:
-                if (
-                    window["name"] == "sunRoof"
-                    and "unsupported" not in window["status"]
-                ):
-                    return True
-        return False
+        return self._is_window_supported("sunRoof")
 
     @property
-    def sunroof_rear_closed(self) -> bool:
-        """Return sunroof rear closed state.
-
-        :return:
-        """
-        windows = find_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.windows")
-        for window in windows:
-            if window["name"] == "sunRoofRear":
-                if not any(
-                    valid_status in window["status"]
-                    for valid_status in P.VALID_WINDOW_STATUS
-                ):
-                    return None
-                return "closed" in window["status"]
-        return False
+    def sunroof_rear_closed(self) -> bool | None:
+        return self._get_window_state("sunRoofRear")
 
     @property
     def sunroof_rear_closed_last_updated(self) -> datetime:
@@ -2793,35 +2714,11 @@ class Vehicle:
 
     @property
     def is_sunroof_rear_closed_supported(self) -> bool:
-        """Return true if supported."""
-        if is_valid_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.windows"):
-            windows = find_path(
-                self.attrs, f"{Services.ACCESS}.accessStatus.value.windows"
-            )
-            for window in windows:
-                if (
-                    window["name"] == "sunRoofRear"
-                    and "unsupported" not in window["status"]
-                ):
-                    return True
-        return False
+        return self._is_window_supported("sunRoofRear")
 
     @property
-    def roof_cover_closed(self) -> bool:
-        """Return roof cover closed state.
-
-        :return:
-        """
-        windows = find_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.windows")
-        for window in windows:
-            if window["name"] == "roofCover":
-                if not any(
-                    valid_status in window["status"]
-                    for valid_status in P.VALID_WINDOW_STATUS
-                ):
-                    return None
-                return "closed" in window["status"]
-        return False
+    def roof_cover_closed(self) -> bool | None:
+        return self._get_window_state("roofCover")
 
     @property
     def roof_cover_closed_last_updated(self) -> datetime:
@@ -2832,18 +2729,7 @@ class Vehicle:
 
     @property
     def is_roof_cover_closed_supported(self) -> bool:
-        """Return true if supported."""
-        if is_valid_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.doors"):
-            windows = find_path(
-                self.attrs, f"{Services.ACCESS}.accessStatus.value.windows"
-            )
-            for window in windows:
-                if (
-                    window["name"] == "roofCover"
-                    and "unsupported" not in window["status"]
-                ):
-                    return True
-        return False
+        return self._is_window_supported("roofCover")
 
     # Locks
     @property
@@ -2975,20 +2861,7 @@ class Vehicle:
     # Doors, hood and trunk
     @property
     def hood_closed(self) -> bool:
-        """Return hood closed state.
-
-        :return:
-        """
-        doors = find_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.doors")
-        for door in doors:
-            if door["name"] == "bonnet":
-                if not any(
-                    valid_status in door["status"]
-                    for valid_status in P.VALID_DOOR_STATUS
-                ):
-                    return None
-                return "closed" in door["status"]
-        return False
+        return self._get_door_state("bonnet")
 
     @property
     def hood_closed_last_updated(self) -> datetime:
@@ -2999,30 +2872,11 @@ class Vehicle:
 
     @property
     def is_hood_closed_supported(self) -> bool:
-        """Return true if supported."""
-        if is_valid_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.doors"):
-            doors = find_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.doors")
-            for door in doors:
-                if door["name"] == "bonnet" and "unsupported" not in door["status"]:
-                    return True
-        return False
+        return self._is_door_supported("bonnet")
 
     @property
-    def door_closed_left_front(self) -> bool:
-        """Return left front door closed state.
-
-        :return:
-        """
-        doors = find_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.doors")
-        for door in doors:
-            if door["name"] == "frontLeft":
-                if not any(
-                    valid_status in door["status"]
-                    for valid_status in P.VALID_DOOR_STATUS
-                ):
-                    return None
-                return "closed" in door["status"]
-        return False
+    def door_closed_left_front(self) -> bool | None:
+        return self._get_door_state("frontLeft")
 
     @property
     def door_closed_left_front_last_updated(self) -> datetime:
@@ -3033,30 +2887,11 @@ class Vehicle:
 
     @property
     def is_door_closed_left_front_supported(self) -> bool:
-        """Return true if supported."""
-        if is_valid_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.doors"):
-            doors = find_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.doors")
-            for door in doors:
-                if door["name"] == "frontLeft" and "unsupported" not in door["status"]:
-                    return True
-        return False
+        return self._is_door_supported("frontLeft")
 
     @property
-    def door_closed_right_front(self) -> bool:
-        """Return right front door closed state.
-
-        :return:
-        """
-        doors = find_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.doors")
-        for door in doors:
-            if door["name"] == "frontRight":
-                if not any(
-                    valid_status in door["status"]
-                    for valid_status in P.VALID_DOOR_STATUS
-                ):
-                    return None
-                return "closed" in door["status"]
-        return False
+    def door_closed_right_front(self) -> bool | None:
+        return self._get_door_state("frontRight")
 
     @property
     def door_closed_right_front_last_updated(self) -> datetime:
@@ -3067,30 +2902,11 @@ class Vehicle:
 
     @property
     def is_door_closed_right_front_supported(self) -> bool:
-        """Return true if supported."""
-        if is_valid_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.doors"):
-            doors = find_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.doors")
-            for door in doors:
-                if door["name"] == "frontRight" and "unsupported" not in door["status"]:
-                    return True
-        return False
+        return self._is_door_supported("frontRight")
 
     @property
     def door_closed_left_back(self) -> bool:
-        """Return left back door closed state.
-
-        :return:
-        """
-        doors = find_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.doors")
-        for door in doors:
-            if door["name"] == "rearLeft":
-                if not any(
-                    valid_status in door["status"]
-                    for valid_status in P.VALID_DOOR_STATUS
-                ):
-                    return None
-                return "closed" in door["status"]
-        return False
+        return self._get_door_state("rearLeft")
 
     @property
     def door_closed_left_back_last_updated(self) -> datetime:
@@ -3101,30 +2917,11 @@ class Vehicle:
 
     @property
     def is_door_closed_left_back_supported(self) -> bool:
-        """Return true if supported."""
-        if is_valid_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.doors"):
-            doors = find_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.doors")
-            for door in doors:
-                if door["name"] == "rearLeft" and "unsupported" not in door["status"]:
-                    return True
-        return False
+        return self._is_door_supported("rearLeft")
 
     @property
     def door_closed_right_back(self) -> bool:
-        """Return right back door closed state.
-
-        :return:
-        """
-        doors = find_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.doors")
-        for door in doors:
-            if door["name"] == "rearRight":
-                if not any(
-                    valid_status in door["status"]
-                    for valid_status in P.VALID_DOOR_STATUS
-                ):
-                    return None
-                return "closed" in door["status"]
-        return False
+        return self._get_door_state("rearRight")
 
     @property
     def door_closed_right_back_last_updated(self) -> datetime:
@@ -3135,25 +2932,11 @@ class Vehicle:
 
     @property
     def is_door_closed_right_back_supported(self) -> bool:
-        """Return true if supported."""
-        if is_valid_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.doors"):
-            doors = find_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.doors")
-            for door in doors:
-                if door["name"] == "rearRight" and "unsupported" not in door["status"]:
-                    return True
-        return False
+        return self._is_door_supported("rearRight")
 
     @property
     def trunk_closed(self) -> bool:
-        """Return trunk closed state.
-
-        :return:
-        """
-        doors = find_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.doors")
-        for door in doors:
-            if door["name"] == "trunk":
-                return "closed" in door["status"]
-        return False
+        return self._is_door_supported("trunk")
 
     @property
     def trunk_closed_last_updated(self) -> datetime:
@@ -3164,13 +2947,7 @@ class Vehicle:
 
     @property
     def is_trunk_closed_supported(self) -> bool:
-        """Return true if supported."""
-        if is_valid_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.doors"):
-            doors = find_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.doors")
-            for door in doors:
-                if door["name"] == "trunk" and "unsupported" not in door["status"]:
-                    return True
-        return False
+        return self._is_door_supported("trunk")
 
     # Departure timers
     @property
