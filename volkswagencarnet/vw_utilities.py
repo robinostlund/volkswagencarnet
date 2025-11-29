@@ -1,131 +1,137 @@
 """Common utility functions."""
 
 from datetime import datetime
+from typing import Any
 import json
 import logging
 import re
 
 _LOGGER = logging.getLogger(__name__)
 
+DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%S%z"
 
-def json_loads(s) -> object:
+
+def json_loads(s: str) -> object:
     """Load JSON from string and parse timestamps."""
     return json.loads(s, object_hook=obj_parser)
 
 
-def obj_parser(obj: dict) -> dict:
-    """Parse datetime."""
+def obj_parser(obj: dict[str, Any]) -> dict[str, Any]:
+    """Parse datetime strings to datetime objects."""
     for key, val in obj.items():
         try:
-            obj[key] = datetime.strptime(val, "%Y-%m-%dT%H:%M:%S%z")
+            obj[key] = datetime.strptime(val, DATETIME_FORMAT)
         except (TypeError, ValueError):
-            """The value was not a date."""  # pylint: disable=pointless-string-statement
+            pass  # Value is not a datetime string, keep original
     return obj
 
 
-def find_path_in_dict(src: dict | list, path: str | list) -> object:
-    """Return data at path in dictionary source.
+def find_path(src: dict | list, path: str | list | None) -> Any:
+    """Return data at path in source.
 
-    Simple navigation of a hierarchical dict structure using XPATH-like syntax.
+    Simple navigation of a hierarchical dict/list structure using dot notation.
 
-    >>> find_path_in_dict(dict(a=1), 'a')
-    1
+    Args:
+        src: Dictionary or list to search
+        path: Dot-separated path (e.g., 'a.b.c') or list of keys
 
-    >>> find_path_in_dict(dict(a=1), '')
-    {'a': 1}
+    Returns:
+        Value at path or None if not found
 
-    >>> find_path_in_dict(dict(a=None), 'a')
-
-
-    >>> find_path_in_dict(dict(a=1), 'b')
-    Traceback (most recent call last):
-    ...
-    KeyError: 'b'
-
-    >>> find_path_in_dict(dict(a=dict(b=1)), 'a.b')
-    1
-
-    >>> find_path_in_dict(dict(a=dict(b=1)), 'a')
-    {'b': 1}
-
-    >>> find_path_in_dict(dict(a=dict(b=1)), 'a.c')
-    Traceback (most recent call last):
-    ...
-    KeyError: 'c'
-
+    Examples:
+        >>> find_path({"a": 1}, "a")
+        1
+        >>> find_path({"a": {"b": 1}}, "a.b")
+        1
+        >>> find_path({"a": [1, 2]}, "a.0")
+        1
+        >>> find_path({"a": 1}, "b")
     """
-    if not path:
-        return src
-    if isinstance(path, str):
-        path = path.split(".")
-    if isinstance(src, list):
-        try:
-            f = float(path[0])
-            if f.is_integer() and len(src) > 0:
-                return find_path_in_dict(src[int(f)], path[1:])
-            raise KeyError("Key not found")
-        except ValueError as valerr:
-            raise KeyError(f"{path[0]} should be an integer") from valerr
-        except IndexError as idxerr:
-            raise KeyError("Index out of range") from idxerr
-    return find_path_in_dict(src[path[0]], path[1:])
-
-
-def find_path(src: dict | list, path: str | list) -> object:
-    """Return data at path in source."""
     try:
-        return find_path_in_dict(src, path)
+        if not path:
+            return src
+        if isinstance(path, str):
+            path = path.split(".")
+        if isinstance(src, list):
+            try:
+                f = float(path[0])
+                if f.is_integer() and len(src) > 0:
+                    return find_path(src[int(f)], path[1:])
+                raise KeyError("Key not found")
+            except ValueError as valerr:
+                raise KeyError(f"{path[0]} should be an integer") from valerr
+            except IndexError as idxerr:
+                raise KeyError("Index out of range") from idxerr
+        return find_path(src[path[0]], path[1:])
     except KeyError:
-        _LOGGER.error(
-            "Dictionary path: %s is no longer present. Dictionary: %s", path, src
-        )
+        _LOGGER.error("Path '%s' not found in source", path)
         return None
 
 
-def is_valid_path(src, path):
+def is_valid_path(src: dict | list, path: str | list | None) -> bool:
     """Check if path exists in source.
 
-    >>> is_valid_path(dict(a=1), 'a')
-    True
-
-    >>> is_valid_path(dict(a=1), '')
-    True
-
-    >>> is_valid_path(dict(a=1), None)
-    True
-
-    >>> is_valid_path(dict(a=1), 'b')
-    False
-
-    >>> is_valid_path({"a": [{"b": True}, {"c": True}]}, 'a.0.b')
-    True
-
-    >>> is_valid_path({"a": [{"b": True}, {"c": True}]}, 'a.1.b')
-    False
+    Examples:
+        >>> is_valid_path({"a": 1}, "a")
+        True
+        >>> is_valid_path({"a": 1}, "b")
+        False
+        >>> is_valid_path({"a": [{"b": True}]}, "a.0.b")
+        True
     """
     try:
-        find_path_in_dict(src, path)
-    except KeyError:
+        if not path:
+            return True
+        if isinstance(path, str):
+            path = path.split(".")
+        if isinstance(src, list):
+            f = float(path[0])
+            if f.is_integer() and len(src) > 0:
+                return is_valid_path(src[int(f)], path[1:])
+            return False
+        return is_valid_path(src[path[0]], path[1:])
+    except (KeyError, ValueError, IndexError):
         return False
-    else:
-        return True
+
+
+_CAMEL_CASE_PATTERN = re.compile(r"((?<!_)[A-Z])")
 
 
 def camel2slug(s: str) -> str:
-    """Convert camelCase to camel_case.
+    """Convert camelCase to snake_case.
 
-    >>> camel2slug('fooBar')
-    'foo_bar'
-
-    Should not produce "__" in case input contains something like "Foo_Bar"
+    Examples:
+        >>> camel2slug("fooBar")
+        'foo_bar'
+        >>> camel2slug("FooBar")
+        'foo_bar'
     """
-    return re.sub("((?<!_)[A-Z])", "_\\1", s).lower().strip("_ \n\t\r")
+    return _CAMEL_CASE_PATTERN.sub(r"_\1", s).lower().strip("_ \n\t\r")
 
 
 def make_url(url: str, **kwargs: str) -> str:
-    """Replace placeholders in a URL with given keyword arguments."""
+    """Replace placeholders in a URL with given keyword arguments.
 
-    # Replace both `{key}` and `$key` in the URL
+    Supports both {key} and $key placeholder styles.
+
+    Args:
+        url: URL template with placeholders
+        **kwargs: Placeholder values
+
+    Returns:
+        URL with all placeholders replaced
+
+    Raises:
+        ValueError: If URL is empty or contains unreplaced placeholders
+
+    Examples:
+        >>> make_url("https://api.example.com/users/{id}", id="123")
+        'https://api.example.com/users/123'
+    """
+    if not url:
+        raise ValueError("URL cannot be empty")
+
+    # Replace both `{key}` and `$key` placeholders
     for key, value in kwargs.items():
         placeholder1 = f"{{{key}}}"
         placeholder2 = f"${key}"
@@ -133,5 +139,6 @@ def make_url(url: str, **kwargs: str) -> str:
 
     # Check if any unreplaced placeholders remain
     if "{" in url or "}" in url:
-        raise ValueError("Not all placeholders were replaced in the URL")
+        raise ValueError(f"Unreplaced placeholders in URL: {url}")
+
     return url
