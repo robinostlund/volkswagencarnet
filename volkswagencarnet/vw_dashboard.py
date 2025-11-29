@@ -2535,10 +2535,10 @@ _INSTRUMENT_DEFS = [
 
 def _instantiate_def(def_item):
     """Instantiate a definition entry.
-    
+
     Args:
         def_item: Tuple of (class, args, kwargs)
-        
+
     Returns:
         Instantiated instrument object
     """
