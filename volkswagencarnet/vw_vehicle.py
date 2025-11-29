@@ -777,7 +777,7 @@ class Vehicle:
             if self._services.get(service, {}).get("expiration", False):
                 expiration = self._services.get(service, {}).get("expiration", False)
                 if not expiration:
-                    expiration = datetime.neow(UTC) + timedelta(days=1)
+                    expiration = datetime.now(UTC) + timedelta(days=1)
             else:
                 _LOGGER.debug(
                     "Could not determine end of access for service %s, assuming it is valid",
