@@ -15,6 +15,18 @@ _LOGGER = logging.getLogger(__name__)
 class Instrument:
     """Base class for all components."""
 
+    __slots__ = (
+        "vehicle",
+        "attr",
+        "component",
+        "name",
+        "icon",
+        "entity_type",
+        "device_class",
+        "state_class",
+        "callback",
+    )
+
     vehicle: Vehicle
 
     def __init__(
@@ -121,6 +133,8 @@ class Instrument:
 class Sensor(Instrument):
     """Base class for sensor type entities."""
 
+    __slots__ = ("unit", "convert")
+
     def __init__(
         self,
         attr: str,
@@ -209,6 +223,8 @@ class Sensor(Instrument):
 class BinarySensor(Instrument):
     """BinarySensor instrument."""
 
+    __slots__ = ("device_class", "reverse_state")
+
     def __init__(
         self, attr, name, device_class, icon="", entity_type=None, reverse_state=False
     ) -> None:
@@ -268,6 +284,8 @@ class BinarySensor(Instrument):
 class Switch(Instrument):
     """Switch instrument."""
 
+    __slots__ = ()
+
     def __init__(self, attr, name, icon, entity_type=None) -> None:
         """Init."""
         super().__init__(
@@ -302,6 +320,8 @@ class Switch(Instrument):
 
 class Number(Instrument):
     """Number instrument."""
+
+    __slots__ = ("unit",)
 
     def __init__(
         self,
@@ -354,6 +374,8 @@ class Number(Instrument):
 class Select(Instrument):
     """Select instrument."""
 
+    __slots__ = ("unit",)
+
     def __init__(
         self,
         attr: str,
@@ -400,6 +422,8 @@ class Select(Instrument):
 class Position(Instrument):
     """Position instrument."""
 
+    __slots__ = ()
+
     def __init__(self) -> None:
         """Init."""
         super().__init__(component="device_tracker", attr="position", name="Position")
@@ -433,6 +457,8 @@ class Position(Instrument):
 
 class DoorLock(Instrument):
     """DoorLock instrument."""
+
+    __slots__ = ("spin",)
 
     def __init__(self) -> None:
         """Init."""
@@ -499,6 +525,8 @@ class DoorLock(Instrument):
 
 class TrunkLock(Instrument):
     """TrunkLock instrument."""
+
+    __slots__ = ()
 
     def __init__(self) -> None:
         """Init."""
@@ -1388,745 +1416,1159 @@ class RequestResults(Sensor):
         return dict(self.vehicle.request_results)
 
 
+_INSTRUMENT_DEFS = [
+    # Core/custom classes (class, args, kwargs)
+    (Position, [], {}),
+    (BatteryTargetSOC, [], {}),
+    (ClimatisationTargetTemperature, [], {}),
+    (DoorLock, [], {}),
+    (TrunkLock, [], {}),
+    (ChargeMaxACAmpere, [], {}),
+    (RequestUpdate, [], {}),
+    (WindowHeater, [], {}),
+    (BatteryClimatisation, [], {}),
+    (AuxiliaryAC, [], {}),
+    (AutomaticWindowHeating, [], {}),
+    (ZoneFrontLeft, [], {}),
+    (ZoneFrontRight, [], {}),
+    (ElectricClimatisation, [], {}),
+    (AuxiliaryClimatisation, [], {}),
+    (Charging, [], {}),
+    (ReducedACCharging, [], {}),
+    (AutoReleaseACConnector, [], {}),
+    (BatteryCareMode, [], {}),
+    (OptimisedBatteryUse, [], {}),
+    (DepartureTimer, [1], {}),
+    (DepartureTimer, [2], {}),
+    (DepartureTimer, [3], {}),
+    (ACDepartureTimer, [1], {}),
+    (ACDepartureTimer, [2], {}),
+    (RequestResults, [], {}),
+    # Sensors - general
+    (
+        Sensor,
+        [],
+        {
+            "attr": "distance",
+            "name": "Odometer",
+            "icon": "mdi:speedometer",
+            "unit": "km",
+            "state_class": VWStateClass.TOTAL_INCREASING,
+        },
+    ),
+    (
+        Sensor,
+        [],
+        {"attr": "car_type", "name": "Car Type", "icon": "mdi:car-select", "unit": ""},
+    ),
+    (
+        Sensor,
+        [],
+        {
+            "attr": "last_connected",
+            "name": "Last connected",
+            "icon": "mdi:clock",
+            "unit": "",
+            "device_class": VWDeviceClass.TIMESTAMP,
+            "entity_type": "diag",
+        },
+    ),
+    # Sensors - battery / ranges / charging
+    (
+        Sensor,
+        [],
+        {
+            "attr": "battery_level",
+            "name": "Battery level",
+            "icon": "mdi:battery",
+            "unit": "%",
+            "device_class": VWDeviceClass.BATTERY,
+            "state_class": VWStateClass.MEASUREMENT,
+        },
+    ),
+    (
+        Sensor,
+        [],
+        {
+            "attr": "battery_target_charge_level",
+            "name": "Battery target charge level",
+            "icon": "mdi:battery-arrow-up",
+            "unit": "%",
+            "device_class": VWDeviceClass.BATTERY,
+        },
+    ),
+    (
+        Sensor,
+        [],
+        {
+            "attr": "hv_battery_min_temperature",
+            "name": "HV battery min temperature",
+            "icon": "mdi:thermometer-chevron-down",
+            "unit": TEMP_CELSIUS,
+            "device_class": VWDeviceClass.TEMPERATURE,
+        },
+    ),
+    (
+        Sensor,
+        [],
+        {
+            "attr": "hv_battery_max_temperature",
+            "name": "HV battery max temperature",
+            "icon": "mdi:thermometer-chevron-up",
+            "unit": TEMP_CELSIUS,
+            "device_class": VWDeviceClass.TEMPERATURE,
+        },
+    ),
+    (
+        Sensor,
+        [],
+        {
+            "attr": "electric_range",
+            "name": "Electric range",
+            "icon": "mdi:car-electric",
+            "unit": "km",
+            "device_class": VWDeviceClass.DISTANCE,
+            "state_class": VWStateClass.MEASUREMENT,
+        },
+    ),
+    (
+        Sensor,
+        [],
+        {
+            "attr": "battery_cruising_range",
+            "name": "Battery cruising range",
+            "icon": "mdi:car-settings",
+            "unit": "km",
+            "device_class": VWDeviceClass.DISTANCE,
+            "state_class": VWStateClass.MEASUREMENT,
+        },
+    ),
+    (
+        Sensor,
+        [],
+        {
+            "attr": "charging_time_left",
+            "name": "Charging time left",
+            "icon": "mdi:battery-charging-100",
+            "unit": "min",
+            "device_class": VWDeviceClass.DURATION,
+            "state_class": VWStateClass.MEASUREMENT,
+        },
+    ),
+    (
+        Sensor,
+        [],
+        {
+            "attr": "charge_max_ac_setting",
+            "name": "Charger max AC setting",
+            "icon": "mdi:flash",
+            "unit": "",
+        },
+    ),
+    (
+        Sensor,
+        [],
+        {
+            "attr": "charge_max_ac_ampere",
+            "name": "Charger max AC ampere",
+            "icon": "mdi:flash-auto",
+            "unit": "A",
+            "device_class": VWDeviceClass.CURRENT,
+        },
+    ),
+    (
+        Sensor,
+        [],
+        {
+            "attr": "charging_power",
+            "name": "Charging Power",
+            "icon": "mdi:transmission-tower",
+            "unit": "kW",
+            "device_class": VWDeviceClass.POWER,
+            "state_class": VWStateClass.MEASUREMENT,
+        },
+    ),
+    (
+        Sensor,
+        [],
+        {
+            "attr": "charging_rate",
+            "name": "Charging Rate",
+            "icon": "mdi:ev-station",
+            "unit": "km/h",
+            "device_class": VWDeviceClass.SPEED,
+            "state_class": VWStateClass.MEASUREMENT,
+        },
+    ),
+    (
+        Sensor,
+        [],
+        {
+            "attr": "charger_type",
+            "name": "Charger Type",
+            "icon": "mdi:ev-plug-type1",
+            "unit": "",
+        },
+    ),
+    # Sensors - fuel / adblue / gas
+    (
+        Sensor,
+        [],
+        {
+            "attr": "adblue_level",
+            "name": "Adblue level",
+            "icon": "mdi:fuel",
+            "unit": "km",
+            "state_class": VWStateClass.MEASUREMENT,
+            "device_class": VWDeviceClass.DISTANCE,
+        },
+    ),
+    (
+        Sensor,
+        [],
+        {
+            "attr": "fuel_level",
+            "name": "Fuel level",
+            "icon": "mdi:fuel",
+            "unit": "%",
+            "state_class": VWStateClass.MEASUREMENT,
+        },
+    ),
+    (
+        Sensor,
+        [],
+        {
+            "attr": "gas_level",
+            "name": "Gas level",
+            "icon": "mdi:gas-cylinder",
+            "unit": "%",
+            "state_class": VWStateClass.MEASUREMENT,
+        },
+    ),
+    (
+        Sensor,
+        [],
+        {
+            "attr": "fuel_range",
+            "name": "Fuel range",
+            "icon": "mdi:car",
+            "unit": "km",
+            "device_class": VWDeviceClass.DISTANCE,
+            "state_class": VWStateClass.MEASUREMENT,
+        },
+    ),
+    (
+        Sensor,
+        [],
+        {
+            "attr": "combustion_range",
+            "name": "Combustion range",
+            "icon": "mdi:car",
+            "unit": "km",
+            "device_class": VWDeviceClass.DISTANCE,
+            "state_class": VWStateClass.MEASUREMENT,
+        },
+    ),
+    (
+        Sensor,
+        [],
+        {
+            "attr": "gas_range",
+            "name": "Gas range",
+            "icon": "mdi:car",
+            "unit": "km",
+            "device_class": VWDeviceClass.DISTANCE,
+            "state_class": VWStateClass.MEASUREMENT,
+        },
+    ),
+    (
+        Sensor,
+        [],
+        {
+            "attr": "combined_range",
+            "name": "Combined range",
+            "icon": "mdi:car",
+            "unit": "km",
+            "device_class": VWDeviceClass.DISTANCE,
+            "state_class": VWStateClass.MEASUREMENT,
+        },
+    ),
+    # Sensors - inspections / oil / service
+    (
+        Sensor,
+        [],
+        {
+            "attr": "service_inspection",
+            "name": "Service inspection days",
+            "icon": "mdi:garage",
+            "unit": "d",
+            "device_class": VWDeviceClass.DURATION,
+        },
+    ),
+    (
+        Sensor,
+        [],
+        {
+            "attr": "service_inspection_distance",
+            "name": "Service inspection distance",
+            "icon": "mdi:garage",
+            "unit": "km",
+            "device_class": VWDeviceClass.DISTANCE,
+        },
+    ),
+    (
+        Sensor,
+        [],
+        {
+            "attr": "oil_inspection",
+            "name": "Oil inspection days",
+            "icon": "mdi:oil",
+            "unit": "d",
+            "device_class": VWDeviceClass.DURATION,
+        },
+    ),
+    (
+        Sensor,
+        [],
+        {
+            "attr": "oil_inspection_distance",
+            "name": "Oil inspection distance",
+            "icon": "mdi:oil",
+            "unit": "km",
+            "device_class": VWDeviceClass.DISTANCE,
+        },
+    ),
+    # Sensors - trip / refuel / longterm (grouped)
+    (
+        Sensor,
+        [],
+        {
+            "attr": "last_trip_average_speed",
+            "name": "Last trip average speed",
+            "icon": "mdi:speedometer",
+            "unit": "km/h",
+            "device_class": VWDeviceClass.SPEED,
+            "state_class": VWStateClass.MEASUREMENT,
+        },
+    ),
+    (
+        Sensor,
+        [],
+        {
+            "attr": "last_trip_average_electric_engine_consumption",
+            "name": "Last trip average electric engine consumption",
+            "icon": "mdi:car-battery",
+            "unit": "kWh/100km",
+            "device_class": VWDeviceClass.ENERGY_DISTANCE,
+            "state_class": VWStateClass.MEASUREMENT,
+        },
+    ),
+    (
+        Sensor,
+        [],
+        {
+            "attr": "last_trip_average_fuel_consumption",
+            "name": "Last trip average fuel consumption",
+            "icon": "mdi:fuel",
+            "unit": "l/100km",
+            "state_class": VWStateClass.MEASUREMENT,
+        },
+    ),
+    (
+        Sensor,
+        [],
+        {
+            "attr": "last_trip_average_gas_consumption",
+            "name": "Last trip average gas consumption",
+            "icon": "mdi:gas-cylinder",
+            "unit": "m3/100km",
+            "state_class": VWStateClass.MEASUREMENT,
+        },
+    ),
+    (
+        Sensor,
+        [],
+        {
+            "attr": "last_trip_duration",
+            "name": "Last trip duration",
+            "icon": "mdi:clock",
+            "unit": "min",
+            "device_class": VWDeviceClass.DURATION,
+            "state_class": VWStateClass.MEASUREMENT,
+        },
+    ),
+    (
+        Sensor,
+        [],
+        {
+            "attr": "last_trip_length",
+            "name": "Last trip length",
+            "icon": "mdi:map-marker-distance",
+            "unit": "km",
+            "device_class": VWDeviceClass.DISTANCE,
+            "state_class": VWStateClass.MEASUREMENT,
+        },
+    ),
+    (
+        Sensor,
+        [],
+        {
+            "attr": "last_trip_recuperation",
+            "name": "Last trip recuperation",
+            "icon": "mdi:battery-plus",
+            "unit": "kWh/100km",
+            "device_class": VWDeviceClass.ENERGY_DISTANCE,
+            "state_class": VWStateClass.MEASUREMENT,
+        },
+    ),
+    (
+        Sensor,
+        [],
+        {
+            "attr": "last_trip_average_recuperation",
+            "name": "Last trip average recuperation",
+            "icon": "mdi:battery-plus",
+            "unit": "kWh/100km",
+            "device_class": VWDeviceClass.ENERGY_DISTANCE,
+            "state_class": VWStateClass.MEASUREMENT,
+        },
+    ),
+    (
+        Sensor,
+        [],
+        {
+            "attr": "last_trip_average_auxillary_consumption",
+            "name": "Last trip average auxillary consumption",
+            "icon": "mdi:flash",
+            "unit": "kWh/100km",
+            "device_class": VWDeviceClass.ENERGY_DISTANCE,
+            "state_class": VWStateClass.MEASUREMENT,
+        },
+    ),
+    (
+        Sensor,
+        [],
+        {
+            "attr": "last_trip_average_aux_consumer_consumption",
+            "name": "Last trip average auxillary consumer consumption",
+            "icon": "mdi:flash",
+            "unit": "kWh/100km",
+            "device_class": VWDeviceClass.ENERGY_DISTANCE,
+            "state_class": VWStateClass.MEASUREMENT,
+        },
+    ),
+    (
+        Sensor,
+        [],
+        {
+            "attr": "last_trip_total_electric_consumption",
+            "name": "Last trip total electric consumption",
+            "icon": "mdi:car-battery",
+            "unit": "kWh",
+            "device_class": VWDeviceClass.ENERGY,
+            "state_class": VWStateClass.MEASUREMENT,
+        },
+    ),
+    (
+        Sensor,
+        [],
+        {
+            "attr": "last_trip_total_fuel_consumption",
+            "name": "Last trip total fuel consumption",
+            "icon": "mdi:fuel",
+            "unit": "L",
+            "device_class": VWDeviceClass.VOLUME,
+            "state_class": VWStateClass.TOTAL_INCREASING,
+        },
+    ),
+    (
+        Sensor,
+        [],
+        {
+            "attr": "refuel_trip_average_speed",
+            "name": "Refuel trip average speed",
+            "icon": "mdi:speedometer",
+            "unit": "km/h",
+            "device_class": VWDeviceClass.SPEED,
+            "state_class": VWStateClass.MEASUREMENT,
+        },
+    ),
+    (
+        Sensor,
+        [],
+        {
+            "attr": "refuel_trip_average_electric_engine_consumption",
+            "name": "Refuel trip average electric engine consumption",
+            "icon": "mdi:car-battery",
+            "unit": "kWh/100km",
+            "device_class": VWDeviceClass.ENERGY_DISTANCE,
+            "state_class": VWStateClass.MEASUREMENT,
+        },
+    ),
+    (
+        Sensor,
+        [],
+        {
+            "attr": "refuel_trip_average_fuel_consumption",
+            "name": "Refuel trip average fuel consumption",
+            "icon": "mdi:fuel",
+            "unit": "l/100km",
+            "state_class": VWStateClass.MEASUREMENT,
+        },
+    ),
+    (
+        Sensor,
+        [],
+        {
+            "attr": "refuel_trip_average_gas_consumption",
+            "name": "Refuel trip average gas consumption",
+            "icon": "mdi:gas-cylinder",
+            "unit": "m3/100km",
+            "state_class": VWStateClass.MEASUREMENT,
+        },
+    ),
+    (
+        Sensor,
+        [],
+        {
+            "attr": "refuel_trip_duration",
+            "name": "Refuel trip duration",
+            "icon": "mdi:clock",
+            "unit": "min",
+            "device_class": VWDeviceClass.DURATION,
+            "state_class": VWStateClass.MEASUREMENT,
+        },
+    ),
+    (
+        Sensor,
+        [],
+        {
+            "attr": "refuel_trip_length",
+            "name": "Refuel trip length",
+            "icon": "mdi:map-marker-distance",
+            "unit": "km",
+            "device_class": VWDeviceClass.DISTANCE,
+            "state_class": VWStateClass.MEASUREMENT,
+        },
+    ),
+    (
+        Sensor,
+        [],
+        {
+            "attr": "refuel_trip_recuperation",
+            "name": "Refuel trip recuperation",
+            "icon": "mdi:battery-plus",
+            "unit": "kWh/100km",
+            "device_class": VWDeviceClass.ENERGY_DISTANCE,
+            "state_class": VWStateClass.MEASUREMENT,
+        },
+    ),
+    (
+        Sensor,
+        [],
+        {
+            "attr": "refuel_trip_average_recuperation",
+            "name": "Refuel trip average recuperation",
+            "icon": "mdi:battery-plus",
+            "unit": "kWh/100km",
+            "device_class": VWDeviceClass.ENERGY_DISTANCE,
+            "state_class": VWStateClass.MEASUREMENT,
+        },
+    ),
+    (
+        Sensor,
+        [],
+        {
+            "attr": "refuel_trip_average_auxillary_consumption",
+            "name": "Refuel trip average auxillary consumption",
+            "icon": "mdi:flash",
+            "unit": "kWh/100km",
+            "device_class": VWDeviceClass.ENERGY_DISTANCE,
+            "state_class": VWStateClass.MEASUREMENT,
+        },
+    ),
+    (
+        Sensor,
+        [],
+        {
+            "attr": "refuel_trip_average_aux_consumer_consumption",
+            "name": "Refuel trip average auxillary consumer consumption",
+            "icon": "mdi:flash",
+            "unit": "kWh/100km",
+            "device_class": VWDeviceClass.ENERGY_DISTANCE,
+            "state_class": VWStateClass.MEASUREMENT,
+        },
+    ),
+    (
+        Sensor,
+        [],
+        {
+            "attr": "refuel_trip_total_electric_consumption",
+            "name": "Refuel trip total electric consumption",
+            "icon": "mdi:car-battery",
+            "unit": "kWh/100km",
+            "device_class": VWDeviceClass.ENERGY_DISTANCE,
+            "state_class": VWStateClass.MEASUREMENT,
+        },
+    ),
+    (
+        Sensor,
+        [],
+        {
+            "attr": "refuel_trip_total_fuel_consumption",
+            "name": "Refuel trip total fuel consumption",
+            "icon": "mdi:fuel",
+            "unit": "L",
+            "device_class": VWDeviceClass.VOLUME,
+            "state_class": VWStateClass.TOTAL_INCREASING,
+        },
+    ),
+    (
+        Sensor,
+        [],
+        {
+            "attr": "longterm_trip_average_speed",
+            "name": "Long-term trip average speed",
+            "icon": "mdi:speedometer",
+            "unit": "km/h",
+            "device_class": VWDeviceClass.SPEED,
+            "state_class": VWStateClass.MEASUREMENT,
+        },
+    ),
+    (
+        Sensor,
+        [],
+        {
+            "attr": "longterm_trip_average_electric_engine_consumption",
+            "name": "Long-term trip average electric engine consumption",
+            "icon": "mdi:car-battery",
+            "unit": "kWh/100km",
+            "device_class": VWDeviceClass.ENERGY_DISTANCE,
+            "state_class": VWStateClass.MEASUREMENT,
+        },
+    ),
+    (
+        Sensor,
+        [],
+        {
+            "attr": "longterm_trip_average_fuel_consumption",
+            "name": "Long-term trip average fuel consumption",
+            "icon": "mdi:fuel",
+            "unit": "l/100km",
+            "state_class": VWStateClass.MEASUREMENT,
+        },
+    ),
+    (
+        Sensor,
+        [],
+        {
+            "attr": "longterm_trip_average_gas_consumption",
+            "name": "Long-term trip average gas consumption",
+            "icon": "mdi:gas-cylinder",
+            "unit": "m3/100km",
+            "state_class": VWStateClass.MEASUREMENT,
+        },
+    ),
+    (
+        Sensor,
+        [],
+        {
+            "attr": "longterm_trip_duration",
+            "name": "Long-term trip duration",
+            "icon": "mdi:clock",
+            "unit": "min",
+            "device_class": VWDeviceClass.DURATION,
+            "state_class": VWStateClass.MEASUREMENT,
+        },
+    ),
+    (
+        Sensor,
+        [],
+        {
+            "attr": "longterm_trip_length",
+            "name": "Long-term trip length",
+            "icon": "mdi:map-marker-distance",
+            "unit": "km",
+            "device_class": VWDeviceClass.DISTANCE,
+            "state_class": VWStateClass.MEASUREMENT,
+        },
+    ),
+    (
+        Sensor,
+        [],
+        {
+            "attr": "longterm_trip_recuperation",
+            "name": "Long-term trip recuperation",
+            "icon": "mdi:battery-plus",
+            "unit": "kWh/100km",
+            "device_class": VWDeviceClass.ENERGY_DISTANCE,
+            "state_class": VWStateClass.MEASUREMENT,
+        },
+    ),
+    (
+        Sensor,
+        [],
+        {
+            "attr": "longterm_trip_average_recuperation",
+            "name": "Long-term trip average recuperation",
+            "icon": "mdi:battery-plus",
+            "unit": "kWh/100km",
+            "device_class": VWDeviceClass.ENERGY_DISTANCE,
+            "state_class": VWStateClass.MEASUREMENT,
+        },
+    ),
+    (
+        Sensor,
+        [],
+        {
+            "attr": "longterm_trip_average_auxillary_consumption",
+            "name": "Long-term trip average auxillary consumption",
+            "icon": "mdi:flash",
+            "unit": "kWh/100km",
+            "device_class": VWDeviceClass.ENERGY_DISTANCE,
+            "state_class": VWStateClass.MEASUREMENT,
+        },
+    ),
+    (
+        Sensor,
+        [],
+        {
+            "attr": "longterm_trip_average_aux_consumer_consumption",
+            "name": "Long-term trip average auxillary consumer consumption",
+            "icon": "mdi:flash",
+            "unit": "kWh/100km",
+            "device_class": VWDeviceClass.ENERGY_DISTANCE,
+            "state_class": VWStateClass.MEASUREMENT,
+        },
+    ),
+    (
+        Sensor,
+        [],
+        {
+            "attr": "longterm_trip_total_electric_consumption",
+            "name": "Long-term trip total electric consumption",
+            "icon": "mdi:car-battery",
+            "unit": "kWh/100km",
+            "device_class": VWDeviceClass.ENERGY_DISTANCE,
+            "state_class": VWStateClass.MEASUREMENT,
+        },
+    ),
+    (
+        Sensor,
+        [],
+        {
+            "attr": "longterm_trip_total_fuel_consumption",
+            "name": "Long-term trip total fuel consumption",
+            "icon": "mdi:fuel",
+            "unit": "L",
+            "device_class": VWDeviceClass.VOLUME,
+            "state_class": VWStateClass.TOTAL_INCREASING,
+        },
+    ),
+    # Sensors - auxiliary / timers / misc
+    (
+        Sensor,
+        [],
+        {
+            "attr": "auxiliary_duration",
+            "name": "Auxiliary Heater heating/ventilation duration",
+            "icon": "mdi:timer",
+            "unit": "min",
+            "device_class": VWDeviceClass.DURATION,
+        },
+    ),
+    (
+        Sensor,
+        [],
+        {
+            "attr": "auxiliary_remaining_climatisation_time",
+            "name": "Auxiliary remaining climatisation time",
+            "icon": "mdi:fan-clock",
+            "unit": "min",
+            "device_class": VWDeviceClass.DURATION,
+        },
+    ),
+    (
+        Sensor,
+        [],
+        {
+            "attr": "electric_remaining_climatisation_time",
+            "name": "Electric remaining climatisation time",
+            "icon": "mdi:fan-clock",
+            "unit": "min",
+            "device_class": VWDeviceClass.DURATION,
+        },
+    ),
+    # Sensors - API / diagnostics
+    (
+        Sensor,
+        [],
+        {
+            "attr": "api_vehicles_status",
+            "name": "API vehicles",
+            "icon": "mdi:api",
+            "unit": "",
+            "entity_type": "diag",
+        },
+    ),
+    (
+        Sensor,
+        [],
+        {
+            "attr": "api_capabilities_status",
+            "name": "API capabilities",
+            "icon": "mdi:api",
+            "unit": "",
+            "entity_type": "diag",
+        },
+    ),
+    (
+        Sensor,
+        [],
+        {
+            "attr": "api_trips_status",
+            "name": "API trips",
+            "icon": "mdi:api",
+            "unit": "",
+            "entity_type": "diag",
+        },
+    ),
+    (
+        Sensor,
+        [],
+        {
+            "attr": "api_selectivestatus_status",
+            "name": "API selectivestatus",
+            "icon": "mdi:api",
+            "unit": "",
+            "entity_type": "diag",
+        },
+    ),
+    (
+        Sensor,
+        [],
+        {
+            "attr": "api_parkingposition_status",
+            "name": "API parkingposition",
+            "icon": "mdi:api",
+            "unit": "",
+            "entity_type": "diag",
+        },
+    ),
+    (
+        Sensor,
+        [],
+        {
+            "attr": "api_token_status",
+            "name": "API token",
+            "icon": "mdi:api",
+            "unit": "",
+            "entity_type": "diag",
+        },
+    ),
+    (
+        Sensor,
+        [],
+        {
+            "attr": "last_data_refresh",
+            "name": "Last data refresh",
+            "icon": "mdi:clock",
+            "unit": "",
+            "device_class": VWDeviceClass.TIMESTAMP,
+            "entity_type": "diag",
+        },
+    ),
+    # Binary sensors - doors/windows/locks/charging/etc.
+    (
+        BinarySensor,
+        [],
+        {
+            "attr": "external_power",
+            "name": "External power",
+            "device_class": VWDeviceClass.POWER,
+        },
+    ),
+    (
+        BinarySensor,
+        [],
+        {
+            "attr": "energy_flow",
+            "name": "Energy flow",
+            "device_class": VWDeviceClass.POWER,
+        },
+    ),
+    (
+        BinarySensor,
+        [],
+        {
+            "attr": "parking_light",
+            "name": "Parking light",
+            "device_class": VWDeviceClass.LIGHT,
+            "icon": "mdi:car-parking-lights",
+        },
+    ),
+    (
+        BinarySensor,
+        [],
+        {
+            "attr": "door_locked",
+            "name": "Doors locked",
+            "device_class": VWDeviceClass.LOCK,
+            "reverse_state": True,
+        },
+    ),
+    (
+        BinarySensor,
+        [],
+        {
+            "attr": "door_locked_sensor",
+            "name": "Doors locked",
+            "device_class": VWDeviceClass.LOCK,
+            "reverse_state": True,
+        },
+    ),
+    (
+        BinarySensor,
+        [],
+        {
+            "attr": "door_closed_left_front",
+            "name": "Door closed left front",
+            "device_class": VWDeviceClass.DOOR,
+            "reverse_state": True,
+            "icon": "mdi:car-door",
+        },
+    ),
+    (
+        BinarySensor,
+        [],
+        {
+            "attr": "door_closed_right_front",
+            "name": "Door closed right front",
+            "device_class": VWDeviceClass.DOOR,
+            "reverse_state": True,
+            "icon": "mdi:car-door",
+        },
+    ),
+    (
+        BinarySensor,
+        [],
+        {
+            "attr": "door_closed_left_back",
+            "name": "Door closed left back",
+            "device_class": VWDeviceClass.DOOR,
+            "reverse_state": True,
+            "icon": "mdi:car-door",
+        },
+    ),
+    (
+        BinarySensor,
+        [],
+        {
+            "attr": "door_closed_right_back",
+            "name": "Door closed right back",
+            "device_class": VWDeviceClass.DOOR,
+            "reverse_state": True,
+            "icon": "mdi:car-door",
+        },
+    ),
+    (
+        BinarySensor,
+        [],
+        {
+            "attr": "trunk_locked",
+            "name": "Trunk locked",
+            "device_class": VWDeviceClass.LOCK,
+            "reverse_state": True,
+        },
+    ),
+    (
+        BinarySensor,
+        [],
+        {
+            "attr": "trunk_locked_sensor",
+            "name": "Trunk locked",
+            "device_class": VWDeviceClass.LOCK,
+            "reverse_state": True,
+        },
+    ),
+    (
+        BinarySensor,
+        [],
+        {
+            "attr": "trunk_closed",
+            "name": "Trunk closed",
+            "device_class": VWDeviceClass.DOOR,
+            "reverse_state": True,
+        },
+    ),
+    (
+        BinarySensor,
+        [],
+        {
+            "attr": "hood_closed",
+            "name": "Hood closed",
+            "device_class": VWDeviceClass.DOOR,
+            "reverse_state": True,
+        },
+    ),
+    (
+        BinarySensor,
+        [],
+        {
+            "attr": "charging_cable_connected",
+            "name": "Charging cable connected",
+            "device_class": VWDeviceClass.PLUG,
+            "reverse_state": False,
+        },
+    ),
+    (
+        BinarySensor,
+        [],
+        {
+            "attr": "charging_cable_locked",
+            "name": "Charging cable locked",
+            "device_class": VWDeviceClass.LOCK,
+            "reverse_state": True,
+        },
+    ),
+    (
+        BinarySensor,
+        [],
+        {
+            "attr": "sunroof_closed",
+            "name": "Sunroof closed",
+            "device_class": VWDeviceClass.WINDOW,
+            "reverse_state": True,
+        },
+    ),
+    (
+        BinarySensor,
+        [],
+        {
+            "attr": "sunroof_rear_closed",
+            "name": "Sunroof Rear closed",
+            "device_class": VWDeviceClass.WINDOW,
+            "reverse_state": True,
+        },
+    ),
+    (
+        BinarySensor,
+        [],
+        {
+            "attr": "roof_cover_closed",
+            "name": "Roof cover closed",
+            "device_class": VWDeviceClass.WINDOW,
+            "reverse_state": True,
+        },
+    ),
+    (
+        BinarySensor,
+        [],
+        {
+            "attr": "windows_closed",
+            "name": "Windows closed",
+            "device_class": VWDeviceClass.WINDOW,
+            "reverse_state": True,
+        },
+    ),
+    (
+        BinarySensor,
+        [],
+        {
+            "attr": "window_closed_left_front",
+            "name": "Window closed left front",
+            "device_class": VWDeviceClass.WINDOW,
+            "reverse_state": True,
+        },
+    ),
+    (
+        BinarySensor,
+        [],
+        {
+            "attr": "window_closed_left_back",
+            "name": "Window closed left back",
+            "device_class": VWDeviceClass.WINDOW,
+            "reverse_state": True,
+        },
+    ),
+    (
+        BinarySensor,
+        [],
+        {
+            "attr": "window_closed_right_front",
+            "name": "Window closed right front",
+            "device_class": VWDeviceClass.WINDOW,
+            "reverse_state": True,
+        },
+    ),
+    (
+        BinarySensor,
+        [],
+        {
+            "attr": "window_closed_right_back",
+            "name": "Window closed right back",
+            "device_class": VWDeviceClass.WINDOW,
+            "reverse_state": True,
+        },
+    ),
+    (
+        BinarySensor,
+        [],
+        {
+            "attr": "vehicle_moving",
+            "name": "Vehicle Moving",
+            "device_class": VWDeviceClass.MOVING,
+        },
+    ),
+    (
+        BinarySensor,
+        [],
+        {
+            "attr": "request_in_progress",
+            "name": "Request in progress",
+            "device_class": VWDeviceClass.CONNECTIVITY,
+            "entity_type": "diag",
+        },
+    ),
+]
+
+
+def _instantiate_def(def_item):
+    """Instantiate a definition entry.
+    
+    Args:
+        def_item: Tuple of (class, args, kwargs)
+        
+    Returns:
+        Instantiated instrument object
+    """
+    cls, args, kwargs = def_item
+    if cls is Sensor:
+        return Sensor(
+            kwargs.get("attr"),
+            kwargs.get("name"),
+            kwargs.get("icon"),
+            kwargs.get("unit"),
+            entity_type=kwargs.get("entity_type"),
+            device_class=kwargs.get("device_class"),
+            state_class=kwargs.get("state_class"),
+        )
+    if cls is BinarySensor:
+        return BinarySensor(
+            kwargs.get("attr"),
+            kwargs.get("name"),
+            kwargs.get("device_class"),
+            icon=kwargs.get("icon", ""),
+            entity_type=kwargs.get("entity_type"),
+            reverse_state=kwargs.get("reverse_state", False),
+        )
+    # default: call class with provided args/kwargs
+    return cls(*args, **(kwargs or {}))
+
+
 def create_instruments():
-    """Return list of all entities."""
-    return [
-        Position(),
-        # AuxiliaryDuration(),
-        BatteryTargetSOC(),
-        ClimatisationTargetTemperature(),
-        DoorLock(),
-        TrunkLock(),
-        ChargeMaxACAmpere(),
-        RequestUpdate(),
-        WindowHeater(),
-        BatteryClimatisation(),
-        AuxiliaryAC(),
-        AutomaticWindowHeating(),
-        ZoneFrontLeft(),
-        ZoneFrontRight(),
-        ElectricClimatisation(),
-        AuxiliaryClimatisation(),
-        Charging(),
-        ReducedACCharging(),
-        AutoReleaseACConnector(),
-        BatteryCareMode(),
-        OptimisedBatteryUse(),
-        DepartureTimer(1),
-        DepartureTimer(2),
-        DepartureTimer(3),
-        ACDepartureTimer(1),
-        ACDepartureTimer(2),
-        RequestResults(),
-        Sensor(
-            attr="distance",
-            name="Odometer",
-            icon="mdi:speedometer",
-            unit="km",
-            state_class=VWStateClass.TOTAL_INCREASING,
-        ),
-        Sensor(
-            attr="battery_level",
-            name="Battery level",
-            icon="mdi:battery",
-            unit="%",
-            device_class=VWDeviceClass.BATTERY,
-            state_class=VWStateClass.MEASUREMENT,
-        ),
-        Sensor(
-            attr="battery_target_charge_level",
-            name="Battery target charge level",
-            icon="mdi:battery-arrow-up",
-            unit="%",
-            device_class=VWDeviceClass.BATTERY,
-        ),
-        Sensor(
-            attr="hv_battery_min_temperature",
-            name="HV battery min temperature",
-            icon="mdi:thermometer-chevron-down",
-            unit=TEMP_CELSIUS,
-            device_class=VWDeviceClass.TEMPERATURE,
-        ),
-        Sensor(
-            attr="hv_battery_max_temperature",
-            name="HV battery max temperature",
-            icon="mdi:thermometer-chevron-up",
-            unit=TEMP_CELSIUS,
-            device_class=VWDeviceClass.TEMPERATURE,
-        ),
-        Sensor(
-            attr="adblue_level",
-            name="Adblue level",
-            icon="mdi:fuel",
-            unit="km",
-            state_class=VWStateClass.MEASUREMENT,
-            device_class=VWDeviceClass.DISTANCE,
-        ),
-        Sensor(
-            attr="fuel_level",
-            name="Fuel level",
-            icon="mdi:fuel",
-            unit="%",
-            state_class=VWStateClass.MEASUREMENT,
-        ),
-        Sensor(
-            attr="gas_level",
-            name="Gas level",
-            icon="mdi:gas-cylinder",
-            unit="%",
-            state_class=VWStateClass.MEASUREMENT,
-        ),
-        Sensor(
-            attr="service_inspection",
-            name="Service inspection days",
-            icon="mdi:garage",
-            unit="d",
-            device_class=VWDeviceClass.DURATION,
-        ),
-        Sensor(
-            attr="service_inspection_distance",
-            name="Service inspection distance",
-            icon="mdi:garage",
-            unit="km",
-            device_class=VWDeviceClass.DISTANCE,
-        ),
-        Sensor(
-            attr="oil_inspection",
-            name="Oil inspection days",
-            icon="mdi:oil",
-            unit="d",
-            device_class=VWDeviceClass.DURATION,
-        ),
-        Sensor(
-            attr="oil_inspection_distance",
-            name="Oil inspection distance",
-            icon="mdi:oil",
-            unit="km",
-            device_class=VWDeviceClass.DISTANCE,
-        ),
-        Sensor(
-            attr="last_connected",
-            name="Last connected",
-            icon="mdi:clock",
-            unit="",
-            device_class=VWDeviceClass.TIMESTAMP,
-            entity_type="diag",
-        ),
-        Sensor(
-            attr="parking_time",
-            name="Parking time",
-            icon="mdi:clock",
-            unit="",
-            device_class=VWDeviceClass.TIMESTAMP,
-        ),
-        Sensor(
-            attr="charging_time_left",
-            name="Charging time left",
-            icon="mdi:battery-charging-100",
-            unit="min",
-            device_class=VWDeviceClass.DURATION,
-            state_class=VWStateClass.MEASUREMENT,
-        ),
-        Sensor(
-            attr="electric_range",
-            name="Electric range",
-            icon="mdi:car-electric",
-            unit="km",
-            device_class=VWDeviceClass.DISTANCE,
-            state_class=VWStateClass.MEASUREMENT,
-        ),
-        Sensor(
-            attr="combustion_range",
-            name="Combustion range",
-            icon="mdi:car",
-            unit="km",
-            device_class=VWDeviceClass.DISTANCE,
-            state_class=VWStateClass.MEASUREMENT,
-        ),
-        Sensor(
-            attr="fuel_range",
-            name="Fuel range",
-            icon="mdi:car",
-            unit="km",
-            device_class=VWDeviceClass.DISTANCE,
-            state_class=VWStateClass.MEASUREMENT,
-        ),
-        Sensor(
-            attr="gas_range",
-            name="Gas range",
-            icon="mdi:car",
-            unit="km",
-            device_class=VWDeviceClass.DISTANCE,
-            state_class=VWStateClass.MEASUREMENT,
-        ),
-        Sensor(
-            attr="combined_range",
-            name="Combined range",
-            icon="mdi:car",
-            unit="km",
-            device_class=VWDeviceClass.DISTANCE,
-            state_class=VWStateClass.MEASUREMENT,
-        ),
-        Sensor(
-            attr="battery_cruising_range",
-            name="Battery cruising range",
-            icon="mdi:car-settings",
-            unit="km",
-            device_class=VWDeviceClass.DISTANCE,
-            state_class=VWStateClass.MEASUREMENT,
-        ),
-        Sensor(
-            attr="charge_max_ac_setting",
-            name="Charger max AC setting",
-            icon="mdi:flash",
-            unit="",
-        ),
-        Sensor(
-            attr="charge_max_ac_ampere",
-            name="Charger max AC ampere",
-            icon="mdi:flash-auto",
-            unit="A",
-            device_class=VWDeviceClass.CURRENT,
-        ),
-        Sensor(
-            attr="charging_power",
-            name="Charging Power",
-            icon="mdi:transmission-tower",
-            unit="kW",
-            device_class=VWDeviceClass.POWER,
-            state_class=VWStateClass.MEASUREMENT,
-        ),
-        Sensor(
-            attr="charging_rate",
-            name="Charging Rate",
-            icon="mdi:ev-station",
-            unit="km/h",
-            device_class=VWDeviceClass.SPEED,
-            state_class=VWStateClass.MEASUREMENT,
-        ),
-        Sensor(
-            attr="charger_type",
-            name="Charger Type",
-            icon="mdi:ev-plug-type1",
-            unit="",
-        ),
-        Sensor(
-            attr="climatisation_target_temperature",
-            name="Climatisation target temperature",
-            icon="mdi:thermometer",
-            unit=TEMP_CELSIUS,
-            device_class=VWDeviceClass.TEMPERATURE,
-            state_class=VWStateClass.MEASUREMENT,
-        ),
-        Sensor(
-            attr="trip_last_average_speed",
-            name="Last trip average speed",
-            icon="mdi:speedometer",
-            unit="km/h",
-            device_class=VWDeviceClass.SPEED,
-            state_class=VWStateClass.MEASUREMENT,
-        ),
-        Sensor(
-            attr="trip_last_average_electric_engine_consumption",
-            name="Last trip average electric engine consumption",
-            icon="mdi:car-battery",
-            unit="kWh/100km",
-            device_class=VWDeviceClass.ENERGY_DISTANCE,
-            state_class=VWStateClass.MEASUREMENT,
-        ),
-        Sensor(
-            attr="trip_last_average_fuel_consumption",
-            name="Last trip average fuel consumption",
-            icon="mdi:fuel",
-            unit="l/100km",
-            state_class=VWStateClass.MEASUREMENT,
-        ),
-        Sensor(
-            attr="trip_last_average_gas_consumption",
-            name="Last trip average gas consumption",
-            icon="mdi:gas-cylinder",
-            unit="m3/100km",
-            state_class=VWStateClass.MEASUREMENT,
-        ),
-        Sensor(
-            attr="trip_last_duration",
-            name="Last trip duration",
-            icon="mdi:clock",
-            unit="min",
-            device_class=VWDeviceClass.DURATION,
-            state_class=VWStateClass.MEASUREMENT,
-        ),
-        Sensor(
-            attr="trip_last_length",
-            name="Last trip length",
-            icon="mdi:map-marker-distance",
-            unit="km",
-            device_class=VWDeviceClass.DISTANCE,
-            state_class=VWStateClass.MEASUREMENT,
-        ),
-        Sensor(
-            attr="trip_last_recuperation",
-            name="Last trip recuperation",
-            icon="mdi:battery-plus",
-            unit="kWh/100km",
-            device_class=VWDeviceClass.ENERGY_DISTANCE,
-            state_class=VWStateClass.MEASUREMENT,
-        ),
-        Sensor(
-            attr="trip_last_average_recuperation",
-            name="Last trip average recuperation",
-            icon="mdi:battery-plus",
-            unit="kWh/100km",
-            device_class=VWDeviceClass.ENERGY_DISTANCE,
-            state_class=VWStateClass.MEASUREMENT,
-        ),
-        Sensor(
-            attr="trip_last_average_auxillary_consumption",
-            name="Last trip average auxillary consumption",
-            icon="mdi:flash",
-            unit="kWh/100km",
-            device_class=VWDeviceClass.ENERGY_DISTANCE,
-            state_class=VWStateClass.MEASUREMENT,
-        ),
-        Sensor(
-            attr="trip_last_average_aux_consumer_consumption",
-            name="Last trip average auxillary consumer consumption",
-            icon="mdi:flash",
-            unit="kWh/100km",
-            device_class=VWDeviceClass.ENERGY_DISTANCE,
-            state_class=VWStateClass.MEASUREMENT,
-        ),
-        Sensor(
-            attr="trip_last_total_electric_consumption",
-            name="Last trip total electric consumption",
-            icon="mdi:car-battery",
-            unit="kWh",
-            device_class=VWDeviceClass.ENERGY,
-            state_class=VWStateClass.MEASUREMENT,
-        ),
-        Sensor(
-            attr="trip_last_total_fuel_consumption",
-            name="Last trip total fuel consumption",
-            icon="mdi:fuel",
-            unit="L",
-            device_class=VWDeviceClass.VOLUME,
-            state_class=VWStateClass.TOTAL_INCREASING,
-        ),
-        Sensor(
-            attr="trip_refuel_average_speed",
-            name="Refuel trip average speed",
-            icon="mdi:speedometer",
-            unit="km/h",
-            device_class=VWDeviceClass.SPEED,
-            state_class=VWStateClass.MEASUREMENT,
-        ),
-        Sensor(
-            attr="trip_refuel_average_electric_engine_consumption",
-            name="Refuel trip average electric engine consumption",
-            icon="mdi:car-battery",
-            unit="kWh/100km",
-            device_class=VWDeviceClass.ENERGY_DISTANCE,
-            state_class=VWStateClass.MEASUREMENT,
-        ),
-        Sensor(
-            attr="trip_refuel_average_fuel_consumption",
-            name="Refuel trip average fuel consumption",
-            icon="mdi:fuel",
-            unit="l/100km",
-            state_class=VWStateClass.MEASUREMENT,
-        ),
-        Sensor(
-            attr="trip_refuel_average_gas_consumption",
-            name="Refuel trip average gas consumption",
-            icon="mdi:gas-cylinder",
-            unit="m3/100km",
-            state_class=VWStateClass.MEASUREMENT,
-        ),
-        Sensor(
-            attr="trip_refuel_duration",
-            name="Refuel trip duration",
-            icon="mdi:clock",
-            unit="min",
-            device_class=VWDeviceClass.DURATION,
-            state_class=VWStateClass.MEASUREMENT,
-        ),
-        Sensor(
-            attr="trip_refuel_length",
-            name="Refuel trip length",
-            icon="mdi:map-marker-distance",
-            unit="km",
-            device_class=VWDeviceClass.DISTANCE,
-            state_class=VWStateClass.MEASUREMENT,
-        ),
-        Sensor(
-            attr="trip_refuel_recuperation",
-            name="Refuel trip recuperation",
-            icon="mdi:battery-plus",
-            unit="kWh/100km",
-            device_class=VWDeviceClass.ENERGY_DISTANCE,
-            state_class=VWStateClass.MEASUREMENT,
-        ),
-        Sensor(
-            attr="trip_refuel_average_recuperation",
-            name="Refuel trip average recuperation",
-            icon="mdi:battery-plus",
-            unit="kWh/100km",
-            device_class=VWDeviceClass.ENERGY_DISTANCE,
-            state_class=VWStateClass.MEASUREMENT,
-        ),
-        Sensor(
-            attr="trip_refuel_average_auxillary_consumption",
-            name="Refuel trip average auxillary consumption",
-            icon="mdi:flash",
-            unit="kWh/100km",
-            device_class=VWDeviceClass.ENERGY_DISTANCE,
-            state_class=VWStateClass.MEASUREMENT,
-        ),
-        Sensor(
-            attr="trip_refuel_average_aux_consumer_consumption",
-            name="Refuel trip average auxillary consumer consumption",
-            icon="mdi:flash",
-            unit="kWh/100km",
-            device_class=VWDeviceClass.ENERGY_DISTANCE,
-            state_class=VWStateClass.MEASUREMENT,
-        ),
-        Sensor(
-            attr="trip_refuel_total_electric_consumption",
-            name="Refuel trip total electric consumption",
-            icon="mdi:car-battery",
-            unit="kWh/100km",
-            device_class=VWDeviceClass.ENERGY_DISTANCE,
-            state_class=VWStateClass.MEASUREMENT,
-        ),
-        Sensor(
-            attr="trip_refuel_total_fuel_consumption",
-            name="Refuel trip total fuel consumption",
-            icon="mdi:fuel",
-            unit="L",
-            device_class=VWDeviceClass.VOLUME,
-            state_class=VWStateClass.TOTAL_INCREASING,
-        ),
-        Sensor(
-            attr="trip_longterm_average_speed",
-            name="Long-term trip average speed",
-            icon="mdi:speedometer",
-            unit="km/h",
-            device_class=VWDeviceClass.SPEED,
-            state_class=VWStateClass.MEASUREMENT,
-        ),
-        Sensor(
-            attr="trip_longterm_average_electric_engine_consumption",
-            name="Long-term trip average electric engine consumption",
-            icon="mdi:car-battery",
-            unit="kWh/100km",
-            device_class=VWDeviceClass.ENERGY_DISTANCE,
-            state_class=VWStateClass.MEASUREMENT,
-        ),
-        Sensor(
-            attr="trip_longterm_average_fuel_consumption",
-            name="Long-term trip average fuel consumption",
-            icon="mdi:fuel",
-            unit="l/100km",
-            state_class=VWStateClass.MEASUREMENT,
-        ),
-        Sensor(
-            attr="trip_longterm_average_gas_consumption",
-            name="Long-term trip average gas consumption",
-            icon="mdi:gas-cylinder",
-            unit="m3/100km",
-            state_class=VWStateClass.MEASUREMENT,
-        ),
-        Sensor(
-            attr="trip_longterm_duration",
-            name="Long-term trip duration",
-            icon="mdi:clock",
-            unit="min",
-            device_class=VWDeviceClass.DURATION,
-            state_class=VWStateClass.MEASUREMENT,
-        ),
-        Sensor(
-            attr="trip_longterm_length",
-            name="Long-term trip length",
-            icon="mdi:map-marker-distance",
-            unit="km",
-            device_class=VWDeviceClass.DISTANCE,
-            state_class=VWStateClass.MEASUREMENT,
-        ),
-        Sensor(
-            attr="trip_longterm_recuperation",
-            name="Long-term trip recuperation",
-            icon="mdi:battery-plus",
-            unit="kWh/100km",
-            device_class=VWDeviceClass.ENERGY_DISTANCE,
-            state_class=VWStateClass.MEASUREMENT,
-        ),
-        Sensor(
-            attr="trip_longterm_average_recuperation",
-            name="Long-term trip average recuperation",
-            icon="mdi:battery-plus",
-            unit="kWh/100km",
-            device_class=VWDeviceClass.ENERGY_DISTANCE,
-            state_class=VWStateClass.MEASUREMENT,
-        ),
-        Sensor(
-            attr="trip_longterm_average_auxillary_consumption",
-            name="Long-term trip average auxillary consumption",
-            icon="mdi:flash",
-            unit="kWh/100km",
-            device_class=VWDeviceClass.ENERGY_DISTANCE,
-            state_class=VWStateClass.MEASUREMENT,
-        ),
-        Sensor(
-            attr="trip_longterm_average_aux_consumer_consumption",
-            name="Long-term trip average auxillary consumer consumption",
-            icon="mdi:flash",
-            unit="kWh/100km",
-            device_class=VWDeviceClass.ENERGY_DISTANCE,
-            state_class=VWStateClass.MEASUREMENT,
-        ),
-        Sensor(
-            attr="trip_longterm_total_electric_consumption",
-            name="Long-term trip total electric consumption",
-            icon="mdi:car-battery",
-            unit="kWh/100km",
-            device_class=VWDeviceClass.ENERGY_DISTANCE,
-            state_class=VWStateClass.MEASUREMENT,
-        ),
-        Sensor(
-            attr="trip_longterm_total_fuel_consumption",
-            name="Long-term trip total fuel consumption",
-            icon="mdi:fuel",
-            unit="L",
-            device_class=VWDeviceClass.VOLUME,
-            state_class=VWStateClass.TOTAL_INCREASING,
-        ),
-        Sensor(
-            attr="auxiliary_duration",
-            name="Auxiliary Heater heating/ventilation duration",
-            icon="mdi:timer",
-            unit="min",
-            device_class=VWDeviceClass.DURATION,
-        ),
-        Sensor(
-            attr="auxiliary_remaining_climatisation_time",
-            name="Auxiliary remaining climatisation time",
-            icon="mdi:fan-clock",
-            unit="min",
-            device_class=VWDeviceClass.DURATION,
-        ),
-        Sensor(
-            attr="electric_remaining_climatisation_time",
-            name="Electric remaining climatisation time",
-            icon="mdi:fan-clock",
-            unit="min",
-            device_class=VWDeviceClass.DURATION,
-        ),
-        Sensor(
-            attr="car_type",
-            name="Car Type",
-            icon="mdi:car-select",
-            unit="",
-        ),
-        Sensor(
-            attr="api_vehicles_status",
-            name="API vehicles",
-            icon="mdi:api",
-            unit="",
-            entity_type="diag",
-        ),
-        Sensor(
-            attr="api_capabilities_status",
-            name="API capabilities",
-            icon="mdi:api",
-            unit="",
-            entity_type="diag",
-        ),
-        Sensor(
-            attr="api_trips_status",
-            name="API trips",
-            icon="mdi:api",
-            unit="",
-            entity_type="diag",
-        ),
-        Sensor(
-            attr="api_selectivestatus_status",
-            name="API selectivestatus",
-            icon="mdi:api",
-            unit="",
-            entity_type="diag",
-        ),
-        Sensor(
-            attr="api_parkingposition_status",
-            name="API parkingposition",
-            icon="mdi:api",
-            unit="",
-            entity_type="diag",
-        ),
-        Sensor(
-            attr="api_token_status",
-            name="API token",
-            icon="mdi:api",
-            unit="",
-            entity_type="diag",
-        ),
-        Sensor(
-            attr="last_data_refresh",
-            name="Last data refresh",
-            icon="mdi:clock",
-            unit="",
-            device_class=VWDeviceClass.TIMESTAMP,
-            entity_type="diag",
-        ),
-        BinarySensor(
-            attr="external_power",
-            name="External power",
-            device_class=VWDeviceClass.POWER,
-        ),
-        BinarySensor(
-            attr="energy_flow", name="Energy flow", device_class=VWDeviceClass.POWER
-        ),
-        BinarySensor(
-            attr="parking_light",
-            name="Parking light",
-            device_class=VWDeviceClass.LIGHT,
-            icon="mdi:car-parking-lights",
-        ),
-        BinarySensor(
-            attr="door_locked",
-            name="Doors locked",
-            device_class=VWDeviceClass.LOCK,
-            reverse_state=True,
-        ),
-        BinarySensor(
-            attr="door_locked_sensor",
-            name="Doors locked",
-            device_class=VWDeviceClass.LOCK,
-            reverse_state=True,
-        ),
-        BinarySensor(
-            attr="door_closed_left_front",
-            name="Door closed left front",
-            device_class=VWDeviceClass.DOOR,
-            reverse_state=True,
-            icon="mdi:car-door",
-        ),
-        BinarySensor(
-            attr="door_closed_right_front",
-            name="Door closed right front",
-            device_class=VWDeviceClass.DOOR,
-            reverse_state=True,
-            icon="mdi:car-door",
-        ),
-        BinarySensor(
-            attr="door_closed_left_back",
-            name="Door closed left back",
-            device_class=VWDeviceClass.DOOR,
-            reverse_state=True,
-            icon="mdi:car-door",
-        ),
-        BinarySensor(
-            attr="door_closed_right_back",
-            name="Door closed right back",
-            device_class=VWDeviceClass.DOOR,
-            reverse_state=True,
-            icon="mdi:car-door",
-        ),
-        BinarySensor(
-            attr="trunk_locked",
-            name="Trunk locked",
-            device_class=VWDeviceClass.LOCK,
-            reverse_state=True,
-        ),
-        BinarySensor(
-            attr="trunk_locked_sensor",
-            name="Trunk locked",
-            device_class=VWDeviceClass.LOCK,
-            reverse_state=True,
-        ),
-        BinarySensor(
-            attr="trunk_closed",
-            name="Trunk closed",
-            device_class=VWDeviceClass.DOOR,
-            reverse_state=True,
-        ),
-        BinarySensor(
-            attr="hood_closed",
-            name="Hood closed",
-            device_class=VWDeviceClass.DOOR,
-            reverse_state=True,
-        ),
-        BinarySensor(
-            attr="charging_cable_connected",
-            name="Charging cable connected",
-            device_class=VWDeviceClass.PLUG,
-            reverse_state=False,
-        ),
-        BinarySensor(
-            attr="charging_cable_locked",
-            name="Charging cable locked",
-            device_class=VWDeviceClass.LOCK,
-            reverse_state=True,
-        ),
-        BinarySensor(
-            attr="sunroof_closed",
-            name="Sunroof closed",
-            device_class=VWDeviceClass.WINDOW,
-            reverse_state=True,
-        ),
-        BinarySensor(
-            attr="sunroof_rear_closed",
-            name="Sunroof Rear closed",
-            device_class=VWDeviceClass.WINDOW,
-            reverse_state=True,
-        ),
-        BinarySensor(
-            attr="roof_cover_closed",
-            name="Roof cover closed",
-            device_class=VWDeviceClass.WINDOW,
-            reverse_state=True,
-        ),
-        BinarySensor(
-            attr="windows_closed",
-            name="Windows closed",
-            device_class=VWDeviceClass.WINDOW,
-            reverse_state=True,
-        ),
-        BinarySensor(
-            attr="window_closed_left_front",
-            name="Window closed left front",
-            device_class=VWDeviceClass.WINDOW,
-            reverse_state=True,
-        ),
-        BinarySensor(
-            attr="window_closed_left_back",
-            name="Window closed left back",
-            device_class=VWDeviceClass.WINDOW,
-            reverse_state=True,
-        ),
-        BinarySensor(
-            attr="window_closed_right_front",
-            name="Window closed right front",
-            device_class=VWDeviceClass.WINDOW,
-            reverse_state=True,
-        ),
-        BinarySensor(
-            attr="window_closed_right_back",
-            name="Window closed right back",
-            device_class=VWDeviceClass.WINDOW,
-            reverse_state=True,
-        ),
-        BinarySensor(
-            attr="vehicle_moving",
-            name="Vehicle Moving",
-            device_class=VWDeviceClass.MOVING,
-        ),
-        BinarySensor(
-            attr="request_in_progress",
-            name="Request in progress",
-            device_class=VWDeviceClass.CONNECTIVITY,
-            entity_type="diag",
-        ),
-    ]
+    """Return list of all instantiated instruments."""
+    return [_instantiate_def(def_item) for def_item in _INSTRUMENT_DEFS]
 
 
 class Dashboard:
