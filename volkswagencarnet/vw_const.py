@@ -154,3 +154,22 @@ class Services:
     TRIP_LAST = "trip_last"
     TRIP_LONGTERM = "trip_longterm"
     TRIP_REFUEL = "trip_refuel"
+
+
+class Paths:
+    # Access
+    ACCESS_TS = f"{Services.ACCESS}.accessStatus.value.carCapturedTimestamp"
+    ACCESS_DOOR_LOCK = f"{Services.ACCESS}.accessStatus.value.doorLockStatus"
+    ACCESS_DOORS = f"{Services.ACCESS}.accessStatus.value.doors"
+    ACCESS_WINDOWS = f"{Services.ACCESS}.accessStatus.value.windows"
+
+    # Lights
+    LIGHTS = f"{Services.VEHICLE_LIGHTS}.lightsStatus.value.lights"
+    LIGHTS_TS = f"{Services.VEHICLE_LIGHTS}.lightsStatus.value.carCapturedTimestamp"
+
+    # Charging status
+    CHARGING_STATE = f"{Services.CHARGING}.chargingStatus.value.chargingState"
+    CHARGING_TS = f"{Services.CHARGING}.chargingStatus.value.carCapturedTimestamp"
+    CHARGING_POWER = f"{Services.CHARGING}.chargingStatus.value.chargePower_kW"
+    CHARGING_RATE = f"{Services.CHARGING}.chargingStatus.value.chargeRate_kmph"
+    CHARGING_TYPE = f"{Services.CHARGING}.chargingStatus.value.chargeType"
