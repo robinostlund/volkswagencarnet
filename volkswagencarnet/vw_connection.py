@@ -250,10 +250,34 @@ class Connection:
         req = await session.post(
             url, headers=headers, data=form_data, allow_redirects=redirect
         )
+
+        # Redirect case
         if not redirect and req.status == 302:
-            return req.headers["Location"]
-        if req.status != 200:
-            raise Exception("Form POST request failed.")  # pylint: disable=broad-exception-raised
+            return req.headers.get("Location")
+
+        # Handle explicit error 400 (form validation failure)
+        if req.status == 400:
+            page_content = await req.text()
+            soup = BeautifulSoup(page_content, "html.parser")
+
+            # Try both username + password fields in one pass
+            for field_id in ("error-element-username", "error-element-password"):
+                span = soup.select_one(f'span[id="{field_id}"]')
+                if not span:
+                    continue
+
+                error_code = span.get("data-error-code")
+                if error_code == "wrong-email-credentials":
+                    raise Exception("Wrong username or password.")
+
+            # Unknown 400 error
+            raise Exception("Unknown 400 error.")
+
+        # Any unexpected HTTP code
+        if req.status not in (200, 400):
+            raise Exception("Form POST request failed.")
+
+        # Normal success path
         return await req.text()
 
     async def handle_login_with_password(self, session, url, auth_headers, form_data):
