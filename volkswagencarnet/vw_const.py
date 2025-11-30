@@ -203,3 +203,51 @@ class Paths:
     CHARGING_SET_AUTO_UNLOCK_PLUG = (
         f"{Services.CHARGING}.chargingSettings.value.autoUnlockPlugWhenChargedAC"
     )
+
+    # Measurements - Odometer
+    MEASUREMENTS_ODO = f"{Services.MEASUREMENTS}.odometerStatus.value.odometer"
+    MEASUREMENTS_ODO_TS = (
+        f"{Services.MEASUREMENTS}.odometerStatus.value.carCapturedTimestamp"
+    )
+
+    # Measurements - Ranges
+    MEASUREMENTS_RNG_TS = (
+        f"{Services.MEASUREMENTS}.rangeStatus.value.carCapturedTimestamp"
+    )
+    MEASUREMENTS_RNG_ELECTRIC = (
+        f"{Services.MEASUREMENTS}.rangeStatus.value.electricRange"
+    )
+    MEASUREMENTS_RNG_DIESEL = f"{Services.MEASUREMENTS}.rangeStatus.value.dieselRange"
+    MEASUREMENTS_RNG_GASOLINE = (
+        f"{Services.MEASUREMENTS}.rangeStatus.value.gasolineRange"
+    )
+    MEASUREMENTS_RNG_CNG = f"{Services.MEASUREMENTS}.rangeStatus.value.cngRange"
+    MEASUREMENTS_RNG_TOTAL = f"{Services.MEASUREMENTS}.rangeStatus.value.totalRange_km"
+    MEASUREMENTS_RNG_ADBLUE = f"{Services.MEASUREMENTS}.rangeStatus.value.adBlueRange"
+
+    # Measurements - Fuel Level
+    MEASUREMENTS_FUEL_TS = (
+        f"{Services.MEASUREMENTS}.fuelLevelStatus.value.carCapturedTimestamp"
+    )
+    MEASUREMENTS_FUEL_LVL = (
+        f"{Services.MEASUREMENTS}.fuelLevelStatus.value.currentFuelLevel_pct"
+    )
+    MEASUREMENTS_FUEL_GAS_LVL = (
+        f"{Services.MEASUREMENTS}.fuelLevelStatus.value.currentCngLevel_pct"
+    )
+    MEASUREMENTS_FUEL_CAR_TYPE = (
+        f"{Services.MEASUREMENTS}.fuelLevelStatus.value.carType"
+    )
+    MEASUREMENTS_FUEL_PRIMARY_ENGINE = (
+        f"{Services.MEASUREMENTS}.fuelLevelStatus.value.primaryEngineType"
+    )
+    MEASUREMENTS_FUEL_SECONDARY_ENGINE = (
+        f"{Services.MEASUREMENTS}.fuelLevelStatus.value.secondaryEngineType"
+    )
+
+    # Measurements - Battery Temperature
+    MEASUREMENTS_BAT_TEMP_TS = (
+        f"{Services.MEASUREMENTS}.temperatureBatteryStatus.value.carCapturedTimestamp"
+    )
+    MEASUREMENTS_BAT_TEMP_MIN_K = f"{Services.MEASUREMENTS}.temperatureBatteryStatus.value.temperatureHvBatteryMin_K"
+    MEASUREMENTS_BAT_TEMP_MAX_K = f"{Services.MEASUREMENTS}.temperatureBatteryStatus.value.temperatureHvBatteryMax_K"
