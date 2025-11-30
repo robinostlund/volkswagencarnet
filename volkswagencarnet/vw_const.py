@@ -263,7 +263,7 @@ class Paths:
         f"{Services.VEHICLE_HEALTH_INSPECTION}.maintenanceStatus.value.oilServiceDue_km"
     )
 
-    # Fuel Status API
+    # Fuel Status
     FUEL_STATUS_TS = f"{Services.FUEL_STATUS}.rangeStatus.value.carCapturedTimestamp"
     FUEL_STATUS_CAR_TYPE = f"{Services.FUEL_STATUS}.rangeStatus.value.carType"
     FUEL_STATUS_PRIMARY_TYPE = (
@@ -278,3 +278,51 @@ class Paths:
     FUEL_STATUS_SECONDARY_TYPE = (
         f"{Services.FUEL_STATUS}.rangeStatus.value.secondaryEngine.type"
     )
+
+    # Climatisation Status
+    CLIMATISATION_STATE = (
+        f"{Services.CLIMATISATION}.climatisationStatus.value.climatisationState"
+    )
+    CLIMATISATION_STATUS_TS = (
+        f"{Services.CLIMATISATION}.climatisationStatus.value.carCapturedTimestamp"
+    )
+    CLIMATISATION_REM_TIME = f"{Services.CLIMATISATION}.climatisationStatus.value.remainingClimatisationTime_min"
+
+    # Climatisation Settings
+    CLIMATISATION_SETTINGS_TS = (
+        f"{Services.CLIMATISATION}.climatisationSettings.value.carCapturedTimestamp"
+    )
+    CLIMATISATION_TARGET_TEMP = (
+        f"{Services.CLIMATISATION}.climatisationSettings.value.targetTemperature_C"
+    )
+    CLIMATISATION_WITHOUT_EXT_PWR = f"{Services.CLIMATISATION}.climatisationSettings.value.climatisationWithoutExternalPower"
+    CLIMATISATION_AT_UNLOCK = (
+        f"{Services.CLIMATISATION}.climatisationSettings.value.climatizationAtUnlock"
+    )
+    CLIMATISATION_WINDOW_HEATING = (
+        f"{Services.CLIMATISATION}.climatisationSettings.value.windowHeatingEnabled"
+    )
+    CLIMATISATION_ZONE_FRONT_LEFT = (
+        f"{Services.CLIMATISATION}.climatisationSettings.value.zoneFrontLeftEnabled"
+    )
+    CLIMATISATION_ZONE_FRONT_RIGHT = (
+        f"{Services.CLIMATISATION}.climatisationSettings.value.zoneFrontRightEnabled"
+    )
+    CLIMATISATION_AUX_DURATION = f"{Services.CLIMATISATION}.climatisationSettings.value.auxiliaryHeatingSettings.duration_min"
+
+    # Window Heating Status
+    CLIMATISATION_WINDOW_HEATING_STATUS = (
+        f"{Services.CLIMATISATION}.windowHeatingStatus.value.windowHeatingStatus"
+    )
+    CLIMATISATION_WINDOW_HEATING_TS = (
+        f"{Services.CLIMATISATION}.windowHeatingStatus.value.carCapturedTimestamp"
+    )
+
+    # Auxiliary Heating Status
+    CLIMATISATION_AUX_STATE = (
+        f"{Services.CLIMATISATION}.auxiliaryHeatingStatus.value.climatisationState"
+    )
+    CLIMATISATION_AUX_TS = (
+        f"{Services.CLIMATISATION}.auxiliaryHeatingStatus.value.carCapturedTimestamp"
+    )
+    CLIMATISATION_AUX_REM_TIME = f"{Services.CLIMATISATION}.auxiliaryHeatingStatus.value.remainingClimatisationTime_min"

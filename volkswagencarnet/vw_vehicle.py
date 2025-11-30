@@ -1667,165 +1667,105 @@ class Vehicle:
     @property
     def climatisation_target_temperature(self) -> float | None:
         """Return the target temperature from climater."""
-        temp = find_path(
-            self.attrs,
-            f"{Services.CLIMATISATION}.climatisationSettings.value.targetTemperature_C",
-        )
+        temp = find_path(self.attrs, Paths.CLIMATISATION_TARGET_TEMP)
         return float(temp) if temp is not None else None
 
     @property
     def climatisation_target_temperature_last_updated(self) -> datetime:
         """Return the target temperature from climater last updated."""
-        return find_path(
-            self.attrs,
-            f"{Services.CLIMATISATION}.climatisationSettings.value.carCapturedTimestamp",
-        )
+        return find_path(self.attrs, Paths.CLIMATISATION_SETTINGS_TS)
 
     @property
     def is_climatisation_target_temperature_supported(self) -> bool:
         """Return true if climatisation target temperature is supported."""
-        return is_valid_path(
-            self.attrs,
-            f"{Services.CLIMATISATION}.climatisationSettings.value.targetTemperature_C",
-        )
+        return is_valid_path(self.attrs, Paths.CLIMATISATION_TARGET_TEMP)
 
     @property
     def climatisation_without_external_power(self):
         """Return state of climatisation from battery power."""
-        return find_path(
-            self.attrs,
-            f"{Services.CLIMATISATION}.climatisationSettings.value.climatisationWithoutExternalPower",
-        )
+        return find_path(self.attrs, Paths.CLIMATISATION_WITHOUT_EXT_PWR)
 
     @property
     def climatisation_without_external_power_last_updated(self) -> datetime:
         """Return state of climatisation from battery power last updated."""
-        return find_path(
-            self.attrs,
-            f"{Services.CLIMATISATION}.climatisationSettings.value.carCapturedTimestamp",
-        )
+        return find_path(self.attrs, Paths.CLIMATISATION_SETTINGS_TS)
 
     @property
     def is_climatisation_without_external_power_supported(self) -> bool:
         """Return true if climatisation on battery power is supported."""
-        return is_valid_path(
-            self.attrs,
-            f"{Services.CLIMATISATION}.climatisationSettings.value.climatisationWithoutExternalPower",
-        )
+        return is_valid_path(self.attrs, Paths.CLIMATISATION_WITHOUT_EXT_PWR)
 
     @property
     def auxiliary_air_conditioning(self):
         """Return state of auxiliary air conditioning."""
-        return find_path(
-            self.attrs,
-            f"{Services.CLIMATISATION}.climatisationSettings.value.climatizationAtUnlock",
-        )
+        return find_path(self.attrs, Paths.CLIMATISATION_AT_UNLOCK)
 
     @property
     def auxiliary_air_conditioning_last_updated(self) -> datetime:
         """Return state of auxiliary air conditioning last updated."""
-        return find_path(
-            self.attrs,
-            f"{Services.CLIMATISATION}.climatisationSettings.value.carCapturedTimestamp",
-        )
+        return find_path(self.attrs, Paths.CLIMATISATION_SETTINGS_TS)
 
     @property
     def is_auxiliary_air_conditioning_supported(self) -> bool:
         """Return true if auxiliary air conditioning is supported."""
-        return is_valid_path(
-            self.attrs,
-            f"{Services.CLIMATISATION}.climatisationSettings.value.climatizationAtUnlock",
-        )
+        return is_valid_path(self.attrs, Paths.CLIMATISATION_AT_UNLOCK)
 
     @property
     def automatic_window_heating(self):
         """Return state of automatic window heating."""
-        return find_path(
-            self.attrs,
-            f"{Services.CLIMATISATION}.climatisationSettings.value.windowHeatingEnabled",
-        )
+        return find_path(self.attrs, Paths.CLIMATISATION_WINDOW_HEATING)
 
     @property
     def automatic_window_heating_last_updated(self) -> datetime:
         """Return state of automatic window heating last updated."""
-        return find_path(
-            self.attrs,
-            f"{Services.CLIMATISATION}.climatisationSettings.value.carCapturedTimestamp",
-        )
+        return find_path(self.attrs, Paths.CLIMATISATION_SETTINGS_TS)
 
     @property
     def is_automatic_window_heating_supported(self) -> bool:
         """Return true if automatic window heating is supported."""
-        return is_valid_path(
-            self.attrs,
-            f"{Services.CLIMATISATION}.climatisationSettings.value.windowHeatingEnabled",
-        )
+        return is_valid_path(self.attrs, Paths.CLIMATISATION_WINDOW_HEATING)
 
     @property
     def zone_front_left(self):
         """Return state of zone front left."""
-        return find_path(
-            self.attrs,
-            f"{Services.CLIMATISATION}.climatisationSettings.value.zoneFrontLeftEnabled",
-        )
+        return find_path(self.attrs, Paths.CLIMATISATION_ZONE_FRONT_LEFT)
 
     @property
     def zone_front_left_last_updated(self) -> datetime:
         """Return state of zone front left last updated."""
-        return find_path(
-            self.attrs,
-            f"{Services.CLIMATISATION}.climatisationSettings.value.carCapturedTimestamp",
-        )
+        return find_path(self.attrs, Paths.CLIMATISATION_SETTINGS_TS)
 
     @property
     def is_zone_front_left_supported(self) -> bool:
         """Return true if zone front left is supported."""
-        return is_valid_path(
-            self.attrs,
-            f"{Services.CLIMATISATION}.climatisationSettings.value.zoneFrontLeftEnabled",
-        )
+        return is_valid_path(self.attrs, Paths.CLIMATISATION_ZONE_FRONT_LEFT)
 
     @property
     def zone_front_right(self):
         """Return state of zone front left."""
-        return find_path(
-            self.attrs,
-            f"{Services.CLIMATISATION}.climatisationSettings.value.zoneFrontRightEnabled",
-        )
+        return find_path(self.attrs, Paths.CLIMATISATION_ZONE_FRONT_RIGHT)
 
     @property
     def zone_front_right_last_updated(self) -> datetime:
         """Return state of zone front left last updated."""
-        return find_path(
-            self.attrs,
-            f"{Services.CLIMATISATION}.climatisationSettings.value.carCapturedTimestamp",
-        )
+        return find_path(self.attrs, Paths.CLIMATISATION_SETTINGS_TS)
 
     @property
     def is_zone_front_right_supported(self) -> bool:
         """Return true if zone front left is supported."""
-        return is_valid_path(
-            self.attrs,
-            f"{Services.CLIMATISATION}.climatisationSettings.value.zoneFrontRightEnabled",
-        )
+        return is_valid_path(self.attrs, Paths.CLIMATISATION_ZONE_FRONT_RIGHT)
 
     # Climatisation, electric
     @property
     def electric_climatisation(self) -> bool:
         """Return status of climatisation."""
-        status = find_path(
-            self.attrs,
-            f"{Services.CLIMATISATION}.climatisationStatus.value.climatisationState",
-        )
+        status = find_path(self.attrs, Paths.CLIMATISATION_STATE)
         return status in ["ventilation", "heating", "cooling", "on"]
 
     @property
     def electric_climatisation_last_updated(self) -> datetime:
         """Return status of climatisation last updated."""
-        return find_path(
-            self.attrs,
-            f"{Services.CLIMATISATION}.climatisationStatus.value.carCapturedTimestamp",
-        )
+        return find_path(self.attrs, Paths.CLIMATISATION_STATUS_TS)
 
     @property
     def is_electric_climatisation_supported(self) -> bool:
@@ -1843,47 +1783,26 @@ class Vehicle:
     @property
     def electric_remaining_climatisation_time(self) -> int:
         """Return remaining climatisation time for electric climatisation."""
-        return find_path(
-            self.attrs,
-            f"{Services.CLIMATISATION}.climatisationStatus.value.remainingClimatisationTime_min",
-        )
+        return find_path(self.attrs, Paths.CLIMATISATION_REM_TIME)
 
     @property
     def electric_remaining_climatisation_time_last_updated(self) -> bool:
         """Return status of electric climatisation remaining climatisation time last updated."""
-        return find_path(
-            self.attrs,
-            f"{Services.CLIMATISATION}.climatisationStatus.value.carCapturedTimestamp",
-        )
+        return find_path(self.attrs, Paths.CLIMATISATION_STATUS_TS)
 
     @property
     def is_electric_remaining_climatisation_time_supported(self) -> bool:
         """Return true if electric climatisation remaining climatisation time is supported."""
-        return is_valid_path(
-            self.attrs,
-            f"{Services.CLIMATISATION}.climatisationStatus.value.remainingClimatisationTime_min",
-        )
+        return is_valid_path(self.attrs, Paths.CLIMATISATION_REM_TIME)
 
     @property
     def auxiliary_climatisation(self) -> bool:
         """Return status of auxiliary climatisation."""
         climatisation_state = None
-        if is_valid_path(
-            self.attrs,
-            f"{Services.CLIMATISATION}.auxiliaryHeatingStatus.value.climatisationState",
-        ):
-            climatisation_state = find_path(
-                self.attrs,
-                f"{Services.CLIMATISATION}.auxiliaryHeatingStatus.value.climatisationState",
-            )
-        if is_valid_path(
-            self.attrs,
-            f"{Services.CLIMATISATION}.climatisationStatus.value.climatisationState",
-        ):
-            climatisation_state = find_path(
-                self.attrs,
-                f"{Services.CLIMATISATION}.climatisationStatus.value.climatisationState",
-            )
+        if is_valid_path(self.attrs, Paths.CLIMATISATION_AUX_STATE):
+            climatisation_state = find_path(self.attrs, Paths.CLIMATISATION_AUX_STATE)
+        if is_valid_path(self.attrs, Paths.CLIMATISATION_STATE):
+            climatisation_state = find_path(self.attrs, Paths.CLIMATISATION_STATE)
         if climatisation_state in ["heating", "heatingAuxiliary", "on"]:
             return True
         return False
@@ -1891,22 +1810,10 @@ class Vehicle:
     @property
     def auxiliary_climatisation_last_updated(self) -> datetime:
         """Return status of auxiliary climatisation last updated."""
-        if is_valid_path(
-            self.attrs,
-            f"{Services.CLIMATISATION}.auxiliaryHeatingStatus.value.carCapturedTimestamp",
-        ):
-            return find_path(
-                self.attrs,
-                f"{Services.CLIMATISATION}.auxiliaryHeatingStatus.value.carCapturedTimestamp",
-            )
-        if is_valid_path(
-            self.attrs,
-            f"{Services.CLIMATISATION}.climatisationStatus.value.carCapturedTimestamp",
-        ):
-            return find_path(
-                self.attrs,
-                f"{Services.CLIMATISATION}.climatisationStatus.value.carCapturedTimestamp",
-            )
+        if is_valid_path(self.attrs, Paths.CLIMATISATION_AUX_TS):
+            return find_path(self.attrs, Paths.CLIMATISATION_AUX_TS)
+        if is_valid_path(self.attrs, Paths.CLIMATISATION_STATUS_TS):
+            return find_path(self.attrs, Paths.CLIMATISATION_STATUS_TS)
         return None
 
     @property
@@ -1933,76 +1840,48 @@ class Vehicle:
     @property
     def auxiliary_duration(self) -> int:
         """Return heating duration for auxiliary heater."""
-        return find_path(
-            self.attrs,
-            f"{Services.CLIMATISATION}.climatisationSettings.value.auxiliaryHeatingSettings.duration_min",
-        )
+        return find_path(self.attrs, Paths.CLIMATISATION_AUX_DURATION)
 
     @property
     def auxiliary_duration_last_updated(self) -> bool:
         """Return status of auxiliary heater last updated."""
-        return find_path(
-            self.attrs,
-            f"{Services.CLIMATISATION}.climatisationSettings.value.carCapturedTimestamp",
-        )
+        return find_path(self.attrs, Paths.CLIMATISATION_SETTINGS_TS)
 
     @property
     def is_auxiliary_duration_supported(self) -> bool:
         """Return true if auxiliary heater is supported."""
-        return is_valid_path(
-            self.attrs,
-            f"{Services.CLIMATISATION}.climatisationSettings.value.auxiliaryHeatingSettings.duration_min",
-        )
+        return is_valid_path(self.attrs, Paths.CLIMATISATION_AUX_DURATION)
 
     @property
     def auxiliary_remaining_climatisation_time(self) -> int:
         """Return remaining climatisation time for auxiliary heater."""
-        return find_path(
-            self.attrs,
-            f"{Services.CLIMATISATION}.auxiliaryHeatingStatus.value.remainingClimatisationTime_min",
-        )
+        return find_path(self.attrs, Paths.CLIMATISATION_AUX_REM_TIME)
 
     @property
     def auxiliary_remaining_climatisation_time_last_updated(self) -> bool:
         """Return status of auxiliary heater remaining climatisation time last updated."""
-        return find_path(
-            self.attrs,
-            f"{Services.CLIMATISATION}.auxiliaryHeatingStatus.value.carCapturedTimestamp",
-        )
+        return find_path(self.attrs, Paths.CLIMATISATION_AUX_TS)
 
     @property
     def is_auxiliary_remaining_climatisation_time_supported(self) -> bool:
         """Return true if auxiliary heater remaining climatisation time is supported."""
-        return is_valid_path(
-            self.attrs,
-            f"{Services.CLIMATISATION}.auxiliaryHeatingStatus.value.remainingClimatisationTime_min",
-        )
+        return is_valid_path(self.attrs, Paths.CLIMATISATION_AUX_REM_TIME)
 
     @property
     def is_climatisation_supported(self) -> bool:
         """Return true if climatisation has State."""
-        return is_valid_path(
-            self.attrs,
-            f"{Services.CLIMATISATION}.climatisationStatus.value.climatisationState",
-        )
+        return is_valid_path(self.attrs, Paths.CLIMATISATION_STATE)
 
     @property
     def is_climatisation_supported_last_updated(self) -> datetime:
         """Return attribute last updated timestamp."""
-        return find_path(
-            self.attrs,
-            f"{Services.CLIMATISATION}.climatisationStatus.value.carCapturedTimestamp",
-        )
+        return find_path(self.attrs, Paths.CLIMATISATION_STATUS_TS)
 
     @property
     def window_heater_front(self) -> bool:
         """Return status of front window heater."""
         window_heating_status = (
-            find_path(
-                self.attrs,
-                f"{Services.CLIMATISATION}.windowHeatingStatus.value.windowHeatingStatus",
-            )
-            or []
+            find_path(self.attrs, Paths.CLIMATISATION_WINDOW_HEATING_STATUS) or []
         )
         for window_heating_state in window_heating_status:
             if window_heating_state.get("windowLocation") == "front":
@@ -2012,22 +1891,19 @@ class Vehicle:
     @property
     def window_heater_front_last_updated(self) -> datetime:
         """Return front window heater last updated."""
-        return find_path(
-            self.attrs,
-            f"{Services.CLIMATISATION}.windowHeatingStatus.value.carCapturedTimestamp",
-        )
+        return find_path(self.attrs, Paths.CLIMATISATION_WINDOW_HEATING_TS)
 
     @property
     def is_window_heater_front_supported(self) -> bool:
         """Return true if vehicle has heater."""
-        path = f"{Services.CLIMATISATION}.windowHeatingStatus.value.windowHeatingStatus"
-
         # Check that path exists
-        if not is_valid_path(self.attrs, path):
+        if not is_valid_path(self.attrs, Paths.CLIMATISATION_WINDOW_HEATING_STATUS):
             return False
 
         # Find the front window in the list
-        window_status_list = find_path(self.attrs, path)
+        window_status_list = find_path(
+            self.attrs, Paths.CLIMATISATION_WINDOW_HEATING_STATUS
+        )
         if not isinstance(window_status_list, list):
             return False
 
@@ -2044,11 +1920,7 @@ class Vehicle:
     def window_heater_back(self) -> bool:
         """Return status of rear window heater."""
         window_heating_status = (
-            find_path(
-                self.attrs,
-                f"{Services.CLIMATISATION}.windowHeatingStatus.value.windowHeatingStatus",
-            )
-            or []
+            find_path(self.attrs, Paths.CLIMATISATION_WINDOW_HEATING_STATUS) or []
         )
         for window_heating_state in window_heating_status:
             if window_heating_state.get("windowLocation") == "rear":
@@ -2058,22 +1930,19 @@ class Vehicle:
     @property
     def window_heater_back_last_updated(self) -> datetime:
         """Return front window heater last updated."""
-        return find_path(
-            self.attrs,
-            f"{Services.CLIMATISATION}.windowHeatingStatus.value.carCapturedTimestamp",
-        )
+        return find_path(self.attrs, Paths.CLIMATISATION_WINDOW_HEATING_TS)
 
     @property
     def is_window_heater_back_supported(self) -> bool:
         """Return true if vehicle has heater."""
-        path = f"{Services.CLIMATISATION}.windowHeatingStatus.value.windowHeatingStatus"
-
         # Check that path exists
-        if not is_valid_path(self.attrs, path):
+        if not is_valid_path(self.attrs, Paths.CLIMATISATION_WINDOW_HEATING_STATUS):
             return False
 
         # Find the rear window in the list
-        window_status_list = find_path(self.attrs, path)
+        window_status_list = find_path(
+            self.attrs, Paths.CLIMATISATION_WINDOW_HEATING_STATUS
+        )
         if not isinstance(window_status_list, list):
             return False
 
