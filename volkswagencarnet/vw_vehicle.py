@@ -7,6 +7,7 @@ import asyncio
 from collections import OrderedDict
 from datetime import UTC, datetime, timedelta, date
 from json import dumps as to_json
+from typing import Any
 import logging
 
 from .vw_const import Services, VehicleStatusParameter as P
@@ -127,7 +128,7 @@ class Vehicle:
 
     # API get and set functions #
     # Init and update vehicle data
-    async def discover(self):
+    async def discover(self) -> None:
         """Discover vehicle and initial data."""
 
         _LOGGER.debug("Attempting discovery of supported API endpoints for vehicle")
@@ -190,7 +191,7 @@ class Vehicle:
         _LOGGER.debug("API endpoints: %s", self._services)
         self._discovered = True
 
-    async def update(self):
+    async def update(self) -> None:
         """Try to fetch data for all known API endpoints."""
         if not self._discovered:
             await self.discover()
@@ -224,7 +225,7 @@ class Vehicle:
             _LOGGER.info("Vehicle with VIN %s is deactivated", self.vin)
 
     # Data collection functions
-    async def get_selectivestatus(self, services):
+    async def get_selectivestatus(self, services: list[str]) -> None:
         """Fetch selective status for specified services."""
         data = await self._connection.getSelectiveStatus(self.vin, services)
         if data:
@@ -754,7 +755,7 @@ class Vehicle:
         """
         return self._states
 
-    def has_attr(self, attr) -> bool:
+    def has_attr(self, attr: str) -> bool:
         """Return true if attribute exists.
 
         :param attr:
@@ -762,7 +763,7 @@ class Vehicle:
         """
         return is_valid_path(self.attrs, attr)
 
-    def get_attr(self, attr):
+    def get_attr(self, attr: str) -> Any:
         """Return a specific attribute.
 
         :param attr:
@@ -770,7 +771,7 @@ class Vehicle:
         """
         return find_path(self.attrs, attr)
 
-    async def expired(self, service):
+    async def expired(self, service: str) -> bool:
         """Check if access to service has expired."""
         try:
             now = datetime.now(UTC)
@@ -798,7 +799,7 @@ class Vehicle:
         else:
             return False
 
-    def dashboard(self, **config):
+    def dashboard(self, **config: Any):
         """Return dashboard with specified configuration.
 
         :param config:
@@ -1104,7 +1105,7 @@ class Vehicle:
         )
 
     @property
-    def adblue_level(self) -> int:
+    def adblue_level(self) -> int | None:
         """Return adblue level."""
         return find_path(
             self.attrs, f"{Services.MEASUREMENTS}.rangeStatus.value.adBlueRange"
@@ -1149,7 +1150,7 @@ class Vehicle:
         )
 
     @property
-    def charging_power(self) -> int:
+    def charging_power(self) -> int | None:
         """Return charging power."""
         return find_path(
             self.attrs, f"{Services.CHARGING}.chargingStatus.value.chargePower_kW"
@@ -1170,7 +1171,7 @@ class Vehicle:
         )
 
     @property
-    def charging_rate(self) -> int:
+    def charging_rate(self) -> int | None:
         """Return charging rate."""
         return find_path(
             self.attrs, f"{Services.CHARGING}.chargingStatus.value.chargeRate_kmph"
@@ -1217,7 +1218,7 @@ class Vehicle:
         )
 
     @property
-    def battery_level(self) -> int:
+    def battery_level(self) -> int | None:
         """Return battery level."""
         return find_path(
             self.attrs, f"{Services.CHARGING}.batteryStatus.value.currentSOC_pct"
@@ -1238,7 +1239,7 @@ class Vehicle:
         )
 
     @property
-    def battery_target_charge_level(self) -> int:
+    def battery_target_charge_level(self) -> int | None:
         """Return target charge level."""
         return find_path(
             self.attrs, f"{Services.CHARGING}.chargingSettings.value.targetSOC_pct"
@@ -1260,7 +1261,7 @@ class Vehicle:
         )
 
     @property
-    def hv_battery_min_temperature(self) -> int:
+    def hv_battery_min_temperature(self) -> float | None:
         """Return HV battery min temperature."""
         return (
             float(
@@ -1289,7 +1290,7 @@ class Vehicle:
         )
 
     @property
-    def hv_battery_max_temperature(self) -> int:
+    def hv_battery_max_temperature(self) -> float | None:
         """Return HV battery max temperature."""
         return (
             float(
@@ -1318,7 +1319,7 @@ class Vehicle:
         )
 
     @property
-    def charge_max_ac_setting(self) -> str | int:
+    def charge_max_ac_setting(self) -> str | int | None:
         """Return charger max ampere setting."""
         return find_path(
             self.attrs, f"{Services.CHARGING}.chargingSettings.value.maxChargeCurrentAC"
@@ -1346,7 +1347,7 @@ class Vehicle:
         return False
 
     @property
-    def charge_max_ac_ampere(self) -> str | int:
+    def charge_max_ac_ampere(self) -> int | None:
         """Return charger max ampere setting."""
         return find_path(
             self.attrs,
@@ -3042,7 +3043,7 @@ class Vehicle:
         """Return true if departure timer is supported."""
         return self.departure_timer(timer_id) is not None
 
-    def timer_attributes(self, timer_id: str | int):
+    def timer_attributes(self, timer_id: str | int) -> dict[str, Any]:
         """Return departure timer attributes."""
         timer = self.departure_timer(timer_id)
         profile = self.departure_profile(timer.get("profileIDs", [0])[0])
@@ -3135,7 +3136,7 @@ class Vehicle:
             )
         return data
 
-    def departure_timer(self, timer_id: str | int):
+    def departure_timer(self, timer_id: str | int) -> dict[str, Any] | None:
         """Return departure timer."""
         if is_valid_path(
             self.attrs,
@@ -3172,7 +3173,7 @@ class Vehicle:
                     return timer
         return None
 
-    def departure_profile(self, profile_id: str | int):
+    def departure_profile(self, profile_id: str | int) -> dict[str, Any] | None:
         """Return departure profile."""
         if is_valid_path(
             self.attrs,
@@ -3229,7 +3230,7 @@ class Vehicle:
         """Return true if ac departure timer is supported."""
         return self.ac_departure_timer(timer_id) is not None
 
-    def ac_departure_timer(self, timer_id: str | int):
+    def ac_departure_timer(self, timer_id: str | int) -> dict[str, Any] | None:
         """Return ac departure timer."""
         if is_valid_path(
             self.attrs,
@@ -3244,7 +3245,7 @@ class Vehicle:
                     return timer
         return None
 
-    def ac_timer_attributes(self, timer_id: str | int):
+    def ac_timer_attributes(self, timer_id: str | int) -> dict[str, Any]:
         """Return ac departure timer attributes."""
         timer = self.ac_departure_timer(timer_id)
         timer_type = None
