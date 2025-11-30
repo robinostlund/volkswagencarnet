@@ -173,3 +173,33 @@ class Paths:
     CHARGING_POWER = f"{Services.CHARGING}.chargingStatus.value.chargePower_kW"
     CHARGING_RATE = f"{Services.CHARGING}.chargingStatus.value.chargeRate_kmph"
     CHARGING_TYPE = f"{Services.CHARGING}.chargingStatus.value.chargeType"
+    CHARGING_TIME_LEFT = (
+        f"{Services.CHARGING}.chargingStatus.value.remainingChargingTimeToComplete_min"
+    )
+
+    # Plug
+    PLUG_LOCK = f"{Services.CHARGING}.plugStatus.value.plugLockState"
+    PLUG_CONN = f"{Services.CHARGING}.plugStatus.value.plugConnectionState"
+    PLUG_EXT_PWR = f"{Services.CHARGING}.plugStatus.value.externalPower"
+    PLUG_TS = f"{Services.CHARGING}.plugStatus.value.carCapturedTimestamp"
+
+    # Battery status/settings
+    BATTERY_SOC = f"{Services.CHARGING}.batteryStatus.value.currentSOC_pct"
+    BATTERY_RANGE_E = (
+        f"{Services.CHARGING}.batteryStatus.value.cruisingRangeElectric_km"
+    )
+    BATTERY_TS = f"{Services.CHARGING}.batteryStatus.value.carCapturedTimestamp"
+
+    CHARGING_SET_TS = f"{Services.CHARGING}.chargingSettings.value.carCapturedTimestamp"
+    CHARGING_SET_TARGET_SOC = (
+        f"{Services.CHARGING}.chargingSettings.value.targetSOC_pct"
+    )
+    CHARGING_SET_MAX_CHARGE_AC = (
+        f"{Services.CHARGING}.chargingSettings.value.maxChargeCurrentAC"
+    )
+    CHARGING_SET_MAX_CHARGE_AC_A = (
+        f"{Services.CHARGING}.chargingSettings.value.maxChargeCurrentAC_A"
+    )
+    CHARGING_SET_AUTO_UNLOCK_PLUG = (
+        f"{Services.CHARGING}.chargingSettings.value.autoUnlockPlugWhenChargedAC"
+    )

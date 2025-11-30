@@ -1168,45 +1168,32 @@ class Vehicle:
     @property
     def battery_level(self) -> int | None:
         """Return battery level."""
-        return find_path(
-            self.attrs, f"{Services.CHARGING}.batteryStatus.value.currentSOC_pct"
-        )
+        return find_path(self.attrs, Paths.BATTERY_SOC)
 
     @property
     def battery_level_last_updated(self) -> datetime:
         """Return attribute last updated timestamp."""
-        return find_path(
-            self.attrs, f"{Services.CHARGING}.batteryStatus.value.carCapturedTimestamp"
-        )
+        return find_path(self.attrs, Paths.BATTERY_TS)
 
     @property
     def is_battery_level_supported(self) -> bool:
         """Return true if battery level is supported."""
-        return is_valid_path(
-            self.attrs, f"{Services.CHARGING}.batteryStatus.value.currentSOC_pct"
-        )
+        return is_valid_path(self.attrs, Paths.BATTERY_SOC)
 
     @property
     def battery_target_charge_level(self) -> int | None:
         """Return target charge level."""
-        return find_path(
-            self.attrs, f"{Services.CHARGING}.chargingSettings.value.targetSOC_pct"
-        )
+        return find_path(self.attrs, Paths.CHARGING_SET_TARGET_SOC)
 
     @property
     def battery_target_charge_level_last_updated(self) -> datetime:
         """Return attribute last updated timestamp."""
-        return find_path(
-            self.attrs,
-            f"{Services.CHARGING}.chargingSettings.value.carCapturedTimestamp",
-        )
+        return find_path(self.attrs, Paths.CHARGING_SET_TS)
 
     @property
     def is_battery_target_charge_level_supported(self) -> bool:
         """Return true if target charge level is supported."""
-        return is_valid_path(
-            self.attrs, f"{Services.CHARGING}.chargingSettings.value.targetSOC_pct"
-        )
+        return is_valid_path(self.attrs, Paths.CHARGING_SET_TARGET_SOC)
 
     @property
     def hv_battery_min_temperature(self) -> float | None:
@@ -1261,147 +1248,98 @@ class Vehicle:
     @property
     def charge_max_ac_setting(self) -> str | int | None:
         """Return charger max ampere setting."""
-        return find_path(
-            self.attrs, f"{Services.CHARGING}.chargingSettings.value.maxChargeCurrentAC"
-        )
+        return find_path(self.attrs, Paths.CHARGING_SET_MAX_CHARGE_AC)
 
     @property
     def charge_max_ac_setting_last_updated(self) -> datetime:
         """Return charger max ampere last updated."""
-        return find_path(
-            self.attrs,
-            f"{Services.CHARGING}.chargingSettings.value.carCapturedTimestamp",
-        )
+        return find_path(self.attrs, Paths.CHARGING_SET_TS)
 
     @property
     def is_charge_max_ac_setting_supported(self) -> bool:
         """Return true if Charger Max Ampere is supported."""
-        if is_valid_path(
-            self.attrs, f"{Services.CHARGING}.chargingSettings.value.maxChargeCurrentAC"
-        ):
-            value = find_path(
-                self.attrs,
-                f"{Services.CHARGING}.chargingSettings.value.maxChargeCurrentAC",
-            )
+        if is_valid_path(self.attrs, Paths.CHARGING_SET_MAX_CHARGE_AC):
+            value = find_path(self.attrs, Paths.CHARGING_SET_MAX_CHARGE_AC)
             return value in ["reduced", "maximum", "invalid"]
         return False
 
     @property
     def charge_max_ac_ampere(self) -> int | None:
         """Return charger max ampere setting."""
-        return find_path(
-            self.attrs,
-            f"{Services.CHARGING}.chargingSettings.value.maxChargeCurrentAC_A",
-        )
+        return find_path(self.attrs, Paths.CHARGING_SET_MAX_CHARGE_AC_A)
 
     @property
     def charge_max_ac_ampere_last_updated(self) -> datetime:
         """Return charger max ampere last updated."""
-        return find_path(
-            self.attrs,
-            f"{Services.CHARGING}.chargingSettings.value.carCapturedTimestamp",
-        )
+        return find_path(self.attrs, Paths.CHARGING_SET_TS)
 
     @property
     def is_charge_max_ac_ampere_supported(self) -> bool:
         """Return true if Charger Max Ampere is supported."""
-        return is_valid_path(
-            self.attrs,
-            f"{Services.CHARGING}.chargingSettings.value.maxChargeCurrentAC_A",
-        )
+        return is_valid_path(self.attrs, Paths.CHARGING_SET_MAX_CHARGE_AC_A)
 
     @property
     def charging_cable_locked(self) -> bool:
         """Return plug locked state."""
-        response = find_path(
-            self.attrs, f"{Services.CHARGING}.plugStatus.value.plugLockState"
-        )
+        response = find_path(self.attrs, Paths.PLUG_LOCK)
         return response == "locked"
 
     @property
     def charging_cable_locked_last_updated(self) -> datetime:
         """Return plug locked state."""
-        return find_path(
-            self.attrs, f"{Services.CHARGING}.plugStatus.value.carCapturedTimestamp"
-        )
+        return find_path(self.attrs, Paths.PLUG_TS)
 
     @property
     def is_charging_cable_locked_supported(self) -> bool:
         """Return true if plug locked state is supported."""
-        return is_valid_path(
-            self.attrs, f"{Services.CHARGING}.plugStatus.value.plugLockState"
-        )
+        return is_valid_path(self.attrs, Paths.PLUG_LOCK)
 
     @property
     def charging_cable_connected(self) -> bool:
         """Return plug connected state."""
-        response = find_path(
-            self.attrs, f"{Services.CHARGING}.plugStatus.value.plugConnectionState"
-        )
+        response = find_path(self.attrs, Paths.PLUG_CONN)
         return response == "connected"
 
     @property
     def charging_cable_connected_last_updated(self) -> datetime:
         """Return plug connected state last updated."""
-        return find_path(
-            self.attrs, f"{Services.CHARGING}.plugStatus.value.carCapturedTimestamp"
-        )
+        return find_path(self.attrs, Paths.PLUG_TS)
 
     @property
     def is_charging_cable_connected_supported(self) -> bool:
         """Return true if supported."""
-        return is_valid_path(
-            self.attrs, f"{Services.CHARGING}.plugStatus.value.plugConnectionState"
-        )
+        return is_valid_path(self.attrs, Paths.PLUG_CONN)
 
     @property
-    def charging_time_left(self) -> int:
+    def charging_time_left(self) -> int | None:
         """Return minutes to charging complete."""
-        if is_valid_path(
-            self.attrs,
-            f"{Services.CHARGING}.chargingStatus.value.remainingChargingTimeToComplete_min",
-        ):
-            return find_path(
-                self.attrs,
-                f"{Services.CHARGING}.chargingStatus.value.remainingChargingTimeToComplete_min",
-            )
-        return None
+        return find_path(self.attrs, Paths.CHARGING_TIME_LEFT)
 
     @property
     def charging_time_left_last_updated(self) -> datetime:
         """Return minutes to charging complete last updated."""
-        return find_path(
-            self.attrs, f"{Services.CHARGING}.chargingStatus.value.carCapturedTimestamp"
-        )
+        return find_path(self.attrs, Paths.CHARGING_TS)
 
     @property
     def is_charging_time_left_supported(self) -> bool:
-        """Return true if charging is supported."""
-        return is_valid_path(
-            self.attrs, f"{Services.CHARGING}.chargingStatus.value.chargingState"
-        )
+        """Return true if charging time left is supported."""
+        return is_valid_path(self.attrs, Paths.CHARGING_TIME_LEFT)
 
     @property
     def external_power(self) -> bool:
         """Return true if external power is connected."""
-        check = find_path(
-            self.attrs, f"{Services.CHARGING}.plugStatus.value.externalPower"
-        )
+        check = find_path(self.attrs, Paths.PLUG_EXT_PWR)
         return check in ["stationConnected", "available", "ready"]
 
     @property
     def external_power_last_updated(self) -> datetime:
         """Return external power last updated."""
-        return find_path(
-            self.attrs, f"{Services.CHARGING}.plugStatus.value.carCapturedTimestamp"
-        )
+        return find_path(self.attrs, Paths.PLUG_TS)
 
     @property
     def is_external_power_supported(self) -> bool:
         """External power supported."""
-        return is_valid_path(
-            self.attrs, f"{Services.CHARGING}.plugStatus.value.externalPower"
-        )
+        return is_valid_path(self.attrs, Paths.PLUG_EXT_PWR)
 
     @property
     def reduced_ac_charging(self) -> bool:
@@ -1421,37 +1359,22 @@ class Vehicle:
     @property
     def auto_release_ac_connector_state(self) -> str:
         """Return auto release ac connector state value."""
-        return find_path(
-            self.attrs,
-            f"{Services.CHARGING}.chargingSettings.value.autoUnlockPlugWhenChargedAC",
-        )
+        return find_path(self.attrs, Paths.CHARGING_SET_AUTO_UNLOCK_PLUG)
 
     @property
     def auto_release_ac_connector(self) -> bool:
         """Return auto release ac connector state."""
-        return (
-            find_path(
-                self.attrs,
-                f"{Services.CHARGING}.chargingSettings.value.autoUnlockPlugWhenChargedAC",
-            )
-            == "permanent"
-        )
+        return find_path(self.attrs, Paths.CHARGING_SET_AUTO_UNLOCK_PLUG) == "permanent"
 
     @property
     def auto_release_ac_connector_last_updated(self) -> datetime:
         """Return attribute last updated timestamp."""
-        return find_path(
-            self.attrs,
-            f"{Services.CHARGING}.chargingSettings.value.carCapturedTimestamp",
-        )
+        return find_path(self.attrs, Paths.CHARGING_SET_TS)
 
     @property
     def is_auto_release_ac_connector_supported(self) -> bool:
         """Return true if auto release ac connector is supported."""
-        return is_valid_path(
-            self.attrs,
-            f"{Services.CHARGING}.chargingSettings.value.autoUnlockPlugWhenChargedAC",
-        )
+        return is_valid_path(self.attrs, Paths.CHARGING_SET_AUTO_UNLOCK_PLUG)
 
     @property
     def battery_care_mode(self) -> bool:
@@ -1796,32 +1719,18 @@ class Vehicle:
 
     @property
     def battery_cruising_range(self) -> int:
-        """Return battery cruising range.
-
-        :return:
-        """
-        return find_path(
-            self.attrs,
-            f"{Services.CHARGING}.batteryStatus.value.cruisingRangeElectric_km",
-        )
+        """Return battery cruising range."""
+        return find_path(self.attrs, Paths.BATTERY_RANGE_E)
 
     @property
     def battery_cruising_range_last_updated(self) -> datetime | None:
         """Return battery cruising range last updated."""
-        return find_path(
-            self.attrs, f"{Services.CHARGING}.batteryStatus.value.carCapturedTimestamp"
-        )
+        return find_path(self.attrs, Paths.BATTERY_TS)
 
     @property
     def is_battery_cruising_range_supported(self) -> bool:
-        """Return true if battery cruising range is supported.
-
-        :return:
-        """
-        return is_valid_path(
-            self.attrs,
-            f"{Services.CHARGING}.batteryStatus.value.cruisingRangeElectric_km",
-        )
+        """Return true if battery cruising range is supported."""
+        return is_valid_path(self.attrs, Paths.BATTERY_RANGE_E)
 
     @property
     def fuel_level(self) -> int:
@@ -2696,19 +2605,15 @@ class Vehicle:
         # Use real lock if the service is actually enabled
         if self._services.get(Services.ACCESS, {}).get("active", False):
             return False
-        return is_valid_path(
-            self.attrs, f"{Services.ACCESS}.accessStatus.value.doorLockStatus"
-        )
+        return is_valid_path(self.attrs, Paths.ACCESS_DOOR_LOCK)
 
     @property
     def trunk_locked(self) -> bool:
         """Return trunk locked state."""
-        doors = (
-            find_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.doors") or []
-        )
+        doors = find_path(self.attrs, Paths.ACCESS_DOORS) or []
         for door in doors:
             if door.get("name") == "trunk":
-                return "locked" in door.get("status", [])
+                return "locked" in (door.get("status") or [])
         return False
 
     @property
@@ -2724,22 +2629,21 @@ class Vehicle:
         """
         if not self._services.get(Services.ACCESS, {}).get("active", False):
             return False
-        if is_valid_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.doors"):
-            doors = find_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.doors")
-            for door in doors:
-                if door["name"] == "trunk" and "unsupported" not in door["status"]:
-                    return True
+        doors = find_path(self.attrs, Paths.ACCESS_DOORS) or []
+        for door in doors:
+            if door.get("name") == "trunk" and "unsupported" not in (
+                door.get("status") or []
+            ):
+                return True
         return False
 
     @property
     def trunk_locked_sensor(self) -> bool:
         """Return trunk locked state."""
-        doors = (
-            find_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.doors") or []
-        )
+        doors = find_path(self.attrs, Paths.ACCESS_DOORS) or []
         for door in doors:
             if door.get("name") == "trunk":
-                return "locked" in door.get("status", [])
+                return "locked" in (door.get("status") or [])
         return False
 
     @property
@@ -2755,11 +2659,12 @@ class Vehicle:
         """
         if self._services.get(Services.ACCESS, {}).get("active", False):
             return False
-        if is_valid_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.doors"):
-            doors = find_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.doors")
-            for door in doors:
-                if door["name"] == "trunk" and "unsupported" not in door["status"]:
-                    return True
+        doors = find_path(self.attrs, Paths.ACCESS_DOORS) or []
+        for door in doors:
+            if door.get("name") == "trunk" and "unsupported" not in (
+                door.get("status") or []
+            ):
+                return True
         return False
 
     # Doors, hood and trunk
