@@ -974,114 +974,66 @@ class Vehicle:
     @property
     def service_inspection(self):
         """Return time left for service inspection."""
-        return find_path(
-            self.attrs,
-            f"{Services.VEHICLE_HEALTH_INSPECTION}.maintenanceStatus.value.inspectionDue_days",
-        )
+        return find_path(self.attrs, Paths.VEHICLE_HEALTH_INSPECTION_DAYS)
 
     @property
     def service_inspection_last_updated(self) -> datetime:
         """Return attribute last updated timestamp."""
-        return find_path(
-            self.attrs,
-            f"{Services.VEHICLE_HEALTH_INSPECTION}.maintenanceStatus.value.carCapturedTimestamp",
-        )
+        return find_path(self.attrs, Paths.VEHICLE_HEALTH_TS)
 
     @property
     def is_service_inspection_supported(self) -> bool:
-        """Return true if days to service inspection is supported.
-
-        :return:
-        """
-        return is_valid_path(
-            self.attrs,
-            f"{Services.VEHICLE_HEALTH_INSPECTION}.maintenanceStatus.value.inspectionDue_days",
-        )
+        """Return true if days to service inspection is supported."""
+        return is_valid_path(self.attrs, Paths.VEHICLE_HEALTH_INSPECTION_DAYS)
 
     @property
     def service_inspection_distance(self):
         """Return distance left for service inspection."""
-        return find_path(
-            self.attrs,
-            f"{Services.VEHICLE_HEALTH_INSPECTION}.maintenanceStatus.value.inspectionDue_km",
-        )
+        return find_path(self.attrs, Paths.VEHICLE_HEALTH_INSPECTION_KM)
 
     @property
     def service_inspection_distance_last_updated(self) -> datetime:
         """Return attribute last updated timestamp."""
-        return find_path(
-            self.attrs,
-            f"{Services.VEHICLE_HEALTH_INSPECTION}.maintenanceStatus.value.carCapturedTimestamp",
-        )
+        return find_path(self.attrs, Paths.VEHICLE_HEALTH_TS)
 
     @property
     def is_service_inspection_distance_supported(self) -> bool:
-        """Return true if distance to service inspection is supported.
-
-        :return:
-        """
-        return is_valid_path(
-            self.attrs,
-            f"{Services.VEHICLE_HEALTH_INSPECTION}.maintenanceStatus.value.inspectionDue_km",
-        )
+        """Return true if distance to service inspection is supported."""
+        return is_valid_path(self.attrs, Paths.VEHICLE_HEALTH_INSPECTION_KM)
 
     @property
     def oil_inspection(self):
         """Return time left for oil inspection."""
-        return find_path(
-            self.attrs,
-            f"{Services.VEHICLE_HEALTH_INSPECTION}.maintenanceStatus.value.oilServiceDue_days",
-        )
+        return find_path(self.attrs, Paths.VEHICLE_HEALTH_OIL_DAYS)
 
     @property
     def oil_inspection_last_updated(self) -> datetime:
         """Return attribute last updated timestamp."""
-        return find_path(
-            self.attrs,
-            f"{Services.VEHICLE_HEALTH_INSPECTION}.maintenanceStatus.value.carCapturedTimestamp",
-        )
+        return find_path(self.attrs, Paths.VEHICLE_HEALTH_TS)
 
     @property
     def is_oil_inspection_supported(self) -> bool:
-        """Return true if days to oil inspection is supported.
-
-        :return:
-        """
+        """Return true if days to oil inspection is supported."""
         if not self.has_combustion_engine:
             return False
-        return is_valid_path(
-            self.attrs,
-            f"{Services.VEHICLE_HEALTH_INSPECTION}.maintenanceStatus.value.oilServiceDue_days",
-        )
+        return is_valid_path(self.attrs, Paths.VEHICLE_HEALTH_OIL_DAYS)
 
     @property
     def oil_inspection_distance(self):
         """Return distance left for oil inspection."""
-        return find_path(
-            self.attrs,
-            f"{Services.VEHICLE_HEALTH_INSPECTION}.maintenanceStatus.value.oilServiceDue_km",
-        )
+        return find_path(self.attrs, Paths.VEHICLE_HEALTH_OIL_KM)
 
     @property
     def oil_inspection_distance_last_updated(self) -> datetime:
         """Return attribute last updated timestamp."""
-        return find_path(
-            self.attrs,
-            f"{Services.VEHICLE_HEALTH_INSPECTION}.maintenanceStatus.value.carCapturedTimestamp",
-        )
+        return find_path(self.attrs, Paths.VEHICLE_HEALTH_TS)
 
     @property
     def is_oil_inspection_distance_supported(self) -> bool:
-        """Return true if oil inspection distance is supported.
-
-        :return:
-        """
+        """Return true if oil inspection distance is supported."""
         if not self.has_combustion_engine:
             return False
-        return is_valid_path(
-            self.attrs,
-            f"{Services.VEHICLE_HEALTH_INSPECTION}.maintenanceStatus.value.oilServiceDue_km",
-        )
+        return is_valid_path(self.attrs, Paths.VEHICLE_HEALTH_OIL_KM)
 
     @property
     def adblue_level(self) -> int | None:
