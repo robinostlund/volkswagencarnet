@@ -909,9 +909,9 @@ class Vehicle:
     @property
     def is_parking_light_supported(self) -> bool:
         """Return true if parking light is supported."""
-        return self.attrs.get(Services.VEHICLE_LIGHTS, False) and is_valid_path(
-            self.attrs, Paths.LIGHTS
-        )
+        if not self.attrs.get(Services.VEHICLE_LIGHTS, False):
+            return False
+        return is_valid_path(self.attrs, Paths.LIGHTS)
 
     # Connection status
     @property
@@ -2447,6 +2447,8 @@ class Vehicle:
 
     def _is_window_supported(self, window_name: str) -> bool:
         """Check if a window is supported by name."""
+        if not is_valid_path(self.attrs, Paths.ACCESS_WINDOWS):
+            return False
         windows = find_path(self.attrs, Paths.ACCESS_WINDOWS) or []
         return any(
             w.get("name") == window_name
@@ -2456,6 +2458,8 @@ class Vehicle:
 
     def _is_door_supported(self, door_name: str) -> bool:
         """Check if a door is supported by name."""
+        if not is_valid_path(self.attrs, Paths.ACCESS_DOORS):
+            return False
         doors = find_path(self.attrs, Paths.ACCESS_DOORS) or []
         return any(
             d.get("name") == door_name and "unsupported" not in (d.get("status") or [])
@@ -2464,18 +2468,26 @@ class Vehicle:
 
     def _get_trip_value(self, trip_type: str, key: str, default=None):
         """Generic getter for trip statistics."""
-        entry = self.attrs.get(trip_type, {})
-        # Try direct key
-        if key in entry:
+        entry = self.attrs.get(trip_type, {}) or {}
+        # Try direct key first (no logging)
+        if key in entry and entry[key] is not None:
             return entry[key]
-        # Try nested path
-        value = find_path(self.attrs, f"{trip_type}.{key}")
-        return value if value is not None else default
+        # Try nested path only if it exists
+        nested_path = f"{trip_type}.{key}"
+        if is_valid_path(self.attrs, nested_path):
+            value = find_path(self.attrs, nested_path)
+            if value is not None:
+                return value
+        return default
 
     def _is_trip_supported(self, trip_type: str, key: str) -> bool:
         """Generic support checker for trip statistics."""
-        value = self._get_trip_value(trip_type, key)
-        return value is not None and isinstance(value, (float, int))
+        # Prefer direct entry type check to avoid logging
+        entry = self.attrs.get(trip_type, {}) or {}
+        if key in entry and isinstance(entry[key], (float, int)):
+            return True
+        # Otherwise, only check nested path existence without reading the value
+        return is_valid_path(self.attrs, f"{trip_type}.{key}")
 
     @property
     def window_closed_left_front(self) -> bool | None:
@@ -2629,6 +2641,8 @@ class Vehicle:
         """
         if not self._services.get(Services.ACCESS, {}).get("active", False):
             return False
+        if not is_valid_path(self.attrs, Paths.ACCESS_DOORS):
+            return False
         doors = find_path(self.attrs, Paths.ACCESS_DOORS) or []
         for door in doors:
             if door.get("name") == "trunk" and "unsupported" not in (
@@ -2658,6 +2672,8 @@ class Vehicle:
         :return:
         """
         if self._services.get(Services.ACCESS, {}).get("active", False):
+            return False
+        if not is_valid_path(self.attrs, Paths.ACCESS_DOORS):
             return False
         doors = find_path(self.attrs, Paths.ACCESS_DOORS) or []
         for door in doors:
