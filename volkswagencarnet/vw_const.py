@@ -353,3 +353,24 @@ class Paths:
         f"{Services.CLIMATISATION_TIMERS}.auxiliaryHeatingTimersStatus.value.timers"
     )
     AUXILIARY_HEATING_TIMERS_TS = f"{Services.CLIMATISATION_TIMERS}.auxiliaryHeatingTimersStatus.value.carCapturedTimestamp"
+
+    # Battery Charging Care (legacy)
+    BATTERY_CARE_MODE = (
+        f"{Services.BATTERY_CHARGING_CARE}.chargingCareSettings.value.batteryCareMode"
+    )
+
+    # Battery Support (legacy)
+    BATTERY_SUPPORT = (
+        f"{Services.BATTERY_SUPPORT}.batterySupportStatus.value.batterySupport"
+    )
+
+    # User Capabilities (for auxiliary climatisation detection)
+    USER_CAPABILITIES = f"{Services.USER_CAPABILITIES}.capabilitiesStatus.value"
+    CLIMATISATION_AUX_STATE_LEGACY = (
+        f"{Services.CLIMATISATION}.auxiliaryHeatingStatus.value.climatisationState"
+    )
+
+    # Parking Position
+    PARKING_LAT = "parkingposition.lat"
+    PARKING_LON = "parkingposition.lon"
+    PARKING_TS = "parkingposition.carCapturedTimestamp"

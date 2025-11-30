@@ -1357,38 +1357,31 @@ class Vehicle:
     # Vehicle location states
     @property
     def position(self) -> dict[str, str | float | None]:
-        """Return  position."""
+        """Return position."""
         output: dict[str, str | float | None]
         try:
             if self.vehicle_moving:
                 output = {"lat": None, "lng": None, "timestamp": None}
             else:
-                lat = float(find_path(self.attrs, "parkingposition.lat"))
-                lng = float(find_path(self.attrs, "parkingposition.lon"))
-                parking_time = find_path(
-                    self.attrs, "parkingposition.carCapturedTimestamp"
-                )
+                lat = float(find_path(self.attrs, Paths.PARKING_LAT))
+                lng = float(find_path(self.attrs, Paths.PARKING_LON))
+                parking_time = find_path(self.attrs, Paths.PARKING_TS)
                 output = {"lat": lat, "lng": lng, "timestamp": parking_time}
-        except Exception:  # pylint: disable=broad-exception-caught
-            output = {
-                "lat": "?",
-                "lng": "?",
-            }
+        except Exception:
+            output = {"lat": "?", "lng": "?"}
         return output
 
     @property
     def position_last_updated(self) -> datetime:
-        """Return  position last updated."""
-        return self.attrs.get("parkingposition", {}).get(
-            "carCapturedTimestamp", "Unknown"
-        )
+        """Return position last updated."""
+        return find_path(self.attrs, Paths.PARKING_TS) or "Unknown"
 
     @property
     def is_position_supported(self) -> bool:
         """Return true if position is available."""
-        return is_valid_path(
-            self.attrs, "parkingposition.carCapturedTimestamp"
-        ) or self.attrs.get("isMoving", False)
+        return is_valid_path(self.attrs, Paths.PARKING_TS) or self.attrs.get(
+            "isMoving", False
+        )
 
     @property
     def vehicle_moving(self) -> bool:
@@ -1408,9 +1401,8 @@ class Vehicle:
     @property
     def parking_time(self) -> datetime:
         """Return timestamp of last parking time."""
-        parking_time_path = "parkingposition.carCapturedTimestamp"
-        if is_valid_path(self.attrs, parking_time_path):
-            return find_path(self.attrs, parking_time_path)
+        if is_valid_path(self.attrs, Paths.PARKING_TS):
+            return find_path(self.attrs, Paths.PARKING_TS)
         return None
 
     @property
