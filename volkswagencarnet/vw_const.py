@@ -326,3 +326,30 @@ class Paths:
         f"{Services.CLIMATISATION}.auxiliaryHeatingStatus.value.carCapturedTimestamp"
     )
     CLIMATISATION_AUX_REM_TIME = f"{Services.CLIMATISATION}.auxiliaryHeatingStatus.value.remainingClimatisationTime_min"
+
+    # Departure Timers
+    DEPARTURE_TIMERS = f"{Services.DEPARTURE_TIMERS}.departureTimersStatus.value.timers"
+    DEPARTURE_TIMERS_TS = (
+        f"{Services.DEPARTURE_TIMERS}.departureTimersStatus.value.carCapturedTimestamp"
+    )
+
+    # Departure Profiles
+    DEPARTURE_PROFILES_TIMERS = (
+        f"{Services.DEPARTURE_PROFILES}.departureProfilesStatus.value.timers"
+    )
+    DEPARTURE_PROFILES_PROFILES = (
+        f"{Services.DEPARTURE_PROFILES}.departureProfilesStatus.value.profiles"
+    )
+    DEPARTURE_PROFILES_TS = f"{Services.DEPARTURE_PROFILES}.departureProfilesStatus.value.carCapturedTimestamp"
+
+    # Climatisation Timers
+    CLIMATISATION_TIMERS = (
+        f"{Services.CLIMATISATION_TIMERS}.climatisationTimersStatus.value.timers"
+    )
+    CLIMATISATION_TIMERS_TS = f"{Services.CLIMATISATION_TIMERS}.climatisationTimersStatus.value.carCapturedTimestamp"
+
+    # Auxiliary Heating Timers
+    AUXILIARY_HEATING_TIMERS = (
+        f"{Services.CLIMATISATION_TIMERS}.auxiliaryHeatingTimersStatus.value.timers"
+    )
+    AUXILIARY_HEATING_TIMERS_TS = f"{Services.CLIMATISATION_TIMERS}.auxiliaryHeatingTimersStatus.value.carCapturedTimestamp"

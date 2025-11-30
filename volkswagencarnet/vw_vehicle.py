@@ -104,7 +104,7 @@ class Vehicle:
                 if error_msg is not None
                 else f"Failed to perform {topic} action"
             )
-            # pylint: disable=broad-exception-raised
+
             raise Exception(
                 error_msg
                 if error_msg is not None
@@ -320,7 +320,7 @@ class Vehicle:
         if self.is_charging_supported:
             if action not in ["start", "stop"]:
                 _LOGGER.error('Charging action "%s" is not supported', action)
-                raise Exception(f'Charging action "{action}" is not supported.')  # pylint: disable=broad-exception-raised
+                raise Exception(f'Charging action "{action}" is not supported.')
             self._requests["latest"] = "Batterycharge"
             response = await self._connection.setCharging(self.vin, (action == "start"))
             return await self._handle_response(
@@ -329,7 +329,7 @@ class Vehicle:
                 error_msg=f"Failed to {action} charging",
             )
         _LOGGER.error("No charging support")
-        raise Exception("No charging support.")  # pylint: disable=broad-exception-raised
+        raise Exception("No charging support.")
 
     async def set_charging_settings(self, setting, value):
         """Set charging settings."""
@@ -341,12 +341,12 @@ class Vehicle:
         ):
             if setting == "reduced_ac_charging" and value not in ["reduced", "maximum"]:
                 _LOGGER.error('Charging setting "%s" is not supported', value)
-                raise Exception(f'Charging setting "{value}" is not supported.')  # pylint: disable=broad-exception-raised
+                raise Exception(f'Charging setting "{value}" is not supported.')
             if setting == "max_charge_amperage" and int(value) not in [5, 10, 13, 32]:
                 _LOGGER.error(
                     "Setting maximum charge amperage to %s is not supported", value
                 )
-                # pylint: disable=broad-exception-raised
+
                 raise Exception(
                     f"Setting maximum charge amperage to {value} is not supported."
                 )
@@ -389,14 +389,14 @@ class Vehicle:
                 error_msg="Failed to change charging settings",
             )
         _LOGGER.error("Charging settings are not supported")
-        raise Exception("Charging settings are not supported.")  # pylint: disable=broad-exception-raised
+        raise Exception("Charging settings are not supported.")
 
     async def set_charging_care_settings(self, value):
         """Set charging care settings."""
         if self.is_battery_care_mode_supported:
             if value not in ["activated", "deactivated"]:
                 _LOGGER.error('Charging care mode "%s" is not supported', value)
-                raise Exception(f'Charging care mode "{value}" is not supported.')  # pylint: disable=broad-exception-raised
+                raise Exception(f'Charging care mode "{value}" is not supported.')
             data = {"batteryCareMode": value}
             self._requests["latest"] = "Batterycharge"
             response = await self._connection.setChargingCareModeSettings(
@@ -408,14 +408,14 @@ class Vehicle:
                 error_msg="Failed to change charging care settings",
             )
         _LOGGER.error("Charging care settings are not supported")
-        raise Exception("Charging care settings are not supported.")  # pylint: disable=broad-exception-raised
+        raise Exception("Charging care settings are not supported.")
 
     async def set_readiness_battery_support(self, value):
         """Set readiness battery support settings."""
         if self.is_optimised_battery_use_supported:
             if value not in [True, False]:
                 _LOGGER.error('Battery support mode "%s" is not supported', value)
-                raise Exception(f'Battery support mode "{value}" is not supported.')  # pylint: disable=broad-exception-raised
+                raise Exception(f'Battery support mode "{value}" is not supported.')
             data = {"batterySupportEnabled": value}
             self._requests["latest"] = "Batterycharge"
             response = await self._connection.setReadinessBatterySupport(self.vin, data)
@@ -425,7 +425,7 @@ class Vehicle:
                 error_msg="Failed to change battery support settings",
             )
         _LOGGER.error("Battery support settings are not supported")
-        raise Exception("Battery support settings are not supported.")  # pylint: disable=broad-exception-raised
+        raise Exception("Battery support settings are not supported.")
 
     # Climatisation electric/auxiliary/windows (CLIMATISATION)
     async def set_climatisation_settings(self, setting, value):
@@ -500,16 +500,16 @@ class Vehicle:
                     error_msg="Failed to set climatisation settings",
                 )
             _LOGGER.error('Set climatisation setting to "%s" is not supported', value)
-            raise Exception(f'Set climatisation setting to "{value}" is not supported.')  # pylint: disable=broad-exception-raised
+            raise Exception(f'Set climatisation setting to "{value}" is not supported.')
         _LOGGER.error("Climatisation settings are not supported")
-        raise Exception("Climatisation settings are not supported.")  # pylint: disable=broad-exception-raised
+        raise Exception("Climatisation settings are not supported.")
 
     async def set_window_heating(self, action="stop"):
         """Turn on/off window heater."""
         if self.is_window_heater_supported:
             if action not in ["start", "stop"]:
                 _LOGGER.error('Window heater action "%s" is not supported', action)
-                raise Exception(f'Window heater action "{action}" is not supported.')  # pylint: disable=broad-exception-raised
+                raise Exception(f'Window heater action "{action}" is not supported.')
             self._requests["latest"] = "Climatisation"
             response = await self._connection.setWindowHeater(
                 self.vin, (action == "start")
@@ -520,7 +520,7 @@ class Vehicle:
                 error_msg=f"Failed to {action} window heating",
             )
         _LOGGER.error("No climatisation support")
-        raise Exception("No climatisation support.")  # pylint: disable=broad-exception-raised
+        raise Exception("No climatisation support.")
 
     async def set_climatisation(self, action="stop"):
         """Turn on/off climatisation with electric heater."""
@@ -546,7 +546,7 @@ class Vehicle:
                 data = {}
             else:
                 _LOGGER.error("Invalid climatisation action: %s", action)
-                raise Exception(f"Invalid climatisation action: {action}")  # pylint: disable=broad-exception-raised
+                raise Exception(f"Invalid climatisation action: {action}")
             self._requests["latest"] = "Climatisation"
             response = await self._connection.setClimater(
                 self.vin, data, (action == "start")
@@ -557,7 +557,7 @@ class Vehicle:
                 error_msg=f"Failed to {action} climatisation with electric heater.",
             )
         _LOGGER.error("No climatisation support")
-        raise Exception("No climatisation support.")  # pylint: disable=broad-exception-raised
+        raise Exception("No climatisation support.")
 
     async def set_auxiliary_climatisation(self, action, spin):
         """Turn on/off climatisation with auxiliary heater."""
@@ -570,7 +570,7 @@ class Vehicle:
                 data = {}
             else:
                 _LOGGER.error("Invalid auxiliary heater action: %s", action)
-                raise Exception(f"Invalid auxiliary heater action: {action}")  # pylint: disable=broad-exception-raised
+                raise Exception(f"Invalid auxiliary heater action: {action}")
             self._requests["latest"] = "Climatisation"
             response = await self._connection.setAuxiliary(
                 self.vin, data, (action == "start")
@@ -581,44 +581,28 @@ class Vehicle:
                 error_msg=f"Failed to {action} climatisation with auxiliary heater.",
             )
         _LOGGER.error("No climatisation support")
-        raise Exception("No climatisation support.")  # pylint: disable=broad-exception-raised
+        raise Exception("No climatisation support.")
 
     async def set_departure_timer(self, timer_id, spin, enable) -> bool:
         """Turn on/off departure timer."""
         if self.is_departure_timer_supported(timer_id):
             if not isinstance(enable, bool):
                 _LOGGER.error("Charging departure timers setting is not supported")
-                raise Exception("Charging departure timers setting is not supported.")  # pylint: disable=broad-exception-raised
+                raise Exception("Charging departure timers setting is not supported.")
             data = None
             response = None
             if is_valid_path(
-                self.attrs,
-                f"{Services.DEPARTURE_PROFILES}.departureProfilesStatus.value.timers",
-            ) and is_valid_path(
-                self.attrs,
-                f"{Services.DEPARTURE_PROFILES}.departureProfilesStatus.value.profiles",
-            ):
-                timers = find_path(
-                    self.attrs,
-                    f"{Services.DEPARTURE_PROFILES}.departureProfilesStatus.value.timers",
-                )
-                profiles = find_path(
-                    self.attrs,
-                    f"{Services.DEPARTURE_PROFILES}.departureProfilesStatus.value.profiles",
-                )
+                self.attrs, Paths.DEPARTURE_PROFILES_TIMERS
+            ) and is_valid_path(self.attrs, Paths.DEPARTURE_PROFILES_PROFILES):
+                timers = find_path(self.attrs, Paths.DEPARTURE_PROFILES_TIMERS)
+                profiles = find_path(self.attrs, Paths.DEPARTURE_PROFILES_PROFILES)
                 for index, timer in enumerate(timers):
                     if timer.get("id", 0) == timer_id:
                         timers[index]["enabled"] = enable
                 data = {"timers": timers, "profiles": profiles}
                 response = await self._connection.setDepartureProfiles(self.vin, data)
-            if is_valid_path(
-                self.attrs,
-                f"{Services.CLIMATISATION_TIMERS}.auxiliaryHeatingTimersStatus.value.timers",
-            ):
-                timers = find_path(
-                    self.attrs,
-                    f"{Services.CLIMATISATION_TIMERS}.auxiliaryHeatingTimersStatus.value.timers",
-                )
+            if is_valid_path(self.attrs, Paths.AUXILIARY_HEATING_TIMERS):
+                timers = find_path(self.attrs, Paths.AUXILIARY_HEATING_TIMERS)
                 for index, timer in enumerate(timers):
                     if timer.get("id", 0) == timer_id:
                         timers[index]["enabled"] = enable
@@ -626,14 +610,8 @@ class Vehicle:
                 response = await self._connection.setAuxiliaryHeatingTimers(
                     self.vin, data
                 )
-            if is_valid_path(
-                self.attrs,
-                f"{Services.DEPARTURE_TIMERS}.departureTimersStatus.value.timers",
-            ):
-                timers = find_path(
-                    self.attrs,
-                    f"{Services.DEPARTURE_TIMERS}.departureTimersStatus.value.timers",
-                )
+            if is_valid_path(self.attrs, Paths.DEPARTURE_TIMERS):
+                timers = find_path(self.attrs, Paths.DEPARTURE_TIMERS)
                 for index, timer in enumerate(timers):
                     if timer.get("id", 0) == timer_id:
                         timers[index]["enabled"] = enable
@@ -645,7 +623,7 @@ class Vehicle:
                 error_msg="Failed to change departure timers setting.",
             )
         _LOGGER.error("Departure timers are not supported")
-        raise Exception("Departure timers are not supported.")  # pylint: disable=broad-exception-raised
+        raise Exception("Departure timers are not supported.")
 
     async def set_ac_departure_timer(self, timer_id, enable) -> bool:
         """Turn on/off ac departure timer."""
@@ -654,14 +632,10 @@ class Vehicle:
                 _LOGGER.error(
                     "Charging climatisation departure timers setting is not supported"
                 )
-                # pylint: disable=broad-exception-raised
                 raise Exception(
                     "Charging climatisation departure timers setting is not supported."
                 )
-            timers = find_path(
-                self.attrs,
-                f"{Services.CLIMATISATION_TIMERS}.climatisationTimersStatus.value.timers",
-            )
+            timers = find_path(self.attrs, Paths.CLIMATISATION_TIMERS)
             for index, timer in enumerate(timers):
                 if timer.get("id", 0) == timer_id:
                     timers[index]["enabled"] = enable
@@ -673,19 +647,19 @@ class Vehicle:
                 error_msg="Failed to change climatisation departure timers setting.",
             )
         _LOGGER.error("Climatisation departure timers are not supported")
-        raise Exception("Climatisation departure timers are not supported.")  # pylint: disable=broad-exception-raised
+        raise Exception("Climatisation departure timers are not supported.")
 
     # Lock (RLU)
     async def set_lock(self, action, spin):
         """Remote lock and unlock actions."""
         if not self._services.get(Services.ACCESS, {}).get("active", False):
             _LOGGER.info("Remote lock/unlock is not supported")
-            raise Exception("Remote lock/unlock is not supported.")  # pylint: disable=broad-exception-raised
+            raise Exception("Remote lock/unlock is not supported.")
         if self._in_progress("lock", unknown_offset=-5):
             return False
         if action not in ["lock", "unlock"]:
             _LOGGER.error("Invalid lock action: %s", action)
-            raise Exception(f"Invalid lock action: {action}")  # pylint: disable=broad-exception-raised
+            raise Exception(f"Invalid lock action: {action}")
 
         try:
             self._requests["latest"] = "Lock"
@@ -703,7 +677,7 @@ class Vehicle:
                 "status": "Exception",
                 "timestamp": datetime.now(UTC),
             }
-        raise Exception("Lock action failed")  # pylint: disable=broad-exception-raised
+        raise Exception("Lock action failed")
 
     # Refresh vehicle data (VSR)
     async def set_refresh(self):
@@ -743,7 +717,7 @@ class Vehicle:
                 "status": "Exception",
                 "timestamp": datetime.now(UTC),
             }
-        raise Exception("Data refresh failed")  # pylint: disable=broad-exception-raised
+        raise Exception("Data refresh failed")
 
     # Vehicle class helpers #
     # Vehicle info
@@ -2389,30 +2363,12 @@ class Vehicle:
     @property
     def departure_timer1_last_updated(self) -> datetime:
         """Return last updated timestamp."""
-        if is_valid_path(
-            self.attrs,
-            f"{Services.DEPARTURE_PROFILES}.departureProfilesStatus.value.carCapturedTimestamp",
-        ):
-            return find_path(
-                self.attrs,
-                f"{Services.DEPARTURE_PROFILES}.departureProfilesStatus.value.carCapturedTimestamp",
-            )
-        if is_valid_path(
-            self.attrs,
-            f"{Services.CLIMATISATION_TIMERS}.auxiliaryHeatingTimersStatus.value.carCapturedTimestamp",
-        ):
-            return find_path(
-                self.attrs,
-                f"{Services.CLIMATISATION_TIMERS}.auxiliaryHeatingTimersStatus.value.carCapturedTimestamp",
-            )
-        if is_valid_path(
-            self.attrs,
-            f"{Services.DEPARTURE_TIMERS}.departureTimersStatus.value.carCapturedTimestamp",
-        ):
-            return find_path(
-                self.attrs,
-                f"{Services.DEPARTURE_TIMERS}.departureTimersStatus.value.carCapturedTimestamp",
-            )
+        if is_valid_path(self.attrs, Paths.DEPARTURE_PROFILES_TS):
+            return find_path(self.attrs, Paths.DEPARTURE_PROFILES_TS)
+        if is_valid_path(self.attrs, Paths.AUXILIARY_HEATING_TIMERS_TS):
+            return find_path(self.attrs, Paths.AUXILIARY_HEATING_TIMERS_TS)
+        if is_valid_path(self.attrs, Paths.DEPARTURE_TIMERS_TS):
+            return find_path(self.attrs, Paths.DEPARTURE_TIMERS_TS)
         return None
 
     @property
@@ -2543,36 +2499,18 @@ class Vehicle:
 
     def departure_timer(self, timer_id: str | int) -> dict[str, Any] | None:
         """Return departure timer."""
-        if is_valid_path(
-            self.attrs,
-            f"{Services.DEPARTURE_PROFILES}.departureProfilesStatus.value.timers",
-        ):
-            timers = find_path(
-                self.attrs,
-                f"{Services.DEPARTURE_PROFILES}.departureProfilesStatus.value.timers",
-            )
+        if is_valid_path(self.attrs, Paths.DEPARTURE_PROFILES_TIMERS):
+            timers = find_path(self.attrs, Paths.DEPARTURE_PROFILES_TIMERS)
             for timer in timers:
                 if timer.get("id", 0) == timer_id:
                     return timer
-        if is_valid_path(
-            self.attrs,
-            f"{Services.CLIMATISATION_TIMERS}.auxiliaryHeatingTimersStatus.value.timers",
-        ):
-            timers = find_path(
-                self.attrs,
-                f"{Services.CLIMATISATION_TIMERS}.auxiliaryHeatingTimersStatus.value.timers",
-            )
+        if is_valid_path(self.attrs, Paths.AUXILIARY_HEATING_TIMERS):
+            timers = find_path(self.attrs, Paths.AUXILIARY_HEATING_TIMERS)
             for timer in timers:
                 if timer.get("id", 0) == timer_id:
                     return timer
-        if is_valid_path(
-            self.attrs,
-            f"{Services.DEPARTURE_TIMERS}.departureTimersStatus.value.timers",
-        ):
-            timers = find_path(
-                self.attrs,
-                f"{Services.DEPARTURE_TIMERS}.departureTimersStatus.value.timers",
-            )
+        if is_valid_path(self.attrs, Paths.DEPARTURE_TIMERS):
+            timers = find_path(self.attrs, Paths.DEPARTURE_TIMERS)
             for timer in timers:
                 if timer.get("id", 0) == timer_id:
                     return timer
@@ -2580,14 +2518,8 @@ class Vehicle:
 
     def departure_profile(self, profile_id: str | int) -> dict[str, Any] | None:
         """Return departure profile."""
-        if is_valid_path(
-            self.attrs,
-            f"{Services.DEPARTURE_PROFILES}.departureProfilesStatus.value.profiles",
-        ):
-            profiles = find_path(
-                self.attrs,
-                f"{Services.DEPARTURE_PROFILES}.departureProfilesStatus.value.profiles",
-            )
+        if is_valid_path(self.attrs, Paths.DEPARTURE_PROFILES_PROFILES):
+            profiles = find_path(self.attrs, Paths.DEPARTURE_PROFILES_PROFILES)
             for profile in profiles:
                 if profile.get("id", 0) == profile_id:
                     return profile
@@ -2607,10 +2539,7 @@ class Vehicle:
     @property
     def ac_departure_timer1_last_updated(self) -> datetime:
         """Return last updated timestamp."""
-        return find_path(
-            self.attrs,
-            f"{Services.CLIMATISATION_TIMERS}.climatisationTimersStatus.value.carCapturedTimestamp",
-        )
+        return find_path(self.attrs, Paths.CLIMATISATION_TIMERS_TS)
 
     @property
     def ac_departure_timer2_last_updated(self) -> datetime:
@@ -2637,14 +2566,8 @@ class Vehicle:
 
     def ac_departure_timer(self, timer_id: str | int) -> dict[str, Any] | None:
         """Return ac departure timer."""
-        if is_valid_path(
-            self.attrs,
-            f"{Services.CLIMATISATION_TIMERS}.climatisationTimersStatus.value.timers",
-        ):
-            timers = find_path(
-                self.attrs,
-                f"{Services.CLIMATISATION_TIMERS}.climatisationTimersStatus.value.timers",
-            )
+        if is_valid_path(self.attrs, Paths.CLIMATISATION_TIMERS):
+            timers = find_path(self.attrs, Paths.CLIMATISATION_TIMERS)
             for timer in timers:
                 if timer.get("id", 0) == timer_id:
                     return timer
