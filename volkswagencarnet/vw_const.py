@@ -262,3 +262,19 @@ class Paths:
     VEHICLE_HEALTH_OIL_KM = (
         f"{Services.VEHICLE_HEALTH_INSPECTION}.maintenanceStatus.value.oilServiceDue_km"
     )
+
+    # Fuel Status API
+    FUEL_STATUS_TS = f"{Services.FUEL_STATUS}.rangeStatus.value.carCapturedTimestamp"
+    FUEL_STATUS_CAR_TYPE = f"{Services.FUEL_STATUS}.rangeStatus.value.carType"
+    FUEL_STATUS_PRIMARY_TYPE = (
+        f"{Services.FUEL_STATUS}.rangeStatus.value.primaryEngine.type"
+    )
+    FUEL_STATUS_PRIMARY_LVL = (
+        f"{Services.FUEL_STATUS}.rangeStatus.value.primaryEngine.currentFuelLevel_pct"
+    )
+    FUEL_STATUS_PRIMARY_RNG = (
+        f"{Services.FUEL_STATUS}.rangeStatus.value.primaryEngine.remainingRange_km"
+    )
+    FUEL_STATUS_SECONDARY_TYPE = (
+        f"{Services.FUEL_STATUS}.rangeStatus.value.secondaryEngine.type"
+    )

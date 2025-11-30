@@ -1455,29 +1455,21 @@ class Vehicle:
         """Return electric range."""
         if is_valid_path(self.attrs, Paths.MEASUREMENTS_RNG_ELECTRIC):
             return find_path(self.attrs, Paths.MEASUREMENTS_RNG_ELECTRIC)
-        return find_path(
-            self.attrs,
-            f"{Services.FUEL_STATUS}.rangeStatus.value.primaryEngine.remainingRange_km",
-        )
+        return find_path(self.attrs, Paths.FUEL_STATUS_PRIMARY_RNG)
 
     @property
     def electric_range_last_updated(self) -> datetime:
         """Return electric range last updated."""
         if is_valid_path(self.attrs, Paths.MEASUREMENTS_RNG_TS):
             return find_path(self.attrs, Paths.MEASUREMENTS_RNG_TS)
-        return find_path(
-            self.attrs, f"{Services.FUEL_STATUS}.rangeStatus.value.carCapturedTimestamp"
-        )
+        return find_path(self.attrs, Paths.FUEL_STATUS_TS)
 
     @property
     def is_electric_range_supported(self) -> bool:
         """Return true if electric range is supported."""
         return is_valid_path(self.attrs, Paths.MEASUREMENTS_RNG_ELECTRIC) or (
             self.is_car_type_electric
-            and is_valid_path(
-                self.attrs,
-                f"{Services.FUEL_STATUS}.rangeStatus.value.primaryEngine.remainingRange_km",
-            )
+            and is_valid_path(self.attrs, Paths.FUEL_STATUS_PRIMARY_RNG)
         )
 
     @property
@@ -1582,16 +1574,10 @@ class Vehicle:
         """Return fuel level."""
         fuel_level_pct = None
         if (
-            is_valid_path(
-                self.attrs,
-                f"{Services.FUEL_STATUS}.rangeStatus.value.primaryEngine.currentFuelLevel_pct",
-            )
+            is_valid_path(self.attrs, Paths.FUEL_STATUS_PRIMARY_LVL)
             and not self.is_primary_drive_gas()
         ):
-            fuel_level_pct = find_path(
-                self.attrs,
-                f"{Services.FUEL_STATUS}.rangeStatus.value.primaryEngine.currentFuelLevel_pct",
-            )
+            fuel_level_pct = find_path(self.attrs, Paths.FUEL_STATUS_PRIMARY_LVL)
 
         if is_valid_path(self.attrs, Paths.MEASUREMENTS_FUEL_LVL):
             fuel_level_pct = find_path(self.attrs, Paths.MEASUREMENTS_FUEL_LVL)
@@ -1601,13 +1587,8 @@ class Vehicle:
     def fuel_level_last_updated(self) -> datetime:
         """Return fuel level last updated."""
         fuel_level_lastupdated = ""
-        if is_valid_path(
-            self.attrs, f"{Services.FUEL_STATUS}.rangeStatus.value.carCapturedTimestamp"
-        ):
-            fuel_level_lastupdated = find_path(
-                self.attrs,
-                f"{Services.FUEL_STATUS}.rangeStatus.value.carCapturedTimestamp",
-            )
+        if is_valid_path(self.attrs, Paths.FUEL_STATUS_TS):
+            fuel_level_lastupdated = find_path(self.attrs, Paths.FUEL_STATUS_TS)
 
         if is_valid_path(self.attrs, Paths.MEASUREMENTS_FUEL_TS):
             fuel_level_lastupdated = find_path(self.attrs, Paths.MEASUREMENTS_FUEL_TS)
@@ -1617,10 +1598,7 @@ class Vehicle:
     def is_fuel_level_supported(self) -> bool:
         """Return true if fuel level reporting is supported."""
         return (
-            is_valid_path(
-                self.attrs,
-                f"{Services.FUEL_STATUS}.rangeStatus.value.primaryEngine.currentFuelLevel_pct",
-            )
+            is_valid_path(self.attrs, Paths.FUEL_STATUS_PRIMARY_LVL)
             and not self.is_primary_drive_gas()
         ) or is_valid_path(self.attrs, Paths.MEASUREMENTS_FUEL_LVL)
 
@@ -1629,16 +1607,10 @@ class Vehicle:
         """Return gas level."""
         gas_level_pct = None
         if (
-            is_valid_path(
-                self.attrs,
-                f"{Services.FUEL_STATUS}.rangeStatus.value.primaryEngine.currentFuelLevel_pct",
-            )
+            is_valid_path(self.attrs, Paths.FUEL_STATUS_PRIMARY_LVL)
             and self.is_primary_drive_gas()
         ):
-            gas_level_pct = find_path(
-                self.attrs,
-                f"{Services.FUEL_STATUS}.rangeStatus.value.primaryEngine.currentFuelLevel_pct",
-            )
+            gas_level_pct = find_path(self.attrs, Paths.FUEL_STATUS_PRIMARY_LVL)
 
         if is_valid_path(self.attrs, Paths.MEASUREMENTS_FUEL_GAS_LVL):
             gas_level_pct = find_path(self.attrs, Paths.MEASUREMENTS_FUEL_GAS_LVL)
@@ -1649,16 +1621,10 @@ class Vehicle:
         """Return gas level last updated."""
         gas_level_lastupdated = ""
         if (
-            is_valid_path(
-                self.attrs,
-                f"{Services.FUEL_STATUS}.rangeStatus.value.carCapturedTimestamp",
-            )
+            is_valid_path(self.attrs, Paths.FUEL_STATUS_TS)
             and self.is_primary_drive_gas()
         ):
-            gas_level_lastupdated = find_path(
-                self.attrs,
-                f"{Services.FUEL_STATUS}.rangeStatus.value.carCapturedTimestamp",
-            )
+            gas_level_lastupdated = find_path(self.attrs, Paths.FUEL_STATUS_TS)
 
         if is_valid_path(self.attrs, Paths.MEASUREMENTS_FUEL_TS):
             gas_level_lastupdated = find_path(self.attrs, Paths.MEASUREMENTS_FUEL_TS)
@@ -1668,22 +1634,15 @@ class Vehicle:
     def is_gas_level_supported(self) -> bool:
         """Return true if gas level reporting is supported."""
         return (
-            is_valid_path(
-                self.attrs,
-                f"{Services.FUEL_STATUS}.rangeStatus.value.primaryEngine.currentFuelLevel_pct",
-            )
+            is_valid_path(self.attrs, Paths.FUEL_STATUS_PRIMARY_LVL)
             and self.is_primary_drive_gas()
         ) or is_valid_path(self.attrs, Paths.MEASUREMENTS_FUEL_GAS_LVL)
 
     @property
     def car_type(self) -> str:
         """Return car type."""
-        if is_valid_path(
-            self.attrs, f"{Services.FUEL_STATUS}.rangeStatus.value.carType"
-        ):
-            return find_path(
-                self.attrs, f"{Services.FUEL_STATUS}.rangeStatus.value.carType"
-            ).capitalize()
+        if is_valid_path(self.attrs, Paths.FUEL_STATUS_CAR_TYPE):
+            return find_path(self.attrs, Paths.FUEL_STATUS_CAR_TYPE).capitalize()
         if is_valid_path(self.attrs, Paths.MEASUREMENTS_FUEL_CAR_TYPE):
             return find_path(self.attrs, Paths.MEASUREMENTS_FUEL_CAR_TYPE).capitalize()
         return "Unknown"
@@ -1691,13 +1650,8 @@ class Vehicle:
     @property
     def car_type_last_updated(self) -> datetime | None:
         """Return car type last updated."""
-        if is_valid_path(
-            self.attrs, f"{Services.FUEL_STATUS}.rangeStatus.value.carCapturedTimestamp"
-        ):
-            return find_path(
-                self.attrs,
-                f"{Services.FUEL_STATUS}.rangeStatus.value.carCapturedTimestamp",
-            )
+        if is_valid_path(self.attrs, Paths.FUEL_STATUS_TS):
+            return find_path(self.attrs, Paths.FUEL_STATUS_TS)
         if is_valid_path(self.attrs, Paths.MEASUREMENTS_FUEL_TS):
             return find_path(self.attrs, Paths.MEASUREMENTS_FUEL_TS)
         return None
@@ -1705,9 +1659,9 @@ class Vehicle:
     @property
     def is_car_type_supported(self) -> bool:
         """Return true if car type is supported."""
-        return is_valid_path(
-            self.attrs, f"{Services.FUEL_STATUS}.rangeStatus.value.carType"
-        ) or is_valid_path(self.attrs, Paths.MEASUREMENTS_FUEL_CAR_TYPE)
+        return is_valid_path(self.attrs, Paths.FUEL_STATUS_CAR_TYPE) or is_valid_path(
+            self.attrs, Paths.MEASUREMENTS_FUEL_CAR_TYPE
+        )
 
     # Climatisation settings
     @property
@@ -3514,13 +3468,8 @@ class Vehicle:
     def is_primary_drive_combustion(self):
         """Check if primary engine is combustion."""
         engine_type = ""
-        if is_valid_path(
-            self.attrs, f"{Services.FUEL_STATUS}.rangeStatus.value.primaryEngine.type"
-        ):
-            engine_type = find_path(
-                self.attrs,
-                f"{Services.FUEL_STATUS}.rangeStatus.value.primaryEngine.type",
-            )
+        if is_valid_path(self.attrs, Paths.FUEL_STATUS_PRIMARY_TYPE):
+            engine_type = find_path(self.attrs, Paths.FUEL_STATUS_PRIMARY_TYPE)
 
         if is_valid_path(self.attrs, Paths.MEASUREMENTS_FUEL_PRIMARY_ENGINE):
             engine_type = find_path(self.attrs, Paths.MEASUREMENTS_FUEL_PRIMARY_ENGINE)
@@ -3530,13 +3479,8 @@ class Vehicle:
     def is_secondary_drive_combustion(self):
         """Check if secondary engine is combustion."""
         engine_type = ""
-        if is_valid_path(
-            self.attrs, f"{Services.FUEL_STATUS}.rangeStatus.value.secondaryEngine.type"
-        ):
-            engine_type = find_path(
-                self.attrs,
-                f"{Services.FUEL_STATUS}.rangeStatus.value.secondaryEngine.type",
-            )
+        if is_valid_path(self.attrs, Paths.FUEL_STATUS_SECONDARY_TYPE):
+            engine_type = find_path(self.attrs, Paths.FUEL_STATUS_SECONDARY_TYPE)
 
         if is_valid_path(self.attrs, Paths.MEASUREMENTS_FUEL_SECONDARY_ENGINE):
             engine_type = find_path(
@@ -3547,15 +3491,8 @@ class Vehicle:
 
     def is_primary_drive_gas(self):
         """Check if primary engine is gas."""
-        if is_valid_path(
-            self.attrs, f"{Services.FUEL_STATUS}.rangeStatus.value.carType"
-        ):
-            return (
-                find_path(
-                    self.attrs, f"{Services.FUEL_STATUS}.rangeStatus.value.carType"
-                )
-                == ENGINE_TYPE_GAS
-            )
+        if is_valid_path(self.attrs, Paths.FUEL_STATUS_CAR_TYPE):
+            return find_path(self.attrs, Paths.FUEL_STATUS_CAR_TYPE) == ENGINE_TYPE_GAS
         if is_valid_path(self.attrs, Paths.MEASUREMENTS_FUEL_CAR_TYPE):
             return (
                 find_path(self.attrs, Paths.MEASUREMENTS_FUEL_CAR_TYPE)
@@ -3566,13 +3503,9 @@ class Vehicle:
     @property
     def is_car_type_electric(self):
         """Check if car type is electric."""
-        if is_valid_path(
-            self.attrs, f"{Services.FUEL_STATUS}.rangeStatus.value.carType"
-        ):
+        if is_valid_path(self.attrs, Paths.FUEL_STATUS_CAR_TYPE):
             return (
-                find_path(
-                    self.attrs, f"{Services.FUEL_STATUS}.rangeStatus.value.carType"
-                )
+                find_path(self.attrs, Paths.FUEL_STATUS_CAR_TYPE)
                 == ENGINE_TYPE_ELECTRIC
             )
         if is_valid_path(self.attrs, Paths.MEASUREMENTS_FUEL_CAR_TYPE):
@@ -3585,14 +3518,9 @@ class Vehicle:
     @property
     def is_car_type_diesel(self):
         """Check if car type is diesel."""
-        if is_valid_path(
-            self.attrs, f"{Services.FUEL_STATUS}.rangeStatus.value.carType"
-        ):
+        if is_valid_path(self.attrs, Paths.FUEL_STATUS_CAR_TYPE):
             return (
-                find_path(
-                    self.attrs, f"{Services.FUEL_STATUS}.rangeStatus.value.carType"
-                )
-                == ENGINE_TYPE_DIESEL
+                find_path(self.attrs, Paths.FUEL_STATUS_CAR_TYPE) == ENGINE_TYPE_DIESEL
             )
         if is_valid_path(self.attrs, Paths.MEASUREMENTS_FUEL_CAR_TYPE):
             return (
@@ -3604,13 +3532,9 @@ class Vehicle:
     @property
     def is_car_type_gasoline(self):
         """Check if car type is gasoline."""
-        if is_valid_path(
-            self.attrs, f"{Services.FUEL_STATUS}.rangeStatus.value.carType"
-        ):
+        if is_valid_path(self.attrs, Paths.FUEL_STATUS_CAR_TYPE):
             return (
-                find_path(
-                    self.attrs, f"{Services.FUEL_STATUS}.rangeStatus.value.carType"
-                )
+                find_path(self.attrs, Paths.FUEL_STATUS_CAR_TYPE)
                 == ENGINE_TYPE_GASOLINE
             )
         if is_valid_path(self.attrs, Paths.MEASUREMENTS_FUEL_CAR_TYPE):
@@ -3623,14 +3547,9 @@ class Vehicle:
     @property
     def is_car_type_hybrid(self):
         """Check if car type is hybrid."""
-        if is_valid_path(
-            self.attrs, f"{Services.FUEL_STATUS}.rangeStatus.value.carType"
-        ):
+        if is_valid_path(self.attrs, Paths.FUEL_STATUS_CAR_TYPE):
             return (
-                find_path(
-                    self.attrs, f"{Services.FUEL_STATUS}.rangeStatus.value.carType"
-                )
-                == ENGINE_TYPE_HYBRID
+                find_path(self.attrs, Paths.FUEL_STATUS_CAR_TYPE) == ENGINE_TYPE_HYBRID
             )
         if is_valid_path(self.attrs, Paths.MEASUREMENTS_FUEL_CAR_TYPE):
             return (
