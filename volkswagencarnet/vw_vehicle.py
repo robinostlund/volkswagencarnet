@@ -3614,326 +3614,161 @@ class Vehicle:
     # Trip longterm data
     @property
     def longterm_trip_average_speed(self):
-        """Return trip longterm average speed.
-
-        :return:
-        """
-        return find_path(self.attrs, f"{Services.TRIP_LONGTERM}.averageSpeed_kmph")
+        return self._get_trip_value(Services.TRIP_LONGTERM, "averageSpeed_kmph")
 
     @property
-    def longterm_trip_average_speed_last_updated(self) -> datetime:
-        """Return last updated timestamp."""
-        return find_path(self.attrs, f"{Services.TRIP_LONGTERM}.tripEndTimestamp")
+    def longterm_trip_average_speed_last_updated(self):
+        return self._get_trip_value(Services.TRIP_LONGTERM, "tripEndTimestamp")
 
     @property
-    def is_longterm_trip_average_speed_supported(self) -> bool:
-        """Return true if supported.
-
-        :return:
-        """
-        return is_valid_path(
-            self.attrs, f"{Services.TRIP_LONGTERM}.averageSpeed_kmph"
-        ) and type(
-            find_path(self.attrs, f"{Services.TRIP_LONGTERM}.averageSpeed_kmph")
-        ) in (float, int)
+    def is_longterm_trip_average_speed_supported(self):
+        return self._is_trip_supported(Services.TRIP_LONGTERM, "averageSpeed_kmph")
 
     @property
     def longterm_trip_average_electric_engine_consumption(self):
-        """Return trip longterm average electric consumption.
-
-        :return:
-        """
-        return float(
-            find_path(
-                self.attrs, f"{Services.TRIP_LONGTERM}.averageElectricConsumption"
-            )
+        return self._get_trip_value(
+            Services.TRIP_LONGTERM, "averageElectricConsumption"
         )
 
     @property
-    def longterm_trip_average_electric_engine_consumption_last_updated(
-        self,
-    ) -> datetime:
-        """Return last updated timestamp."""
-        return find_path(self.attrs, f"{Services.TRIP_LONGTERM}.tripEndTimestamp")
+    def longterm_trip_average_electric_engine_consumption_last_updated(self):
+        return self._get_trip_value(Services.TRIP_LONGTERM, "tripEndTimestamp")
 
     @property
-    def is_longterm_trip_average_electric_engine_consumption_supported(self) -> bool:
-        """Return true if supported.
-
-        :return:
-        """
-        return is_valid_path(
-            self.attrs, f"{Services.TRIP_LONGTERM}.averageElectricConsumption"
-        ) and type(
-            find_path(
-                self.attrs, f"{Services.TRIP_LONGTERM}.averageElectricConsumption"
-            )
-        ) in (float, int)
+    def is_longterm_trip_average_electric_engine_consumption_supported(self):
+        return self._is_trip_supported(
+            Services.TRIP_LONGTERM, "averageElectricConsumption"
+        )
 
     @property
     def longterm_trip_average_fuel_consumption(self):
-        """Return trip longterm average fuel consumption.
-
-        :return:
-        """
-        return float(
-            find_path(self.attrs, f"{Services.TRIP_LONGTERM}.averageFuelConsumption")
-        )
+        return self._get_trip_value(Services.TRIP_LONGTERM, "averageFuelConsumption")
 
     @property
-    def longterm_trip_average_fuel_consumption_last_updated(self) -> datetime:
-        """Return last updated timestamp."""
-        return find_path(self.attrs, f"{Services.TRIP_LONGTERM}.tripEndTimestamp")
+    def longterm_trip_average_fuel_consumption_last_updated(self):
+        return self._get_trip_value(Services.TRIP_LONGTERM, "tripEndTimestamp")
 
     @property
-    def is_longterm_trip_average_fuel_consumption_supported(self) -> bool:
-        """Return true if supported.
-
-        :return:
-        """
-        return is_valid_path(
-            self.attrs, f"{Services.TRIP_LONGTERM}.averageFuelConsumption"
-        ) and type(
-            find_path(self.attrs, f"{Services.TRIP_LONGTERM}.averageFuelConsumption")
-        ) in (float, int)
+    def is_longterm_trip_average_fuel_consumption_supported(self):
+        return self._is_trip_supported(Services.TRIP_LONGTERM, "averageFuelConsumption")
 
     @property
     def longterm_trip_average_gas_consumption(self):
-        """Return trip longterm average gas consumption.
-
-        :return:
-        """
-        return float(
-            find_path(self.attrs, f"{Services.TRIP_LONGTERM}.averageGasConsumption")
-        )
+        return self._get_trip_value(Services.TRIP_LONGTERM, "averageGasConsumption")
 
     @property
-    def longterm_trip_average_gas_consumption_last_updated(self) -> datetime:
-        """Return last updated timestamp."""
-        return find_path(self.attrs, f"{Services.TRIP_LONGTERM}.tripEndTimestamp")
+    def longterm_trip_average_gas_consumption_last_updated(self):
+        return self._get_trip_value(Services.TRIP_LONGTERM, "tripEndTimestamp")
 
     @property
-    def is_longterm_trip_average_gas_consumption_supported(self) -> bool:
-        """Return true if supported.
-
-        :return:
-        """
-        return is_valid_path(
-            self.attrs, f"{Services.TRIP_LONGTERM}.averageGasConsumption"
-        ) and type(
-            find_path(self.attrs, f"{Services.TRIP_LONGTERM}.averageGasConsumption")
-        ) in (float, int)
+    def is_longterm_trip_average_gas_consumption_supported(self):
+        return self._is_trip_supported(Services.TRIP_LONGTERM, "averageGasConsumption")
 
     @property
     def longterm_trip_average_auxillary_consumption(self):
-        """Return trip longterm average auxiliary consumption.
-
-        :return:
-        """
-        # no example verified yet
-        return self.longterm_trip_entry.get("averageAuxConsumption")
+        return self._get_trip_value(Services.TRIP_LONGTERM, "averageAuxConsumption")
 
     @property
-    def longterm_trip_average_auxillary_consumption_last_updated(self) -> datetime:
-        """Return last updated timestamp."""
-        return find_path(self.attrs, f"{Services.TRIP_LONGTERM}.tripEndTimestamp")
+    def longterm_trip_average_auxillary_consumption_last_updated(self):
+        return self._get_trip_value(Services.TRIP_LONGTERM, "tripEndTimestamp")
 
     @property
-    def is_longterm_trip_average_auxillary_consumption_supported(self) -> bool:
-        """Return true if supported.
-
-        :return:
-        """
-        return is_valid_path(
-            self.attrs, f"{Services.TRIP_LONGTERM}.averageAuxConsumption"
-        ) and type(
-            find_path(self.attrs, f"{Services.TRIP_LONGTERM}.averageAuxConsumption")
-        ) in (float, int)
+    def is_longterm_trip_average_auxillary_consumption_supported(self):
+        return self._is_trip_supported(Services.TRIP_LONGTERM, "averageAuxConsumption")
 
     @property
     def longterm_trip_average_aux_consumer_consumption(self):
-        """Return trip longterm average auxiliary consumer consumption.
-
-        :return:
-        """
-        # no example verified yet
-        return self.longterm_trip_entry.get("averageAuxConsumerConsumption")
+        return self._get_trip_value(
+            Services.TRIP_LONGTERM, "averageAuxConsumerConsumption"
+        )
 
     @property
-    def longterm_trip_average_aux_consumer_consumption_last_updated(self) -> datetime:
-        """Return last updated timestamp."""
-        return find_path(self.attrs, f"{Services.TRIP_LONGTERM}.tripEndTimestamp")
+    def longterm_trip_average_aux_consumer_consumption_last_updated(self):
+        return self._get_trip_value(Services.TRIP_LONGTERM, "tripEndTimestamp")
 
     @property
-    def is_longterm_trip_average_aux_consumer_consumption_supported(self) -> bool:
-        """Return true if supported.
-
-        :return:
-        """
-        return is_valid_path(
-            self.attrs, f"{Services.TRIP_LONGTERM}.averageAuxConsumerConsumption"
-        ) and type(
-            find_path(
-                self.attrs, f"{Services.TRIP_LONGTERM}.averageAuxConsumerConsumption"
-            )
-        ) in (float, int)
+    def is_longterm_trip_average_aux_consumer_consumption_supported(self):
+        return self._is_trip_supported(
+            Services.TRIP_LONGTERM, "averageAuxConsumerConsumption"
+        )
 
     @property
     def longterm_trip_duration(self):
-        """Return trip longterm duration in minutes.
-
-        :return:
-        """
-        return find_path(self.attrs, f"{Services.TRIP_LONGTERM}.travelTime")
+        return self._get_trip_value(Services.TRIP_LONGTERM, "travelTime")
 
     @property
-    def longterm_trip_duration_last_updated(self) -> datetime:
-        """Return last updated timestamp."""
-        return find_path(self.attrs, f"{Services.TRIP_LONGTERM}.tripEndTimestamp")
+    def longterm_trip_duration_last_updated(self):
+        return self._get_trip_value(Services.TRIP_LONGTERM, "tripEndTimestamp")
 
     @property
-    def is_longterm_trip_duration_supported(self) -> bool:
-        """Return true if supported.
-
-        :return:
-        """
-        return is_valid_path(
-            self.attrs, f"{Services.TRIP_LONGTERM}.travelTime"
-        ) and type(find_path(self.attrs, f"{Services.TRIP_LONGTERM}.travelTime")) in (
-            float,
-            int,
-        )
+    def is_longterm_trip_duration_supported(self):
+        return self._is_trip_supported(Services.TRIP_LONGTERM, "travelTime")
 
     @property
     def longterm_trip_length(self):
-        """Return trip longterm length.
-
-        :return:
-        """
-        return find_path(self.attrs, f"{Services.TRIP_LONGTERM}.mileage_km")
+        return self._get_trip_value(Services.TRIP_LONGTERM, "mileage_km")
 
     @property
-    def longterm_trip_length_last_updated(self) -> datetime:
-        """Return last updated timestamp."""
-        return find_path(self.attrs, f"{Services.TRIP_LONGTERM}.tripEndTimestamp")
+    def longterm_trip_length_last_updated(self):
+        return self._get_trip_value(Services.TRIP_LONGTERM, "tripEndTimestamp")
 
     @property
-    def is_longterm_trip_length_supported(self) -> bool:
-        """Return true if supported.
-
-        :return:
-        """
-        return is_valid_path(
-            self.attrs, f"{Services.TRIP_LONGTERM}.mileage_km"
-        ) and type(find_path(self.attrs, f"{Services.TRIP_LONGTERM}.mileage_km")) in (
-            float,
-            int,
-        )
+    def is_longterm_trip_length_supported(self):
+        return self._is_trip_supported(Services.TRIP_LONGTERM, "mileage_km")
 
     @property
     def longterm_trip_recuperation(self):
-        """Return trip longterm recuperation.
-
-        :return:
-        """
         # Not implemented
-        return self.longterm_trip_entry.get("recuperation")
+        return self._get_trip_value(Services.TRIP_LONGTERM, "recuperation")
 
     @property
-    def longterm_trip_recuperation_last_updated(self) -> datetime:
-        """Return last updated timestamp."""
-        return find_path(self.attrs, f"{Services.TRIP_LONGTERM}.tripEndTimestamp")
+    def longterm_trip_recuperation_last_updated(self):
+        return self._get_trip_value(Services.TRIP_LONGTERM, "tripEndTimestamp")
 
     @property
-    def is_longterm_trip_recuperation_supported(self) -> bool:
-        """Return true if supported.
-
-        :return:
-        """
+    def is_longterm_trip_recuperation_supported(self):
         # Not implemented
-        response = self.longterm_trip_entry
-        return response and type(response.get("recuperation", None)) in (float, int)
+        return self._is_trip_supported(Services.TRIP_LONGTERM, "recuperation")
 
     @property
     def longterm_trip_average_recuperation(self):
-        """Return trip longterm total recuperation.
-
-        :return:
-        """
-        return self.longterm_trip_entry.get("averageRecuperation")
+        return self._get_trip_value(Services.TRIP_LONGTERM, "averageRecuperation")
 
     @property
-    def longterm_trip_average_recuperation_last_updated(self) -> datetime:
-        """Return last updated timestamp."""
-        return find_path(self.attrs, f"{Services.TRIP_LONGTERM}.tripEndTimestamp")
+    def longterm_trip_average_recuperation_last_updated(self):
+        return self._get_trip_value(Services.TRIP_LONGTERM, "tripEndTimestamp")
 
     @property
-    def is_longterm_trip_average_recuperation_supported(self) -> bool:
-        """Return true if supported.
-
-        :return:
-        """
-        response = self.longterm_trip_entry
-        return response and type(response.get("averageRecuperation", None)) in (
-            float,
-            int,
-        )
+    def is_longterm_trip_average_recuperation_supported(self):
+        return self._is_trip_supported(Services.TRIP_LONGTERM, "averageRecuperation")
 
     @property
     def longterm_trip_total_electric_consumption(self):
-        """Return trip longterm total electric consumption.
-
-        :return:
-        """
-        # Not implemented
-        return self.longterm_trip_entry.get("totalElectricConsumption_kwh")
+        return self._get_trip_value(
+            Services.TRIP_LONGTERM, "totalElectricConsumption_kwh"
+        )
 
     @property
-    def longterm_trip_total_electric_consumption_last_updated(self) -> datetime:
-        """Return last updated timestamp."""
-        return find_path(self.attrs, f"{Services.TRIP_LONGTERM}.tripEndTimestamp")
+    def longterm_trip_total_electric_consumption_last_updated(self):
+        return self._get_trip_value(Services.TRIP_LONGTERM, "tripEndTimestamp")
 
     @property
-    def is_longterm_trip_total_electric_consumption_supported(self) -> bool:
-        """Return true if supported.
-
-        :return:
-        """
-        # Not implemented
-        response = self.longterm_trip_entry
-        return response and type(
-            response.get("totalElectricConsumption_kwh", None)
-        ) in (
-            float,
-            int,
+    def is_longterm_trip_total_electric_consumption_supported(self):
+        return self._is_trip_supported(
+            Services.TRIP_LONGTERM, "totalElectricConsumption_kwh"
         )
 
     @property
     def longterm_trip_total_fuel_consumption(self):
-        """Return trip longterm total fuel consumption.
-
-        :return:
-        """
-        # Not implemented
-        return self.longterm_trip_entry.get("totalFuelConsumption_L")
+        return self._get_trip_value(Services.TRIP_LONGTERM, "totalFuelConsumption_L")
 
     @property
-    def longterm_trip_total_fuel_consumption_last_updated(self) -> datetime:
-        """Return last updated timestamp."""
-        return find_path(self.attrs, f"{Services.TRIP_LONGTERM}.tripEndTimestamp")
+    def longterm_trip_total_fuel_consumption_last_updated(self):
+        return self._get_trip_value(Services.TRIP_LONGTERM, "tripEndTimestamp")
 
     @property
-    def is_longterm_trip_total_fuel_consumption_supported(self) -> bool:
-        """Return true if supported.
-
-        :return:
-        """
-        # Not implemented
-        response = self.longterm_trip_entry
-        return response and type(response.get("totalFuelConsumption_L", None)) in (
-            float,
-            int,
-        )
+    def is_longterm_trip_total_fuel_consumption_supported(self):
+        return self._is_trip_supported(Services.TRIP_LONGTERM, "totalFuelConsumption_L")
 
     # Status of set data requests
     @property
