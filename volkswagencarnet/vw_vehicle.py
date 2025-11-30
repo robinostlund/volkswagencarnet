@@ -899,25 +899,19 @@ class Vehicle:
     def parking_light(self) -> bool:
         """Return true if parking light is on."""
         lights = (
-            self.attrs.get(Services.VEHICLE_LIGHTS)
-            .get("lightsStatus")
-            .get("value")
-            .get("lights")
+            find_path(
+                self.attrs, f"{Services.VEHICLE_LIGHTS}.lightsStatus.value.lights"
+            )
+            or []
         )
-        lights_on_count = 0
-        for light in lights:
-            if light["status"] == "on":
-                lights_on_count = lights_on_count + 1
+        lights_on_count = sum(1 for light in lights if light.get("status") == "on")
         return lights_on_count == 2
 
     @property
     def parking_light_last_updated(self) -> datetime:
-        """Return attribute last updated timestamp."""
-        return (
-            self.attrs.get(Services.VEHICLE_LIGHTS)
-            .get("lightsStatus")
-            .get("value")
-            .get("carCapturedTimestamp")
+        return find_path(
+            self.attrs,
+            f"{Services.VEHICLE_LIGHTS}.lightsStatus.value.carCapturedTimestamp",
         )
 
     @property
@@ -1263,15 +1257,11 @@ class Vehicle:
     @property
     def hv_battery_min_temperature(self) -> float | None:
         """Return HV battery min temperature."""
-        return (
-            float(
-                find_path(
-                    self.attrs,
-                    f"{Services.MEASUREMENTS}.temperatureBatteryStatus.value.temperatureHvBatteryMin_K",
-                )
-            )
-            - 273.15
+        temp_k = find_path(
+            self.attrs,
+            f"{Services.MEASUREMENTS}.temperatureBatteryStatus.value.temperatureHvBatteryMin_K",
         )
+        return float(temp_k) - 273.15 if temp_k is not None else None
 
     @property
     def hv_battery_min_temperature_last_updated(self) -> datetime:
@@ -1292,15 +1282,11 @@ class Vehicle:
     @property
     def hv_battery_max_temperature(self) -> float | None:
         """Return HV battery max temperature."""
-        return (
-            float(
-                find_path(
-                    self.attrs,
-                    f"{Services.MEASUREMENTS}.temperatureBatteryStatus.value.temperatureHvBatteryMax_K",
-                )
-            )
-            - 273.15
+        temp_k = find_path(
+            self.attrs,
+            f"{Services.MEASUREMENTS}.temperatureBatteryStatus.value.temperatureHvBatteryMax_K",
         )
+        return float(temp_k) - 273.15 if temp_k is not None else None
 
     @property
     def hv_battery_max_temperature_last_updated(self) -> datetime:
@@ -1731,7 +1717,7 @@ class Vehicle:
             return find_path(self.attrs, DIESEL_RANGE)
         if is_valid_path(self.attrs, GASOLINE_RANGE):
             return find_path(self.attrs, GASOLINE_RANGE)
-        return -1
+        return None
 
     @property
     def combustion_range_last_updated(self) -> datetime | None:
@@ -1771,7 +1757,7 @@ class Vehicle:
             return find_path(self.attrs, DIESEL_RANGE)
         if is_valid_path(self.attrs, GASOLINE_RANGE):
             return find_path(self.attrs, GASOLINE_RANGE)
-        return -1
+        return None
 
     @property
     def fuel_range_last_updated(self) -> datetime | None:
@@ -1802,7 +1788,7 @@ class Vehicle:
         CNG_RANGE = f"{Services.MEASUREMENTS}.rangeStatus.value.cngRange"
         if is_valid_path(self.attrs, CNG_RANGE):
             return find_path(self.attrs, CNG_RANGE)
-        return -1
+        return None
 
     @property
     def gas_range_last_updated(self) -> datetime | None:
@@ -1889,7 +1875,7 @@ class Vehicle:
 
         :return:
         """
-        fuel_level_pct = ""
+        fuel_level_pct = None
         if (
             is_valid_path(
                 self.attrs,
@@ -1957,7 +1943,7 @@ class Vehicle:
 
         :return:
         """
-        gas_level_pct = ""
+        gas_level_pct = None
         if (
             is_valid_path(
                 self.attrs,
@@ -2079,13 +2065,11 @@ class Vehicle:
     @property
     def climatisation_target_temperature(self) -> float | None:
         """Return the target temperature from climater."""
-        # TODO should we handle Fahrenheit?? # pylint: disable=fixme
-        return float(
-            find_path(
-                self.attrs,
-                f"{Services.CLIMATISATION}.climatisationSettings.value.targetTemperature_C",
-            )
+        temp = find_path(
+            self.attrs,
+            f"{Services.CLIMATISATION}.climatisationSettings.value.targetTemperature_C",
         )
+        return float(temp) if temp is not None else None
 
     @property
     def climatisation_target_temperature_last_updated(self) -> datetime:
@@ -2411,14 +2395,16 @@ class Vehicle:
     @property
     def window_heater_front(self) -> bool:
         """Return status of front window heater."""
-        window_heating_status = find_path(
-            self.attrs,
-            f"{Services.CLIMATISATION}.windowHeatingStatus.value.windowHeatingStatus",
+        window_heating_status = (
+            find_path(
+                self.attrs,
+                f"{Services.CLIMATISATION}.windowHeatingStatus.value.windowHeatingStatus",
+            )
+            or []
         )
         for window_heating_state in window_heating_status:
-            if window_heating_state["windowLocation"] == "front":
-                return window_heating_state["windowHeatingState"] == "on"
-
+            if window_heating_state.get("windowLocation") == "front":
+                return window_heating_state.get("windowHeatingState") == "on"
         return False
 
     @property
@@ -2455,14 +2441,16 @@ class Vehicle:
     @property
     def window_heater_back(self) -> bool:
         """Return status of rear window heater."""
-        window_heating_status = find_path(
-            self.attrs,
-            f"{Services.CLIMATISATION}.windowHeatingStatus.value.windowHeatingStatus",
+        window_heating_status = (
+            find_path(
+                self.attrs,
+                f"{Services.CLIMATISATION}.windowHeatingStatus.value.windowHeatingStatus",
+            )
+            or []
         )
         for window_heating_state in window_heating_status:
-            if window_heating_state["windowLocation"] == "rear":
-                return window_heating_state["windowHeatingState"] == "on"
-
+            if window_heating_state.get("windowLocation") == "rear":
+                return window_heating_state.get("windowHeatingState") == "on"
         return False
 
     @property
@@ -2575,33 +2563,27 @@ class Vehicle:
 
     # HELPERS
     def _get_window_state(self, window_name: str) -> bool | None:
-        """Get window state by name."""
-        windows = find_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.windows")
-        if not windows:
-            return False
+        windows = (
+            find_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.windows") or []
+        )
         for window in windows:
-            if window["name"] == window_name:
-                if not any(
-                    valid_status in window["status"]
-                    for valid_status in P.VALID_WINDOW_STATUS
-                ):
+            if window.get("name") == window_name:
+                status = window.get("status") or []
+                if not any(valid in status for valid in P.VALID_WINDOW_STATUS):
                     return None
-                return "closed" in window["status"]
+                return "closed" in status
         return False
 
     def _get_door_state(self, door_name: str) -> bool | None:
-        """Get door state by name."""
-        doors = find_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.doors")
-        if not doors:
-            return False
+        doors = (
+            find_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.doors") or []
+        )
         for door in doors:
-            if door["name"] == door_name:
-                if not any(
-                    valid_status in door["status"]
-                    for valid_status in P.VALID_DOOR_STATUS
-                ):
+            if door.get("name") == door_name:
+                status = door.get("status") or []
+                if not any(valid in status for valid in P.VALID_DOOR_STATUS):
                     return None
-                return "closed" in door["status"]
+                return "closed" in status
         return False
 
     def _is_window_supported(self, window_name: str) -> bool:
@@ -2808,14 +2790,13 @@ class Vehicle:
 
     @property
     def trunk_locked(self) -> bool:
-        """Return trunk locked state.
-
-        :return:
-        """
-        doors = find_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.doors")
+        """Return trunk locked state."""
+        doors = (
+            find_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.doors") or []
+        )
         for door in doors:
-            if door["name"] == "trunk":
-                return "locked" in door["status"]
+            if door.get("name") == "trunk":
+                return "locked" in door.get("status", [])
         return False
 
     @property
@@ -2842,14 +2823,13 @@ class Vehicle:
 
     @property
     def trunk_locked_sensor(self) -> bool:
-        """Return trunk locked state.
-
-        :return:
-        """
-        doors = find_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.doors")
+        """Return trunk locked state."""
+        doors = (
+            find_path(self.attrs, f"{Services.ACCESS}.accessStatus.value.doors") or []
+        )
         for door in doors:
-            if door["name"] == "trunk":
-                return "locked" in door["status"]
+            if door.get("name") == "trunk":
+                return "locked" in door.get("status", [])
         return False
 
     @property
@@ -2952,7 +2932,7 @@ class Vehicle:
 
     @property
     def trunk_closed(self) -> bool:
-        return self._is_door_supported("trunk")
+        return self._get_door_state("trunk")
 
     @property
     def trunk_closed_last_updated(self) -> datetime:
