@@ -198,18 +198,6 @@ class Connection:
             _LOGGER.warning("Error during fetching authorization page: %s", str(e))
             raise
 
-    def extract_form_data(self, page_content, form_id):
-        """Extract form data from a page."""
-        soup = BeautifulSoup(page_content, "html.parser")
-        form = soup.find("form", id=form_id)
-        if form is None:
-            _LOGGER.debug(f"Form with ID '{form_id}' not found.")  # pylint: disable=broad-exception-raised
-            return None
-        return {
-            input_field["name"]: input_field["value"]
-            for input_field in form.find_all("input", type="hidden")
-        }
-
     def extract_state_token(self, page_content):
         """Extract state token from a page."""
         soup = BeautifulSoup(page_content, "html.parser")
@@ -322,45 +310,9 @@ class Connection:
             )
 
             # Extract form data
-            mailform = self.extract_form_data(authorization_page, "emailPasswordForm")
             state_token = self.extract_state_token(authorization_page)
-            if mailform:
-                _LOGGER.debug("Legacy authentication found.")
-                mailform["email"] = self._session_auth_username
-                pe_url = auth_issuer + BeautifulSoup(
-                    authorization_page, "html.parser"
-                ).find("form", id="emailPasswordForm").get("action")
 
-                # POST email
-                # https://identity.vwgroup.io/signin-service/v1/{CLIENT_ID}/login/identifier
-                self._session_auth_headers["Referer"] = authorization_endpoint
-                self._session_auth_headers["Origin"] = auth_issuer
-                response_text = await self.post_form(
-                    self._session, pe_url, self._session_auth_headers, mailform
-                )
-
-                # Extract password form data
-                response_soup = BeautifulSoup(response_text, "html.parser")
-                pw_form, post_action, client_id = self.extract_password_form_data(
-                    response_soup
-                )
-
-                # Add password to form data
-                pw_form["password"] = self._session_auth_password
-                pw_url = f"{auth_issuer}/signin-service/v1/{client_id}/{post_action}"
-
-                # POST password
-                self._session_auth_headers["Referer"] = pe_url
-                redirect_location = await self.handle_login_with_password(
-                    self._session, pw_url, self._session_auth_headers, pw_form
-                )
-
-                # Handle redirects and extract tokens
-                redirect_response = await self.follow_redirects(
-                    self._session, pw_url, redirect_location
-                )
-                jwt_auth_code = parse_qs(urlparse(redirect_response).query)["code"][0]
-            elif state_token:
+            if state_token:
                 _LOGGER.debug(
                     "Legacy authentication not found. Trying new authentication flow."
                 )
