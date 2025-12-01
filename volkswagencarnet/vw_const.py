@@ -1,6 +1,6 @@
 """Constants for Volkswagen Connect library."""
 
-BASE_API = "https://identity.vwgroup.io"
+BASE_API = "https://emea.bff.cariad.digital"
 BRAND = "VW"
 COUNTRY = "DE"
 

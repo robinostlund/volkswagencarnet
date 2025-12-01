@@ -274,8 +274,12 @@ class Connection:
             max_depth -= 1
         return ref
 
-    async def _get_authorization_code(self) -> str:
+    async def _get_authorization_code(self, openid_config: dict) -> str:
         """Get authorization code from login flow.
+
+        Args:
+            openid_config: OpenID configuration dictionary containing
+                        authorization_endpoint and issuer
 
         Returns:
             Authorization code string
@@ -284,7 +288,6 @@ class Connection:
             AuthenticationError: If authorization fails
         """
         # Get OpenID configuration
-        openid_config = await self.get_openid_config()
         authorization_endpoint = openid_config["authorization_endpoint"]
         auth_issuer = openid_config["issuer"]
 
@@ -363,7 +366,7 @@ class Connection:
         Returns:
             True if tokens are valid and stored
         """
-        # Store directly as "identity" (no "Legacy" intermediate step)
+        # Store directly as "identity"
         self._session_tokens["identity"] = tokens
 
         # Verify tokens
@@ -399,7 +402,7 @@ class Connection:
             token_endpoint = openid_config["token_endpoint"]
 
             # Get authorization code (no client parameter)
-            auth_code = await self._get_authorization_code()
+            auth_code = await self._get_authorization_code(openid_config)
 
             # Exchange code for tokens (no client parameter)
             tokens = await self._exchange_code_for_tokens(auth_code, token_endpoint)
