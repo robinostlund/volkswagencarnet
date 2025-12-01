@@ -1207,7 +1207,9 @@ class Vehicle:
     @property
     def charging_time_left(self) -> int | None:
         """Return minutes to charging complete."""
-        return find_path(self.attrs, Paths.CHARGING_TIME_LEFT)
+        if is_valid_path(self.attrs, Paths.CHARGING_TIME_LEFT):
+            find_path(self.attrs, Paths.CHARGING_TIME_LEFT)
+        return None
 
     @property
     def charging_time_left_last_updated(self) -> datetime:
@@ -1217,7 +1219,7 @@ class Vehicle:
     @property
     def is_charging_time_left_supported(self) -> bool:
         """Return true if charging time left is supported."""
-        return is_valid_path(self.attrs, Paths.CHARGING_TIME_LEFT)
+        return is_valid_path(self.attrs, Paths.CHARGING_STATE)
 
     @property
     def external_power(self) -> bool:
