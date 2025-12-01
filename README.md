@@ -29,6 +29,7 @@ No licence, public domain, no guarantees, feel free to use for anything. Please 
 
 ## Thanks to
 
+- [stickpin](https://github.com/stickpin)
 - [Wez3](https://github.com/wez3)
 - [Reneboer](https://github.com/reneboer)
 - [Tubalainen](https://github.com/tubalainen)

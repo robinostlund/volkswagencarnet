@@ -21,7 +21,6 @@ class TwoVehiclesConnection(Connection):
     def __init__(self, sess, username="", password="", **kwargs):
         """Init."""
         super().__init__(session=sess, username=username, password=password)
-        self._jarCookie = MagicMock()
 
     async def doLogin(self, tries=1):
         """No-op update."""

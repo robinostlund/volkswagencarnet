@@ -1,19 +1,14 @@
 """Constants for Volkswagen Connect library."""
 
-BASE_SESSION = "https://msg.volkswagen.de"
-BASE_AUTH = "https://identity.vwgroup.io"
 BASE_API = "https://emea.bff.cariad.digital"
+BASE_IDENTITY = "https://identity.vwgroup.io"
 BRAND = "VW"
 COUNTRY = "DE"
 
 # Data used in communication
-CLIENT = {
-    "Legacy": {
-        "CLIENT_ID": "a24fba63-34b3-4d43-b181-942111e6bda8@apps_vw-dilab_com",
-        "SCOPE": "openid profile badge cars dealers vin",
-        "TOKEN_TYPES": "code",
-    }
-}
+CLIENT_ID = "a24fba63-34b3-4d43-b181-942111e6bda8@apps_vw-dilab_com"
+CLIENT_SCOPE = "openid profile badge cars dealers vin"
+CLIENT_TOKEN_TYPES = "code"
 
 USER_AGENT = "Volkswagen/3.51.1-android/14"
 APP_URI = "weconnect://authenticated"
