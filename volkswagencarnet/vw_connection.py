@@ -21,6 +21,7 @@ from .vw_const import (
     ANDROID_PACKAGE_NAME,
     APP_URI,
     BASE_API,
+    BASE_IDENTITY,
     BRAND,
     CLIENT_ID,
     CLIENT_SCOPE,
@@ -460,9 +461,7 @@ class Connection:
             if self._session_headers.get("identity", {}).get("refresh_token"):
                 _LOGGER.info("Revoking Identity Refresh Token")
                 params = {"token": self._session_tokens["identity"]["refresh_token"]}
-                await self.post(
-                    "https://emea.bff.cariad.digital/login/v1/idk/revoke", data=params
-                )
+                await self.post(f"{BASE_API}/login/v1/idk/revoke", data=params)
 
     # HTTP methods to API
     async def _request(self, method, url, return_raw=False, **kwargs):
@@ -1099,14 +1098,8 @@ class Connection:
     async def verify_tokens(self, token, type):
         """Verify JWT against JWK(s)."""
         if type == "identity":
-            req = await self._session.get(url="https://identity.vwgroup.io/v1/jwks")
+            req = await self._session.get(url=f"{BASE_IDENTITY}/v1/jwks")
             keys = await req.json()
-            audience = [
-                CLIENT_ID,  # Changed
-                "VWGMBB01DELIV1",
-                "https://api.vas.eu.dp15.vwg-connect.com",
-                "https://api.vas.eu.wcardp.io",
-            ]
         else:
             _LOGGER.debug("Not implemented")
             return False
@@ -1120,7 +1113,7 @@ class Connection:
             token_kid = jwt.get_unverified_header(token)["kid"]
 
             pubkey = pubkeys[token_kid]
-            jwt.decode(token, key=pubkey, algorithms=JWT_ALGORITHMS, audience=audience)
+            jwt.decode(token, key=pubkey, algorithms=JWT_ALGORITHMS, audience=CLIENT_ID)
         except Exception as error:  # pylint: disable=broad-exception-caught
             _LOGGER.debug("Failed to verify token, error: %s", error)
             return False
@@ -1143,7 +1136,7 @@ class Connection:
                 "client_id": CLIENT_ID,
             }
             response = await self._session.post(
-                url="https://emea.bff.cariad.digital/login/v1/idk/token",
+                url=f"{BASE_API}/login/v1/idk/token",
                 headers=tHeaders,
                 data=body,
             )
