@@ -9,8 +9,8 @@ import hashlib
 from json import dumps as to_json
 import logging
 from random import randint, random
-import re
 from urllib.parse import parse_qs, urljoin, urlparse
+from typing import Dict, Optional
 
 from aiohttp import ClientTimeout, client_exceptions
 from aiohttp.hdrs import METH_GET, METH_POST, METH_PUT
@@ -21,15 +21,24 @@ from .vw_const import (
     ANDROID_PACKAGE_NAME,
     APP_URI,
     BASE_API,
-    BASE_AUTH,
-    BASE_SESSION,
     BRAND,
-    CLIENT,
+    CLIENT_ID,
+    CLIENT_SCOPE,
+    CLIENT_TOKEN_TYPES,
     COUNTRY,
     HEADERS_AUTH,
     HEADERS_SESSION,
     USER_AGENT,
 )
+
+from .vw_exceptions import (
+    AuthenticationError,
+    APIError,
+    SPINError,
+    RedirectError,
+    RequestError,
+)
+
 from .vw_utilities import json_loads
 from .vw_vehicle import Vehicle
 
@@ -58,18 +67,11 @@ class Connection:
         interval=timedelta(minutes=5),
     ) -> None:
         """Initialize."""
-        self._x_client_id = None
         self._session = session
         self._session_fulldebug = fulldebug
         self._session_headers = HEADERS_SESSION.copy()
-        self._session_base = BASE_SESSION
         self._session_auth_headers = HEADERS_AUTH.copy()
-        self._session_auth_base = BASE_AUTH
         self._session_refresh_interval = interval
-
-        no_vin_key = ""
-        self._session_auth_ref_urls = {no_vin_key: BASE_SESSION}
-        self._session_spin_ref_urls = {no_vin_key: BASE_SESSION}
         self._session_logged_in = False
         self._session_first_update = False
         self._session_auth_username = username
@@ -79,10 +81,7 @@ class Connection:
 
         self._vehicles = []
 
-        _LOGGER.debug("Using service %s", self._session_base)
-
-        self._jarCookie = ""
-        self._state = {}
+        self._jarCookie = None
 
         self._service_status = {}
 
@@ -96,7 +95,7 @@ class Connection:
             _LOGGER.debug("Initiating new login")
 
             for i in range(tries):
-                self._session_logged_in = await self._login("Legacy")
+                self._session_logged_in = await self._login()
                 if self._session_logged_in:
                     break
                 if i > tries:
@@ -108,7 +107,6 @@ class Connection:
                 return False
 
             _LOGGER.info("Successfully logged in")
-            self._session_tokens["identity"] = self._session_tokens["Legacy"].copy()
 
             # Get list of vehicles from account
             _LOGGER.debug("Fetching vehicles associated with account")
@@ -129,7 +127,7 @@ class Connection:
             await self.update()
             return True
 
-    async def get_openid_config(self):
+    async def get_openid_config(self) -> Dict[str, str]:
         """Get OpenID config."""
         if self._session_fulldebug:
             _LOGGER.debug("Requesting openid config")
@@ -138,10 +136,12 @@ class Connection:
         )
         if req.status != 200:
             _LOGGER.error("Failed to get OpenID configuration, status: %s", req.status)
-            raise Exception("OpenID configuration error")  # pylint: disable=broad-exception-raised
+            raise AuthenticationError(
+                f"OpenID configuration error: status {req.status}"
+            )
         return await req.json()
 
-    async def get_authorization_page(self, authorization_endpoint, client):
+    async def get_authorization_page(self, authorization_endpoint: str) -> str:
         """Get authorization page (login page)."""
         # https://identity.vwgroup.io/oidc/v1/authorize?nonce={NONCE}&state={STATE}&response_type={TOKEN_TYPES}&scope={SCOPE}&redirect_uri={APP_URI}&client_id={CLIENT_ID}
         # https://identity.vwgroup.io/oidc/v1/authorize?client_id={CLIENT_ID}&scope={SCOPE}&response_type={TOKEN_TYPES}&redirect_uri={APP_URI}
@@ -160,18 +160,17 @@ class Connection:
                 allow_redirects=False,
                 params={
                     "redirect_uri": APP_URI,
-                    "response_type": CLIENT[client].get("TOKEN_TYPES"),
-                    "client_id": CLIENT[client].get("CLIENT_ID"),
-                    "scope": CLIENT[client].get("SCOPE"),
+                    "response_type": CLIENT_TOKEN_TYPES,
+                    "client_id": CLIENT_ID,
+                    "scope": CLIENT_SCOPE,
                 },
             )
 
             # Check if the response contains a redirect location
             location = req.headers.get("Location")
             if not location:
-                # pylint: disable=broad-exception-raised
-                raise Exception(
-                    f"Missing 'Location' header, payload returned: {await req.content.read()}"
+                raise AuthenticationError(
+                    f"Missing 'Location' header in authorization response. Payload returned: {await req.content.read()}"
                 )
 
             ref = urljoin(authorization_endpoint, location)
@@ -182,7 +181,7 @@ class Connection:
                     "error_description", ["No description"]
                 )[0]
                 _LOGGER.info("Authorization error: %s", error_description)
-                raise Exception(error_msg)  # pylint: disable=broad-exception-raised
+                raise AuthenticationError(f"{error_msg}: {error_description}")
 
             # If redirected, fetch the new location
             req = await self._session.get(
@@ -190,7 +189,7 @@ class Connection:
             )
 
             if req.status != 200:
-                raise Exception("Failed to fetch authorization endpoint")  # pylint: disable=broad-exception-raised
+                raise AuthenticationError("Failed to fetch authorization endpoint")
 
             return await req.text()
 
@@ -198,7 +197,7 @@ class Connection:
             _LOGGER.warning("Error during fetching authorization page: %s", str(e))
             raise
 
-    def extract_state_token(self, page_content):
+    def extract_state_token(self, page_content: str) -> Optional[str]:
         """Extract state token from a page."""
         soup = BeautifulSoup(page_content, "html.parser")
         state_input = soup.select_one('input[name="state"]')
@@ -207,33 +206,9 @@ class Connection:
             return None
         return state_input["value"]
 
-    def extract_password_form_data(self, soup):
-        """Extract password form data from a page."""
-        pw_form = {}
-        for script in soup.find_all("script"):
-            if "src" in script.attrs or not script.string:
-                continue
-            script_text = script.string
-
-            if "window._IDK" not in script_text:
-                continue  # Skip scripts that don't contain relevant data
-            if re.match('"errorCode":"', script_text):
-                raise Exception("Error code found in script data.")  # pylint: disable=broad-exception-raised
-
-            pw_form["relayState"] = re.search(
-                '"relayState":"([a-f0-9]*)"', script_text
-            )[1]
-            pw_form["hmac"] = re.search('"hmac":"([a-f0-9]*)"', script_text)[1]
-            pw_form["email"] = re.search('"email":"([^"]*)"', script_text)[1]
-            pw_form["_csrf"] = re.search("csrf_token:\\s*'([^\"']*)'", script_text)[1]
-
-            post_action = re.search('"postAction":\\s*"([^"\']*)"', script_text)[1]
-            client_id = re.search('"clientId":\\s*"([^"\']*)"', script_text)[1]
-            return pw_form, post_action, client_id
-
-        raise Exception("Password form data not found in script.")  # pylint: disable=broad-exception-raised
-
-    async def post_form(self, session, url, headers, form_data, redirect=True):
+    async def post_form(
+        self, session, url: str, headers: dict, form_data: dict, redirect: bool = True
+    ) -> str:
         """Post a form and check for success."""
         req = await session.post(
             url, headers=headers, data=form_data, allow_redirects=redirect
@@ -256,14 +231,19 @@ class Connection:
 
                 error_code = span.get("data-error-code")
                 if error_code == "wrong-email-credentials":
-                    raise Exception("Wrong username or password.")
+                    raise AuthenticationError("Wrong username or password")
 
             # Unknown 400 error
-            raise Exception("Unknown 400 error.")
+            raise AuthenticationError(
+                "Login form validation failed with unknown 400 error"
+            )
 
         # Any unexpected HTTP code
         if req.status not in (200, 400):
-            raise Exception("Form POST request failed.")
+            raise RequestError(
+                f"Login form submission failed with HTTP {req.status}. "
+                "This might indicate incorrect credentials or a temporary service issue."
+            )
 
         # Normal success path
         return await req.text()
@@ -272,118 +252,189 @@ class Connection:
         """Handle login with email and password."""
         return await self.post_form(session, url, auth_headers, form_data, False)
 
-    async def follow_redirects(self, session, pw_url, redirect_location):
+    async def follow_redirects(
+        self, session, pw_url: str, redirect_location: str
+    ) -> str:
         """Handle redirects."""
         ref = urljoin(pw_url, redirect_location)
         max_depth = 10
         while not ref.startswith(APP_URI):
             if max_depth == 0:
-                raise Exception("Too many redirects")  # pylint: disable=broad-exception-raised
+                raise RedirectError(
+                    f"Too many redirects during login flow (max depth: {max_depth}). "
+                    "This might indicate an authentication loop."
+                )
             response = await session.get(
                 url=ref, headers=self._session_auth_headers, allow_redirects=False
             )
             if "Location" not in response.headers:
                 _LOGGER.warning("Failed to find next redirect location")
-                raise Exception("Redirect error")  # pylint: disable=broad-exception-raised
+                raise RedirectError("Failed to find next redirect location")
             ref = urljoin(ref, response.headers["Location"])
             max_depth -= 1
         return ref
 
-    async def _login(self, client="Legacy"):
-        """Login function."""
+    async def _get_authorization_code(self) -> str:
+        """Get authorization code from login flow.
 
+        Returns:
+            Authorization code string
+
+        Raises:
+            AuthenticationError: If authorization fails
+        """
+        # Get OpenID configuration
+        openid_config = await self.get_openid_config()
+        authorization_endpoint = openid_config["authorization_endpoint"]
+        auth_issuer = openid_config["issuer"]
+
+        # Get authorization page
+        authorization_page = await self.get_authorization_page(authorization_endpoint)
+
+        # Extract form data
+        state_token = self.extract_state_token(authorization_page)
+
+        if not state_token:
+            _LOGGER.error(
+                "Unable to find valid login page. "
+                "Try logging in to the portal: https://www.myvolkswagen.net/"
+            )
+            raise AuthenticationError("Invalid login page - missing state token")
+
+        # Do login
+        login_form = {
+            "username": self._session_auth_username,
+            "password": self._session_auth_password,
+            "state": state_token,
+        }
+        login_url = f"{auth_issuer}/u/login?state={state_token}"
+
+        redirect_location = await self.post_form(
+            self._session,
+            login_url,
+            self._session_auth_headers,
+            login_form,
+            False,
+        )
+
+        # Handle redirects and extract tokens
+        redirect_response = await self.follow_redirects(
+            self._session, auth_issuer, redirect_location
+        )
+
+        jwt_auth_code = parse_qs(urlparse(redirect_response).query)["code"][0]
+        return jwt_auth_code
+
+    async def _exchange_code_for_tokens(
+        self, auth_code: str, token_endpoint: str
+    ) -> dict:
+        """Exchange authorization code for access tokens.
+
+        Args:
+            auth_code: Authorization code from login flow
+            token_endpoint: Token endpoint URL
+
+        Returns:
+            Dictionary containing tokens
+
+        Raises:
+            AuthenticationError: If token exchange fails
+        """
+        token_body = {
+            "client_id": CLIENT_ID,
+            "grant_type": "authorization_code",
+            "code": auth_code,
+            "redirect_uri": APP_URI,
+        }
+
+        # Token endpoint
+        token_response = await self.post_form(
+            self._session, token_endpoint, self._session_auth_headers, token_body
+        )
+
+        return json_loads(token_response)
+
+    async def _verify_and_store_tokens(self, tokens: dict) -> bool:
+        """Verify and store authentication tokens.
+
+        Args:
+            tokens: Token dictionary from authentication
+
+        Returns:
+            True if tokens are valid and stored
+        """
+        # Store directly as "identity" (no "Legacy" intermediate step)
+        self._session_tokens["identity"] = tokens
+
+        # Verify tokens
+        if not await self.verify_tokens(
+            self._session_tokens["identity"].get("id_token", ""), "identity"
+        ):
+            _LOGGER.warning("User identity token could not be verified!")
+            return False
+
+        _LOGGER.debug("User identity token verified successfully")
+
+        # Update authorization header
+        self._session_headers["Authorization"] = (
+            "Bearer " + self._session_tokens["identity"]["access_token"]
+        )
+
+        return True
+
+    async def _login(self) -> bool:
+        """Login function.
+
+        Returns:
+            True if login successful, False otherwise
+        """
         try:
             # Clear cookies and reset headers
             self._clear_cookies()
             self._session_headers = HEADERS_SESSION.copy()
             self._session_auth_headers = HEADERS_AUTH.copy()
 
-            # Get OpenID configuration
+            # Get OpenID configuration for token endpoint
             openid_config = await self.get_openid_config()
-            authorization_endpoint = openid_config["authorization_endpoint"]
             token_endpoint = openid_config["token_endpoint"]
-            auth_issuer = openid_config["issuer"]
 
-            # Get authorization page
-            authorization_page = await self.get_authorization_page(
-                authorization_endpoint, client
-            )
+            # Get authorization code (no client parameter)
+            auth_code = await self._get_authorization_code()
 
-            # Extract form data
-            state_token = self.extract_state_token(authorization_page)
+            # Exchange code for tokens (no client parameter)
+            tokens = await self._exchange_code_for_tokens(auth_code, token_endpoint)
 
-            if state_token:
-                _LOGGER.debug(
-                    "Legacy authentication not found. Trying new authentication flow."
-                )
-
-                # Do login
-                login_form = {}
-                login_form["username"] = self._session_auth_username
-                login_form["password"] = self._session_auth_password
-                login_form["state"] = state_token
-                login_url = f"{auth_issuer}/u/login?state={state_token}"
-
-                redirect_location = await self.post_form(
-                    self._session,
-                    login_url,
-                    self._session_auth_headers,
-                    login_form,
-                    False,
-                )
-
-                # Handle redirects and extract tokens
-                redirect_response = await self.follow_redirects(
-                    self._session, auth_issuer, redirect_location
-                )
-                jwt_auth_code = parse_qs(urlparse(redirect_response).query)["code"][0]
-            else:
-                _LOGGER.error(
-                    "Unable to find valid login page."
-                    "Try logging in to the portal: https://www.myvolkswagen.net/"
-                )
+            # Verify and store tokens (no client parameter)
+            if not await self._verify_and_store_tokens(tokens):
+                _LOGGER.warning("Token verification failed")
+                self._session_logged_in = False
                 return False
-
-            # Exchange authorization code for tokens
-            token_body = {
-                "client_id": CLIENT[client].get("CLIENT_ID"),
-                "grant_type": "authorization_code",
-                "code": jwt_auth_code,
-                "redirect_uri": APP_URI,
-            }
-
-            # Token endpoint
-            token_response = await self.post_form(
-                self._session, token_endpoint, self._session_auth_headers, token_body
-            )
-
-            # Store session tokens
-            self._session_tokens[client] = json_loads(token_response)
-
-            # Verify tokens
-            if not await self.verify_tokens(
-                self._session_tokens[client].get("id_token", ""), "identity"
-            ):
-                _LOGGER.warning("User identity token could not be verified!")
-            else:
-                _LOGGER.debug("User identity token verified successfully")
 
             # Mark session as logged in
             self._session_logged_in = True
+            return True
 
-        except Exception as error:  # pylint: disable=broad-exception-caught
-            _LOGGER.error("Login failed: %s", error)
+        except (AuthenticationError, RequestError, RedirectError) as error:
+            _LOGGER.error("Authentication error during login: %s", error)
             self._session_logged_in = False
             return False
-        self._session_headers["Authorization"] = (
-            "Bearer " + self._session_tokens[client]["access_token"]
-        )
-        return True
+        except client_exceptions.ClientError as error:
+            _LOGGER.error("Network error during login: %s", error)
+            self._session_logged_in = False
+            return False
+        except KeyError as error:
+            _LOGGER.error("Missing required data during login: %s", error)
+            self._session_logged_in = False
+            return False
+        except Exception as error:
+            _LOGGER.error("Unexpected error during login: %s", error)
+            self._session_logged_in = False
+            return False
 
     async def _handle_action_result(self, response_raw):
         response = await response_raw.json(loads=json_loads)
         if not response:
-            raise Exception("Invalid or no response")  # pylint: disable=broad-exception-raised
+            raise APIError("Invalid or no response from action endpoint")
         if response == 429:
             return {"id": None, "state": "Throttled"}
         request_id = response.get("data", {}).get("requestID", 0)
@@ -429,7 +480,7 @@ class Connection:
                 response.raise_for_status()
 
                 # Update cookie jar
-                if self._jarCookie != "":
+                if self._jarCookie is not None:
                     self._jarCookie.update(response.cookies)
                 else:
                     self._jarCookie = response.cookies
@@ -443,7 +494,7 @@ class Connection:
                             res = response
                         else:
                             res = {"status_code": response.status}
-                    elif response.status >= 200 or response.status <= 300:
+                    elif 200 <= response.status < 300:
                         res = await response.json(loads=json_loads)
                     else:
                         res = {}
@@ -570,13 +621,13 @@ class Connection:
                 _LOGGER.warning("Login for %s account failed!", BRAND)
                 return False
         try:
-            if not await self.validate_tokens:
+            if not await self.validate_tokens():
                 _LOGGER.info(
                     "Session expired. Initiating new login for %s account", BRAND
                 )
                 if not await self.doLogin():
                     _LOGGER.warning("Login for %s account failed!", BRAND)
-                    raise Exception(f"Login for {BRAND} account failed")  # pylint: disable=broad-exception-raised
+                    raise AuthenticationError(f"Login for {BRAND} account failed")
             else:
                 _LOGGER.debug("Going to call vehicle updates")
                 # Get all Vehicle objects and update in parallell
@@ -591,7 +642,7 @@ class Connection:
 
     async def getPendingRequests(self, vin):
         """Get status information for pending requests."""
-        if not await self.validate_tokens:
+        if not await self.validate_tokens():
             return False
         try:
             response = await self.get(
@@ -610,7 +661,7 @@ class Connection:
 
     async def getOperationList(self, vin):
         """Collect operationlist for VIN, supported/licensed functions."""
-        if not await self.validate_tokens:
+        if not await self.validate_tokens():
             return False
         try:
             response = await self.get(
@@ -634,7 +685,7 @@ class Connection:
 
     async def getSelectiveStatus(self, vin, services):
         """Get status information for specified services."""
-        if not await self.validate_tokens:
+        if not await self.validate_tokens():
             return False
         try:
             response = await self.get(
@@ -659,7 +710,7 @@ class Connection:
 
     async def getVehicleData(self, vin):
         """Get car information like VIN, nickname, etc."""
-        if not await self.validate_tokens:
+        if not await self.validate_tokens():
             return False
         try:
             response = await self.get(f"{BASE_API}/vehicle/v2/vehicles", "")
@@ -676,7 +727,7 @@ class Connection:
 
     async def getParkingPosition(self, vin):
         """Get information about the parking position."""
-        if not await self.validate_tokens:
+        if not await self.validate_tokens():
             return False
         try:
             response = await self.get(
@@ -706,7 +757,7 @@ class Connection:
 
     async def getTripLast(self, vin):
         """Get car information like VIN, nickname, etc."""
-        if not await self.validate_tokens:
+        if not await self.validate_tokens():
             return False
         try:
             response = await self.get(
@@ -725,7 +776,7 @@ class Connection:
 
     async def getTripRefuel(self, vin):
         """Get information about the trip since last refuel"""
-        if not await self.validate_tokens:
+        if not await self.validate_tokens():
             return False
         try:
             response = await self.get(
@@ -744,7 +795,7 @@ class Connection:
 
     async def getTripLongterm(self, vin):
         """Get information about the trip last longterm"""
-        if not await self.validate_tokens:
+        if not await self.validate_tokens():
             return False
         try:
             response = await self.get(
@@ -763,7 +814,7 @@ class Connection:
 
     async def wakeUpVehicle(self, vin):
         """Wake up vehicle to send updated data to VW Backend."""
-        if not await self.validate_tokens:
+        if not await self.validate_tokens():
             return False
         try:
             return await self.post(
@@ -781,15 +832,15 @@ class Connection:
         if self.logged_in is False:
             if not await self.doLogin():
                 _LOGGER.warning("Login for %s account failed!", BRAND)
-                raise Exception(f"Login for {BRAND} account failed")  # pylint: disable=broad-exception-raised
+                raise AuthenticationError(f"Login for {BRAND} account failed")
         try:
-            if not await self.validate_tokens:
+            if not await self.validate_tokens():
                 _LOGGER.info(
                     "Session expired. Initiating new login for %s account", BRAND
                 )
                 if not await self.doLogin():
                     _LOGGER.warning("Login for %s account failed!", BRAND)
-                    raise Exception(f"Login for {BRAND} account failed")  # pylint: disable=broad-exception-raised
+                    raise AuthenticationError(f"Login for {BRAND} account failed")
 
             response = await self.getPendingRequests(vin)
 
@@ -814,7 +865,7 @@ class Connection:
                 status = result
         except Exception as error:
             _LOGGER.warning("Failure during get request status: %s", error)
-            raise Exception(f"Failure during get request status: {error}") from error  # pylint: disable=broad-exception-raised
+            raise RequestError(f"Failure during get request status: {error}") from error
         else:
             return status
 
@@ -823,11 +874,10 @@ class Connection:
         result = await self.get(f"{BASE_API}/vehicle/v1/spin/state")
         remainingTries = result.get("remainingTries", None)
         if remainingTries is None:
-            raise Exception("Couldn't determine S-PIN state.")  # pylint: disable=broad-exception-raised
+            raise SPINError("Couldn't determine S-PIN state")
 
         if remainingTries < 3:
-            # pylint: disable=broad-exception-raised
-            raise Exception(
+            raise SPINError(
                 "Remaining tries for S-PIN is < 3. Bailing out for security reasons. "
                 "To resume operation, please make sure the correct S-PIN has been set in the integration "
                 "and then use the correct S-PIN once via the Volkswagen app."
@@ -846,7 +896,7 @@ class Connection:
             )
             return await self._handle_action_result(response_raw)
         except Exception as e:
-            raise Exception("Unknown error during setClimater") from e  # pylint: disable=broad-exception-raised
+            raise APIError(f"Unknown error during setClimater: {str(e)}") from e
 
     async def setClimaterSettings(self, vin, data):
         """Execute climatisation settings."""
@@ -858,7 +908,7 @@ class Connection:
             )
             return await self._handle_action_result(response_raw)
         except Exception as e:
-            raise Exception("Unknown error during setClimaterSettings") from e  # pylint: disable=broad-exception-raised
+            raise APIError(f"Unknown error during setClimaterSettings: {str(e)}") from e
 
     async def setAuxiliary(self, vin, data, action):
         """Execute auxiliary climatisation actions."""
@@ -871,7 +921,7 @@ class Connection:
             )
             return await self._handle_action_result(response_raw)
         except Exception as e:
-            raise Exception("Unknown error during setAuxiliary") from e  # pylint: disable=broad-exception-raised
+            raise APIError(f"Unknown error during setAuxiliary: {str(e)}") from e
 
     async def setWindowHeater(self, vin, action):
         """Execute window heating actions."""
@@ -884,7 +934,7 @@ class Connection:
             )
             return await self._handle_action_result(response_raw)
         except Exception as e:
-            raise Exception("Unknown error during setWindowHeater") from e  # pylint: disable=broad-exception-raised
+            raise APIError(f"Unknown error during setWindowHeater: {str(e)}") from e
 
     async def setCharging(self, vin, action):
         """Execute charging actions."""
@@ -897,7 +947,7 @@ class Connection:
             )
             return await self._handle_action_result(response_raw)
         except Exception as e:
-            raise Exception("Unknown error during setCharging") from e  # pylint: disable=broad-exception-raised
+            raise APIError(f"Unknown error during setCharging: {str(e)}") from e
 
     async def setChargingSettings(self, vin, data):
         """Execute charging actions."""
@@ -909,7 +959,7 @@ class Connection:
             )
             return await self._handle_action_result(response_raw)
         except Exception as e:
-            raise Exception("Unknown error during setChargingSettings") from e  # pylint: disable=broad-exception-raised
+            raise APIError(f"Unknown error during setChargingSettings: {str(e)}") from e
 
     async def setChargingCareModeSettings(self, vin, data):
         """Execute battery care mode actions."""
@@ -921,7 +971,9 @@ class Connection:
             )
             return await self._handle_action_result(response_raw)
         except Exception as e:
-            raise Exception("Unknown error during setChargingCareModeSettings") from e  # pylint: disable=broad-exception-raised
+            raise APIError(
+                f"Unknown error during setChargingCareModeSettings: {str(e)}"
+            ) from e
 
     async def setReadinessBatterySupport(self, vin, data):
         """Execute readiness battery support actions."""
@@ -933,7 +985,9 @@ class Connection:
             )
             return await self._handle_action_result(response_raw)
         except Exception as e:
-            raise Exception("Unknown error during setReadinessBatterySupport") from e  # pylint: disable=broad-exception-raised
+            raise APIError(
+                f"Unknown error during setReadinessBatterySupport: {str(e)}"
+            ) from e
 
     async def setDepartureProfiles(self, vin, data):
         """Execute departure timers actions."""
@@ -945,7 +999,9 @@ class Connection:
             )
             return await self._handle_action_result(response_raw)
         except Exception as e:
-            raise Exception("Unknown error during setDepartureProfiles") from e  # pylint: disable=broad-exception-raised
+            raise APIError(
+                f"Unknown error during setDepartureProfiles: {str(e)}"
+            ) from e
 
     async def setClimatisationTimers(self, vin, data):
         """Execute climatisation timers actions."""
@@ -957,7 +1013,9 @@ class Connection:
             )
             return await self._handle_action_result(response_raw)
         except Exception as e:
-            raise Exception("Unknown error during setClimatisationTimers") from e  # pylint: disable=broad-exception-raised
+            raise APIError(
+                f"Unknown error during setClimatisationTimers: {str(e)}"
+            ) from e
 
     async def setAuxiliaryHeatingTimers(self, vin, data):
         """Execute auxiliary heating timers actions."""
@@ -969,7 +1027,9 @@ class Connection:
             )
             return await self._handle_action_result(response_raw)
         except Exception as e:
-            raise Exception("Unknown error during setAuxiliaryHeatingTimers") from e  # pylint: disable=broad-exception-raised
+            raise APIError(
+                f"Unknown error during setAuxiliaryHeatingTimers: {str(e)}"
+            ) from e
 
     async def setDepartureTimers(self, vin, data):
         """Execute departure timers actions."""
@@ -981,7 +1041,7 @@ class Connection:
             )
             return await self._handle_action_result(response_raw)
         except Exception as e:
-            raise Exception("Unknown error during setDepartureTimers") from e  # pylint: disable=broad-exception-raised
+            raise APIError(f"Unknown error during setDepartureTimers: {str(e)}") from e
 
     async def setLock(self, vin, lock, spin):
         """Remote lock and unlock actions."""
@@ -995,11 +1055,10 @@ class Connection:
             )
             return await self._handle_action_result(response_raw)
         except Exception as e:
-            raise Exception("Unknown error during setLock") from e  # pylint: disable=broad-exception-raised
+            raise APIError(f"Unknown error during setLock: {str(e)}") from e
 
     # Token handling #
-    @property
-    async def validate_tokens(self):
+    async def validate_tokens(self) -> bool:
         """Validate expiry of tokens."""
         idtoken = self._session_tokens["identity"]["id_token"]
         atoken = self._session_tokens["identity"]["access_token"]
@@ -1034,13 +1093,13 @@ class Connection:
                 return False
         return True
 
-    async def verify_tokens(self, token, type, client="Legacy"):
+    async def verify_tokens(self, token, type):
         """Verify JWT against JWK(s)."""
         if type == "identity":
             req = await self._session.get(url="https://identity.vwgroup.io/v1/jwks")
             keys = await req.json()
             audience = [
-                CLIENT[client].get("CLIENT_ID"),
+                CLIENT_ID,  # Changed
                 "VWGMBB01DELIV1",
                 "https://api.vas.eu.dp15.vwg-connect.com",
                 "https://api.vas.eu.wcardp.io",
@@ -1078,7 +1137,7 @@ class Connection:
             body = {
                 "grant_type": "refresh_token",
                 "refresh_token": self._session_tokens["identity"]["refresh_token"],
-                "client_id": CLIENT["Legacy"]["CLIENT_ID"],
+                "client_id": CLIENT_ID,
             }
             response = await self._session.post(
                 url="https://emea.bff.cariad.digital/login/v1/idk/token",
@@ -1174,11 +1233,10 @@ class Connection:
         spinArray.extend(byteChallenge)
         return hashlib.sha512(spinArray).hexdigest()
 
-    @property
-    async def validate_login(self):
+    async def validate_login(self) -> bool:
         """Check that we have a valid access token."""
         try:
-            if not await self.validate_tokens:
+            if not await self.validate_tokens():
                 return False
         except OSError as error:
             _LOGGER.warning("Could not validate login: %s", error)
