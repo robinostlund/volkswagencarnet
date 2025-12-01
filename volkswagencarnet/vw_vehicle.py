@@ -2724,20 +2724,6 @@ class Vehicle:
         return self._is_trip_supported(Services.TRIP_LAST, "mileage_km")
 
     @property
-    def last_trip_recuperation(self):
-        # Not implemented
-        return self._get_trip_value(Services.TRIP_LAST, "recuperation")
-
-    @property
-    def last_trip_recuperation_last_updated(self):
-        return self._get_trip_value(Services.TRIP_LAST, "tripEndTimestamp")
-
-    @property
-    def is_last_trip_recuperation_supported(self):
-        # Not implemented
-        return self._is_trip_supported(Services.TRIP_LAST, "recuperation")
-
-    @property
     def last_trip_average_recuperation(self):
         return self._get_trip_value(Services.TRIP_LAST, "averageRecuperation")
 
@@ -2877,20 +2863,6 @@ class Vehicle:
     @property
     def is_refuel_trip_length_supported(self):
         return self._is_trip_supported(Services.TRIP_REFUEL, "mileage_km")
-
-    @property
-    def refuel_trip_recuperation(self):
-        # Not implemented
-        return self._get_trip_value(Services.TRIP_REFUEL, "recuperation")
-
-    @property
-    def refuel_trip_recuperation_last_updated(self):
-        return self._get_trip_value(Services.TRIP_REFUEL, "tripEndTimestamp")
-
-    @property
-    def is_refuel_trip_recuperation_supported(self):
-        # Not implemented
-        return self._is_trip_supported(Services.TRIP_REFUEL, "recuperation")
 
     @property
     def refuel_trip_average_recuperation(self):
@@ -3036,20 +3008,6 @@ class Vehicle:
     @property
     def is_longterm_trip_length_supported(self):
         return self._is_trip_supported(Services.TRIP_LONGTERM, "mileage_km")
-
-    @property
-    def longterm_trip_recuperation(self):
-        # Not implemented
-        return self._get_trip_value(Services.TRIP_LONGTERM, "recuperation")
-
-    @property
-    def longterm_trip_recuperation_last_updated(self):
-        return self._get_trip_value(Services.TRIP_LONGTERM, "tripEndTimestamp")
-
-    @property
-    def is_longterm_trip_recuperation_supported(self):
-        # Not implemented
-        return self._is_trip_supported(Services.TRIP_LONGTERM, "recuperation")
 
     @property
     def longterm_trip_average_recuperation(self):

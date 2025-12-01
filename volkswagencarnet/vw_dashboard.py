@@ -1825,18 +1825,6 @@ _INSTRUMENT_DEFS = [
         Sensor,
         [],
         {
-            "attr": "last_trip_recuperation",
-            "name": "Last trip recuperation",
-            "icon": "mdi:battery-plus",
-            "unit": "kWh/100km",
-            "device_class": VWDeviceClass.ENERGY_DISTANCE,
-            "state_class": VWStateClass.MEASUREMENT,
-        },
-    ),
-    (
-        Sensor,
-        [],
-        {
             "attr": "last_trip_average_recuperation",
             "name": "Last trip average recuperation",
             "icon": "mdi:battery-plus",
@@ -1878,7 +1866,7 @@ _INSTRUMENT_DEFS = [
             "icon": "mdi:car-battery",
             "unit": "kWh",
             "device_class": VWDeviceClass.ENERGY,
-            "state_class": VWStateClass.MEASUREMENT,
+            "state_class": VWStateClass.TOTAL_INCREASING,
         },
     ),
     (
@@ -1967,18 +1955,6 @@ _INSTRUMENT_DEFS = [
         Sensor,
         [],
         {
-            "attr": "refuel_trip_recuperation",
-            "name": "Refuel trip recuperation",
-            "icon": "mdi:battery-plus",
-            "unit": "kWh/100km",
-            "device_class": VWDeviceClass.ENERGY_DISTANCE,
-            "state_class": VWStateClass.MEASUREMENT,
-        },
-    ),
-    (
-        Sensor,
-        [],
-        {
             "attr": "refuel_trip_average_recuperation",
             "name": "Refuel trip average recuperation",
             "icon": "mdi:battery-plus",
@@ -2018,9 +1994,9 @@ _INSTRUMENT_DEFS = [
             "attr": "refuel_trip_total_electric_consumption",
             "name": "Refuel trip total electric consumption",
             "icon": "mdi:car-battery",
-            "unit": "kWh/100km",
-            "device_class": VWDeviceClass.ENERGY_DISTANCE,
-            "state_class": VWStateClass.MEASUREMENT,
+            "unit": "kWh",
+            "device_class": VWDeviceClass.ENERGY,
+            "state_class": VWStateClass.TOTAL_INCREASING,
         },
     ),
     (
@@ -2109,18 +2085,6 @@ _INSTRUMENT_DEFS = [
         Sensor,
         [],
         {
-            "attr": "longterm_trip_recuperation",
-            "name": "Long-term trip recuperation",
-            "icon": "mdi:battery-plus",
-            "unit": "kWh/100km",
-            "device_class": VWDeviceClass.ENERGY_DISTANCE,
-            "state_class": VWStateClass.MEASUREMENT,
-        },
-    ),
-    (
-        Sensor,
-        [],
-        {
             "attr": "longterm_trip_average_recuperation",
             "name": "Long-term trip average recuperation",
             "icon": "mdi:battery-plus",
@@ -2160,9 +2124,9 @@ _INSTRUMENT_DEFS = [
             "attr": "longterm_trip_total_electric_consumption",
             "name": "Long-term trip total electric consumption",
             "icon": "mdi:car-battery",
-            "unit": "kWh/100km",
-            "device_class": VWDeviceClass.ENERGY_DISTANCE,
-            "state_class": VWStateClass.MEASUREMENT,
+            "unit": "kWh",
+            "device_class": VWDeviceClass.ENERGY,
+            "state_class": VWStateClass.TOTAL_INCREASING,
         },
     ),
     (
