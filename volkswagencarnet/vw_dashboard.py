@@ -165,12 +165,12 @@ class Sensor(Instrument):
                 self.unit = "mi"
                 self.convert = True
             elif self.unit == "km/h":
-                self.unit = "mi/h"
+                self.unit = "mph"
                 self.convert = True
-            elif self.unit == "l/100 km":
-                self.unit = "l/100 mi"
+            elif self.unit == "L/100km":
+                self.unit = "L/100mi"
                 self.convert = True
-            elif self.unit == "kWh/100 km":
+            elif self.unit == "kWh/100km":
                 self.unit = "mi/kWh"
                 self.convert = True
         elif self.unit and scandinavian_miles:
@@ -178,10 +178,10 @@ class Sensor(Instrument):
                 self.unit = "mil"
             elif self.unit == "km/h":
                 self.unit = "mil/h"
-            elif self.unit == "l/100 km":
-                self.unit = "l/100 mil"
-            elif self.unit == "kWh/100 km":
-                self.unit = "kWh/100 mil"
+            elif self.unit == "L/100km":
+                self.unit = "L/100mil"
+            elif self.unit == "kWh/100km":
+                self.unit = "kWh/100mil"
 
     @property
     def is_mutable(self):
