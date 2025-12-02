@@ -1208,7 +1208,7 @@ class Vehicle:
     def charging_time_left(self) -> int | None:
         """Return minutes to charging complete."""
         if is_valid_path(self.attrs, Paths.CHARGING_TIME_LEFT):
-            find_path(self.attrs, Paths.CHARGING_TIME_LEFT)
+            return find_path(self.attrs, Paths.CHARGING_TIME_LEFT)
         return None
 
     @property
