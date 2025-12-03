@@ -161,17 +161,8 @@ class Sensor(Instrument):
     def configurate(self, miles=False, scandinavian_miles=False, **config):
         """Configure unit conversion."""
         if self.unit and miles:
-            if self.unit == "km":
-                self.unit = "mi"
-                self.convert = True
-            elif self.unit == "km/h":
-                self.unit = "mph"
-                self.convert = True
-            elif self.unit == "L/100km":
+            if self.unit == "L/100km":
                 self.unit = "mpg"
-                self.convert = True
-            elif self.unit == "kWh/100km":
-                self.unit = "mi/kWh"
                 self.convert = True
         elif self.unit and scandinavian_miles:
             if self.unit == "km":
@@ -205,17 +196,8 @@ class Sensor(Instrument):
             return val
         # Simplified condition checking
         if self.unit:
-            if "mi" in self.unit:
-                if self.unit in ["mi", "mph"]:
-                    return round(int(val) * 0.6213712)
-            if "gal/100mi" in self.unit:
-                return round(val * 0.4251438, 1)
             if "mpg" in self.unit:
                 return round(282.48 / val, 1)
-            if "mi/kWh" in self.unit:
-                return round((100 / val) * 0.6213712, 1)
-            if "°F" in self.unit:
-                return round((val * 9 / 5) + 32, 1)
             if self.unit in ["mil", "mil/h"]:
                 return val / 10
         # Default case, return the unmodified value

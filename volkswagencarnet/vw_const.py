@@ -35,7 +35,6 @@ HEADERS_AUTH = {
 }
 
 TEMP_CELSIUS: str = "°C"
-TEMP_FAHRENHEIT: str = "°F"
 
 
 class VWStateClass:
