@@ -1502,6 +1502,7 @@ _INSTRUMENT_DEFS = [
             "icon": "mdi:thermometer-chevron-down",
             "unit": TEMP_CELSIUS,
             "device_class": VWDeviceClass.TEMPERATURE,
+            "state_class": VWStateClass.MEASUREMENT,
         },
     ),
     (
@@ -1513,6 +1514,7 @@ _INSTRUMENT_DEFS = [
             "icon": "mdi:thermometer-chevron-up",
             "unit": TEMP_CELSIUS,
             "device_class": VWDeviceClass.TEMPERATURE,
+            "state_class": VWStateClass.MEASUREMENT,
         },
     ),
     (
