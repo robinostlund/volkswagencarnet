@@ -79,8 +79,8 @@ def find_path(
         # Get the current path segment that failed
         failed_segment = path[0] if path and len(path) > 0 else "unknown"
 
-        _LOGGER.debug(
-            "'%s' not found in source in the original path '%s'",
+        _LOGGER.error(
+            "'%s' not found in the original path '%s'",
             failed_segment,
             original_path_str,
         )
