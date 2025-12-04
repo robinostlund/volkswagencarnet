@@ -26,7 +26,9 @@ def obj_parser(obj: dict[str, Any]) -> dict[str, Any]:
     return obj
 
 
-def find_path(src: dict | list, path: str | list | None) -> Any:
+def find_path(
+    src: dict | list, path: str | list | None, _original_path: str | list | None = None
+) -> Any:
     """Return data at path in source.
 
     Simple navigation of a hierarchical dict/list structure using dot notation.
@@ -34,6 +36,7 @@ def find_path(src: dict | list, path: str | list | None) -> Any:
     Args:
         src: Dictionary or list to search
         path: Dot-separated path (e.g., 'a.b.c') or list of keys
+        _original_path: Internal parameter to track the full original path for error logging
 
     Returns:
         Value at path or None if not found
@@ -47,6 +50,10 @@ def find_path(src: dict | list, path: str | list | None) -> Any:
         1
         >>> find_path({"a": 1}, "b")
     """
+    # Store the original path on first call
+    if _original_path is None:
+        _original_path = path
+
     try:
         if not path:
             return src
@@ -56,15 +63,27 @@ def find_path(src: dict | list, path: str | list | None) -> Any:
             try:
                 f = float(path[0])
                 if f.is_integer() and len(src) > 0:
-                    return find_path(src[int(f)], path[1:])
+                    return find_path(src[int(f)], path[1:], _original_path)
                 raise KeyError("Key not found")
             except ValueError as valerr:
                 raise KeyError(f"{path[0]} should be an integer") from valerr
             except IndexError as idxerr:
                 raise KeyError("Index out of range") from idxerr
-        return find_path(src[path[0]], path[1:])
+        return find_path(src[path[0]], path[1:], _original_path)
     except KeyError:
-        _LOGGER.error("Path '%s' not found in source", path)
+        # Format the original path for display
+        original_path_str = _original_path
+        if isinstance(_original_path, list):
+            original_path_str = ".".join(str(p) for p in _original_path)
+
+        # Get the current path segment that failed
+        failed_segment = path[0] if path and len(path) > 0 else "unknown"
+
+        _LOGGER.error(
+            "'%s' not found in source in the original path '%s'",
+            failed_segment,
+            original_path_str,
+        )
         return None
 
 

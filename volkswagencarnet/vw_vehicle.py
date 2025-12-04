@@ -1374,9 +1374,11 @@ class Vehicle:
         return output
 
     @property
-    def position_last_updated(self) -> datetime:
+    def position_last_updated(self) -> datetime | str:
         """Return position last updated."""
-        return find_path(self.attrs, Paths.PARKING_TS) or "Unknown"
+        return self.attrs.get("parkingposition", {}).get(
+            "carCapturedTimestamp", "Unknown"
+        )
 
     @property
     def is_position_supported(self) -> bool:
