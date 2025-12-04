@@ -1275,13 +1275,7 @@ class Vehicle:
     @property
     def battery_care_mode(self) -> bool:
         """Return battery care mode state."""
-        return (
-            find_path(
-                self.attrs,
-                f"{Services.BATTERY_CHARGING_CARE}.chargingCareSettings.value.batteryCareMode",
-            )
-            == "activated"
-        )
+        return find_path(self.attrs, Paths.BATTERY_CARE_MODE) == "activated"
 
     @property
     def battery_care_mode_last_updated(self) -> datetime:
@@ -1291,21 +1285,12 @@ class Vehicle:
     @property
     def is_battery_care_mode_supported(self) -> bool:
         """Return true if battery care mode is supported."""
-        return is_valid_path(
-            self.attrs,
-            f"{Services.BATTERY_CHARGING_CARE}.chargingCareSettings.value.batteryCareMode",
-        )
+        return is_valid_path(self.attrs, Paths.BATTERY_CARE_MODE)
 
     @property
     def optimised_battery_use(self) -> bool:
         """Return optimised battery use state."""
-        return (
-            find_path(
-                self.attrs,
-                f"{Services.BATTERY_SUPPORT}.batterySupportStatus.value.batterySupport",
-            )
-            == "enabled"
-        )
+        return find_path(self.attrs, Paths.BATTERY_SUPPORT) == "enabled"
 
     @property
     def optimised_battery_use_last_updated(self) -> datetime:
@@ -1315,10 +1300,7 @@ class Vehicle:
     @property
     def is_optimised_battery_use_supported(self) -> bool:
         """Return true if optimised battery use is supported."""
-        return is_valid_path(
-            self.attrs,
-            f"{Services.BATTERY_SUPPORT}.batterySupportStatus.value.batterySupport",
-        )
+        return is_valid_path(self.attrs, Paths.BATTERY_SUPPORT)
 
     @property
     def energy_flow(self):
@@ -1791,15 +1773,11 @@ class Vehicle:
         """Return true if vehicle has auxiliary climatisation."""
         if is_valid_path(
             self.attrs,
-            f"{Services.CLIMATISATION}.auxiliaryHeatingStatus.value.climatisationState",
+            Paths.CLIMATISATION_AUX_STATE,
         ):
             return True
-        if is_valid_path(
-            self.attrs, f"{Services.USER_CAPABILITIES}.capabilitiesStatus.value"
-        ):
-            capabilities = find_path(
-                self.attrs, f"{Services.USER_CAPABILITIES}.capabilitiesStatus.value"
-            )
+        if is_valid_path(self.attrs, Paths.USER_CAPABILITIES):
+            capabilities = find_path(self.attrs, Paths.USER_CAPABILITIES)
             for capability in capabilities:
                 if capability.get("id", None) == "hybridCarAuxiliaryHeating":
                     if 1007 in capability.get("status", []):

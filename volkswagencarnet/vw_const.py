@@ -360,9 +360,12 @@ class Paths:
 
     # User Capabilities (for auxiliary climatisation detection)
     USER_CAPABILITIES = f"{Services.USER_CAPABILITIES}.capabilitiesStatus.value"
-    CLIMATISATION_AUX_STATE_LEGACY = (
-        f"{Services.CLIMATISATION}.auxiliaryHeatingStatus.value.climatisationState"
-    )
+
+    # Battery Charging Care Settings (add after BATTERY_CARE_MODE)
+    BATTERY_CARE_MODE_TS = f"{Services.BATTERY_CHARGING_CARE}.chargingCareSettings.value.carCapturedTimestamp"
+
+    # Battery Support Settings (add after BATTERY_SUPPORT)
+    BATTERY_SUPPORT_TS = f"{Services.BATTERY_SUPPORT}.batterySupportStatus.value.carCapturedTimestamp"
 
     # Parking Position
     PARKING_LAT = "parkingposition.lat"
