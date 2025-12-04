@@ -365,7 +365,9 @@ class Paths:
     BATTERY_CARE_MODE_TS = f"{Services.BATTERY_CHARGING_CARE}.chargingCareSettings.value.carCapturedTimestamp"
 
     # Battery Support Settings (add after BATTERY_SUPPORT)
-    BATTERY_SUPPORT_TS = f"{Services.BATTERY_SUPPORT}.batterySupportStatus.value.carCapturedTimestamp"
+    BATTERY_SUPPORT_TS = (
+        f"{Services.BATTERY_SUPPORT}.batterySupportStatus.value.carCapturedTimestamp"
+    )
 
     # Parking Position
     PARKING_LAT = "parkingposition.lat"
