@@ -21,7 +21,6 @@ from .vw_const import (
     ANDROID_PACKAGE_NAME,
     APP_URI,
     BASE_API,
-    BASE_IDENTITY,
     BRAND,
     CLIENT_ID,
     CLIENT_SCOPE,
@@ -358,38 +357,6 @@ class Connection:
 
         return json_loads(token_response)
 
-    async def _verify_and_store_tokens(self, tokens: dict) -> bool:
-        """Verify and store authentication tokens.
-
-        Args:
-            tokens: Token dictionary from authentication
-
-        Returns:
-            True if tokens are valid and stored
-        """
-        # Store directly as "identity"
-        self._session_tokens["identity"] = tokens
-
-        # Verify tokens
-        if not await self.verify_tokens(
-            self._session_tokens["identity"].get("id_token", ""), "identity"
-        ):
-            _LOGGER.warning("User identity token could not be verified!")
-            _LOGGER.debug(
-                "Invalid identity token: %s",
-                self._session_tokens["identity"].get("id_token", ""),
-            )
-            return False
-
-        _LOGGER.debug("User identity token verified successfully")
-
-        # Update authorization header
-        self._session_headers["Authorization"] = (
-            "Bearer " + self._session_tokens["identity"]["access_token"]
-        )
-
-        return True
-
     async def _login(self) -> bool:
         """Login function.
 
@@ -412,11 +379,25 @@ class Connection:
             # Exchange code for tokens
             tokens = await self._exchange_code_for_tokens(auth_code, token_endpoint)
 
-            # Verify and store tokens
-            if not await self._verify_and_store_tokens(tokens):
-                _LOGGER.warning("Token verification failed")
+            # Validate token structure
+            required_keys = ["access_token", "id_token", "token_type"]
+            if not all(key in tokens for key in required_keys):
+                _LOGGER.error(
+                    "Invalid token response. Missing required keys. Got: %s",
+                    list(tokens.keys()),
+                )
                 self._session_logged_in = False
                 return False
+
+            # Store directly as "identity"
+            self._session_tokens["identity"] = tokens
+
+            # Update authorization header
+            self._session_headers["Authorization"] = (
+                "Bearer " + self._session_tokens["identity"]["access_token"]
+            )
+
+            _LOGGER.debug("Successfully stored authentication tokens")
 
             # Mark session as logged in
             self._session_logged_in = True
@@ -1066,8 +1047,12 @@ class Connection:
     # Token handling #
     async def validate_tokens(self) -> bool:
         """Validate expiry of tokens."""
-        idtoken = self._session_tokens["identity"]["id_token"]
-        atoken = self._session_tokens["identity"]["access_token"]
+        try:
+            idtoken = self._session_tokens["identity"]["id_token"]
+            atoken = self._session_tokens["identity"]["access_token"]
+        except KeyError as error:
+            _LOGGER.warning("Token validation failed - missing token data: %s", error)
+            return False
         id_exp = jwt.decode(
             idtoken,
             options={"verify_signature": False, "verify_aud": False},
@@ -1099,36 +1084,6 @@ class Connection:
                 return False
         return True
 
-    async def verify_tokens(self, token, type):
-        """Verify JWT against JWK(s)."""
-        if type == "identity":
-            req = await self._session.get(url=f"{BASE_IDENTITY}/v1/jwks")
-            keys = await req.json()
-            audience = [
-                CLIENT_ID,
-                "VWGMBB01DELIV1",
-                "https://api.vas.eu.dp15.vwg-connect.com",
-                "https://api.vas.eu.wcardp.io",
-            ]
-        else:
-            _LOGGER.debug("Not implemented")
-            return False
-        try:
-            pubkeys = {}
-            for jwk in keys["keys"]:
-                kid = jwk["kid"]
-                if jwk["kty"] == "RSA":
-                    pubkeys[kid] = jwt.algorithms.RSAAlgorithm.from_jwk(to_json(jwk))
-
-            token_kid = jwt.get_unverified_header(token)["kid"]
-
-            pubkey = pubkeys[token_kid]
-            jwt.decode(token, key=pubkey, algorithms=JWT_ALGORITHMS, audience=audience)
-        except Exception as error:  # pylint: disable=broad-exception-caught
-            _LOGGER.debug("Failed to verify token, error: %s", error)
-            return False
-        return True
-
     async def refresh_tokens(self):
         """Refresh tokens."""
         try:
@@ -1153,17 +1108,22 @@ class Connection:
             await self.update_service_status("token", response.status)
             if response.status == 200:
                 tokens = await response.json()
-                # Verify Token
-                if not await self.verify_tokens(tokens["id_token"], "identity"):
-                    _LOGGER.warning("Token could not be verified!")
+
+                if not tokens or "access_token" not in tokens:
+                    _LOGGER.error("Invalid refresh token response: %s", tokens)
+                    return False
                 for token in tokens:
                     self._session_tokens["identity"][token] = tokens[token]
                 self._session_headers["Authorization"] = (
                     "Bearer " + self._session_tokens["identity"]["access_token"]
                 )
+                _LOGGER.debug("Successfully refreshed and updated tokens")
             else:
+                response_text = await response.text()
                 _LOGGER.warning(
-                    "Something went wrong when refreshing %s account tokens", BRAND
+                    "Token refresh failed with status %s: %s",
+                    response.status,
+                    response_text,
                 )
                 return False
         except Exception as error:  # pylint: disable=broad-exception-caught
