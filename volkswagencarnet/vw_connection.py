@@ -375,7 +375,10 @@ class Connection:
             self._session_tokens["identity"].get("id_token", ""), "identity"
         ):
             _LOGGER.warning("User identity token could not be verified!")
-            _LOGGER.debug("Invalid identity token: %s", self._session_tokens["identity"].get("id_token", ""))
+            _LOGGER.debug(
+                "Invalid identity token: %s",
+                self._session_tokens["identity"].get("id_token", ""),
+            )
             return False
 
         _LOGGER.debug("User identity token verified successfully")
