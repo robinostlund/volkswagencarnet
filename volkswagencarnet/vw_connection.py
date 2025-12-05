@@ -375,6 +375,7 @@ class Connection:
             self._session_tokens["identity"].get("id_token", ""), "identity"
         ):
             _LOGGER.warning("User identity token could not be verified!")
+            _LOGGER.debug("Invalid identity token: %s", self._session_tokens["identity"].get("id_token", ""))
             return False
 
         _LOGGER.debug("User identity token verified successfully")
@@ -402,13 +403,13 @@ class Connection:
             openid_config = await self.get_openid_config()
             token_endpoint = openid_config["token_endpoint"]
 
-            # Get authorization code (no client parameter)
+            # Get authorization code
             auth_code = await self._get_authorization_code(openid_config)
 
-            # Exchange code for tokens (no client parameter)
+            # Exchange code for tokens
             tokens = await self._exchange_code_for_tokens(auth_code, token_endpoint)
 
-            # Verify and store tokens (no client parameter)
+            # Verify and store tokens
             if not await self._verify_and_store_tokens(tokens):
                 _LOGGER.warning("Token verification failed")
                 self._session_logged_in = False
@@ -1100,6 +1101,12 @@ class Connection:
         if type == "identity":
             req = await self._session.get(url=f"{BASE_IDENTITY}/v1/jwks")
             keys = await req.json()
+            audience = [
+                CLIENT_ID,
+                "VWGMBB01DELIV1",
+                "https://api.vas.eu.dp15.vwg-connect.com",
+                "https://api.vas.eu.wcardp.io",
+            ]
         else:
             _LOGGER.debug("Not implemented")
             return False
@@ -1113,7 +1120,7 @@ class Connection:
             token_kid = jwt.get_unverified_header(token)["kid"]
 
             pubkey = pubkeys[token_kid]
-            jwt.decode(token, key=pubkey, algorithms=JWT_ALGORITHMS, audience=CLIENT_ID)
+            jwt.decode(token, key=pubkey, algorithms=JWT_ALGORITHMS, audience=audience)
         except Exception as error:  # pylint: disable=broad-exception-caught
             _LOGGER.debug("Failed to verify token, error: %s", error)
             return False
