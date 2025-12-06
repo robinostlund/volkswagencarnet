@@ -29,5 +29,4 @@ def connection(session):
         password="",
         country="DE",
         interval=999,
-        fulldebug=True,
     )
