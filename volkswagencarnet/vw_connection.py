@@ -62,13 +62,11 @@ class Connection:
         session,
         username,
         password,
-        fulldebug=False,
         country=COUNTRY,
         interval=timedelta(minutes=5),
     ) -> None:
         """Initialize."""
         self._session = session
-        self._session_fulldebug = fulldebug
         self._session_headers = HEADERS_SESSION.copy()
         self._session_auth_headers = HEADERS_AUTH.copy()
         self._session_refresh_interval = interval
@@ -129,8 +127,7 @@ class Connection:
 
     async def get_openid_config(self) -> Dict[str, str]:
         """Get OpenID config."""
-        if self._session_fulldebug:
-            _LOGGER.debug("Requesting openid config")
+        _LOGGER.debug("Requesting openid config")
         req = await self._session.get(
             url=f"{BASE_API}/login/v1/idk/openid-configuration"
         )
@@ -145,13 +142,10 @@ class Connection:
         """Get authorization page (login page)."""
         # https://identity.vwgroup.io/oidc/v1/authorize?nonce={NONCE}&state={STATE}&response_type={TOKEN_TYPES}&scope={SCOPE}&redirect_uri={APP_URI}&client_id={CLIENT_ID}
         # https://identity.vwgroup.io/oidc/v1/authorize?client_id={CLIENT_ID}&scope={SCOPE}&response_type={TOKEN_TYPES}&redirect_uri={APP_URI}
-        if self._session_fulldebug:
-            _LOGGER.debug(
-                'Requesting authorization page from "%s"', authorization_endpoint
-            )
-            self._session_auth_headers.pop("Referer", None)
-            self._session_auth_headers.pop("Origin", None)
-            _LOGGER.debug('Request headers: "%s"', self._session_auth_headers)
+        _LOGGER.debug('Requesting authorization page from "%s"', authorization_endpoint)
+        self._session_auth_headers.pop("Referer", None)
+        self._session_auth_headers.pop("Origin", None)
+        _LOGGER.debug('Request headers: "%s"', self._session_auth_headers)
 
         try:
             req = await self._session.get(
@@ -501,20 +495,13 @@ class Connection:
                         return response
                     return res
 
-                if self._session_fulldebug:
-                    _LOGGER.debug(
-                        'Request for "%s" returned with status code [%s], headers: %s, response: %s',
-                        url,
-                        response.status,
-                        response.headers,
-                        res,
-                    )
-                else:
-                    _LOGGER.debug(
-                        'Request for "%s" returned with status code [%s]',
-                        url,
-                        response.status,
-                    )
+                _LOGGER.debug(
+                    'Request for "%s" returned with status code [%s], headers: %s, response: %s',
+                    url,
+                    response.status,
+                    response.headers,
+                    res,
+                )
 
                 if return_raw:
                     res = response
@@ -753,9 +740,12 @@ class Connection:
             if "data" in response:
                 return {"trip_last": response["data"]}
 
-            _LOGGER.warning(
-                "Could not fetch last trip data, server response: %s", response
-            )
+            if response.get("status_code", 0) in [404, 502]:
+                _LOGGER.debug("No last trip data available for this vehicle")
+            else:
+                _LOGGER.warning(
+                    "Could not fetch last trip data, server response: %s", response
+                )
 
         except Exception as error:  # pylint: disable=broad-exception-caught
             _LOGGER.warning("Could not fetch last trip data, error: %s", error)
@@ -772,9 +762,12 @@ class Connection:
             if "data" in response:
                 return {"trip_refuel": response["data"]}
 
-            _LOGGER.warning(
-                "Could not fetch refuel trip data, server response: %s", response
-            )
+            if response.get("status_code", 0) in [404, 502]:
+                _LOGGER.debug("No refuel trip data available for this vehicle")
+            else:
+                _LOGGER.warning(
+                    "Could not fetch refuel trip data, server response: %s", response
+                )
 
         except Exception as error:  # pylint: disable=broad-exception-caught
             _LOGGER.warning("Could not fetch last trip data, error: %s", error)
@@ -791,9 +784,12 @@ class Connection:
             if "data" in response:
                 return {"trip_longterm": response["data"]}
 
-            _LOGGER.warning(
-                "Could not fetch longterm trip data, server response: %s", response
-            )
+            if response.get("status_code", 0) in [404, 502]:
+                _LOGGER.debug("No longterm trip data available for this vehicle")
+            else:
+                _LOGGER.warning(
+                    "Could not fetch longterm trip data, server response: %s", response
+                )
 
         except Exception as error:  # pylint: disable=broad-exception-caught
             _LOGGER.warning("Could not fetch last trip data, error: %s", error)
