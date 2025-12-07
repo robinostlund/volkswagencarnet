@@ -291,9 +291,7 @@ class Paths:
     ACTIVE_VENTILATION_TS = (
         f"{Services.CLIMATISATION}.activeVentilationStatus.value.carCapturedTimestamp"
     )
-    ACTIVE_VENTILATION_REM_TIME = (
-        f"{Services.CLIMATISATION}.activeVentilationStatus.value.remainingClimatisationTime_min"
-    )
+    ACTIVE_VENTILATION_REM_TIME = f"{Services.CLIMATISATION}.activeVentilationStatus.value.remainingClimatisationTime_min"
 
     # Climatisation Settings
     CLIMATISATION_SETTINGS_TS = (
