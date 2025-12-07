@@ -681,6 +681,31 @@ class Vehicle:
             }
         raise Exception("Lock action failed")
 
+    # Lock (RLU)
+    async def set_honk_and_flash(self):
+        """Remote honk and flash actions."""
+        if not self._services.get(Services.HONK_AND_FLASH, {}).get("active", False):
+            _LOGGER.info("Remote honk and flash is not supported")
+            raise Exception("Remote honk and flash is not supported.")
+        if self._in_progress("honk_and_flash", unknown_offset=-5):
+            return False
+
+        try:
+            self._requests["latest"] = "HonkAndFlash"
+            response = await self._connection.setHonkAndFlash(self.vin, self.position)
+            return await self._handle_response(
+                response=response,
+                topic="honkandflash",
+                error_msg="Failed to honk and flash vehicle",
+            )
+        except Exception as error:  # pylint: disable=broad-exception-caught
+            _LOGGER.warning("Failed to honk and flash vehicle - %s", error)
+            self._requests["honk_and_flash"] = {
+                "status": "Exception",
+                "timestamp": datetime.now(UTC),
+            }
+        raise Exception("Honk and flash action failed")
+
     # Refresh vehicle data (VSR)
     async def set_refresh(self):
         """Wake up vehicle and update status data."""
@@ -2212,9 +2237,7 @@ class Vehicle:
 
     @property
     def safety_status(self) -> bool | None:
-        if find_path(self.attrs, Paths.ACCESS_OVERALL_STATUS) == "safe":
-            return True
-        return False
+        return find_path(self.attrs, Paths.ACCESS_OVERALL_STATUS) == "unsafe"
 
     @property
     def safety_status_last_updated(self) -> datetime:
@@ -3211,6 +3234,23 @@ class Vehicle:
     def is_longterm_trip_total_fuel_consumption_supported(self):
         return self._is_trip_supported(Services.TRIP_LONGTERM, "totalFuelConsumption_L")
 
+    @property
+    def honk_and_flash(self):
+        """Return state of automatic window heating."""
+        return self._requests.get("honk_and_flash", {}).get("id", False)
+
+    @property
+    def honk_and_flash_last_updated(self) -> datetime:
+        """Return state of automatic window heating last updated."""
+        return self._requests.get("honk_and_flash", {}).get("timestamp")
+
+    @property
+    def is_honk_and_flash_supported(self) -> bool:
+        """Return true if automatic window heating is supported."""
+        if not self._services.get(Services.HONK_AND_FLASH, {}).get("active", False):
+            return False
+        return True
+
     # Status of set data requests
     @property
     def refresh_action_status(self):
@@ -3231,6 +3271,11 @@ class Vehicle:
     def lock_action_status(self):
         """Return latest status of lock action request."""
         return self._requests.get("lock", {}).get("status", "None")
+
+    @property
+    def honk_and_flash_action_status(self):
+        """Return latest status of honk and flash request."""
+        return self._requests.get("honk_and_flash", {}).get("status", "None")
 
     # Requests data
     @property
