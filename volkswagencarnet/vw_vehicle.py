@@ -2176,6 +2176,21 @@ class Vehicle:
         return is_valid_path(self.attrs, f"{trip_type}.{key}")
 
     @property
+    def safety_status(self) -> bool | None:
+        if find_path(self.attrs, Paths.ACCESS_OVERALL_STATUS) == "safe":
+            return True
+        return False
+
+    @property
+    def safety_status_last_updated(self) -> datetime:
+        """Return attribute last updated timestamp."""
+        return find_path(self.attrs, Paths.ACCESS_TS)
+
+    @property
+    def is_safety_status_supported(self) -> bool:
+        return is_valid_path(self.attrs, Paths.ACCESS_OVERALL_STATUS)
+
+    @property
     def window_closed_left_front(self) -> bool | None:
         return self._get_window_state("frontLeft")
 

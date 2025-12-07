@@ -60,6 +60,7 @@ class VWDeviceClass:
     MOVING = "moving"
     PLUG = "plug"
     POWER = "power"
+    SAFETY = "safety"
     SPEED = "speed"
     TEMPERATURE = "temperature"
     TIMESTAMP = "timestamp"
@@ -156,6 +157,7 @@ class Paths:
     ACCESS_DOOR_LOCK = f"{Services.ACCESS}.accessStatus.value.doorLockStatus"
     ACCESS_DOORS = f"{Services.ACCESS}.accessStatus.value.doors"
     ACCESS_WINDOWS = f"{Services.ACCESS}.accessStatus.value.windows"
+    ACCESS_OVERALL_STATUS = f"{Services.ACCESS}.accessStatus.value.overallStatus"
 
     # Lights
     LIGHTS = f"{Services.VEHICLE_LIGHTS}.lightsStatus.value.lights"

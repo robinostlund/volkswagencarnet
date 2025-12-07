@@ -2574,6 +2574,16 @@ _INSTRUMENT_DEFS = [
             "icon": "mdi:alert-circle-outline",
         },
     ),
+    (
+        BinarySensor,
+        [],
+        {
+            "attr": "safety_status",
+            "name": "Safety Status",
+            "device_class": VWDeviceClass.SAFETY,
+            "icon": "mdi:shield-lock",
+        },
+    ),
 ]
 
 
