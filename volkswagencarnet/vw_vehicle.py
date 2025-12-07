@@ -71,6 +71,7 @@ class Vehicle:
             Services.HONK_AND_FLASH: {"active": False},
             Services.MEASUREMENTS: {"active": False},
             Services.PARKING_POSITION: {"active": False},
+            Services.READINESS: {"active": False},
             Services.TRIP_STATISTICS: {"active": False},
             Services.USER_CAPABILITIES: {"active": False},
             Services.PARAMETERS: {},
@@ -209,6 +210,7 @@ class Vehicle:
                         Services.DEPARTURE_TIMERS,
                         Services.FUEL_STATUS,
                         Services.MEASUREMENTS,
+                        Services.READINESS,
                         Services.VEHICLE_LIGHTS,
                         Services.VEHICLE_HEALTH_INSPECTION,
                         Services.USER_CAPABILITIES,
@@ -887,6 +889,105 @@ class Vehicle:
             return False
         return is_valid_path(self.attrs, Paths.LIGHTS)
 
+    # Readiness
+    @property
+    def connection_state_is_online(self) -> bool:
+        """Return isOnline connection."""
+        return find_path(self.attrs, Paths.READINESS_IS_ONLINE)
+
+    @property
+    def connection_state_is_online_last_updated(self) -> datetime:
+        return datetime.now(UTC)
+
+    @property
+    def is_connection_state_is_online_supported(self) -> bool:
+        """Return true if connection state isOnline is supported."""
+        return is_valid_path(self.attrs, Paths.READINESS_IS_ONLINE)
+
+    @property
+    def connection_state_is_active(self) -> bool:
+        """Return isActive connection."""
+        return find_path(self.attrs, Paths.READINESS_IS_ACTIVE)
+
+    @property
+    def connection_state_is_active_last_updated(self) -> datetime:
+        return datetime.now(UTC)
+
+    @property
+    def is_connection_state_is_active_supported(self) -> bool:
+        """Return true if connection state isActive is supported."""
+        return is_valid_path(self.attrs, Paths.READINESS_IS_ACTIVE)
+
+    @property
+    def connection_state_battery_power_level(self) -> str:
+        """Return batteryPowerLevel status."""
+        battery_power_level = find_path(self.attrs, Paths.READINESS_BATTERY_POWER_LEVEL)
+        if battery_power_level:
+            return battery_power_level.capitalize()
+        return None
+
+    @property
+    def connection_state_battery_power_level_last_updated(self) -> datetime:
+        return datetime.now(UTC)
+
+    @property
+    def is_connection_state_battery_power_level_supported(self) -> bool:
+        """Return true if connection state batteryPowerLevel is supported."""
+        return is_valid_path(self.attrs, Paths.READINESS_BATTERY_POWER_LEVEL)
+
+    @property
+    def connection_state_daily_power_budget_available(self) -> str:
+        """Return dailyPowerBudgetAvailable status."""
+        daily_power_budget = find_path(
+            self.attrs, Paths.READINESS_DAILY_POWER_BUDGET_AVAILABLE
+        )
+        if daily_power_budget:
+            return "Available"
+        return "Unavailable"
+
+    @property
+    def connection_state_daily_power_budget_available_last_updated(self) -> datetime:
+        return datetime.now(UTC)
+
+    @property
+    def is_connection_state_daily_power_budget_available_supported(self) -> bool:
+        """Return true if connection state dailyPowerBudgetAvailable is supported."""
+        return is_valid_path(self.attrs, Paths.READINESS_DAILY_POWER_BUDGET_AVAILABLE)
+
+    @property
+    def connection_warning_insufficient_battery_level_warning(self) -> str:
+        """Return dailyPowerBudgetAvailable status."""
+        return find_path(self.attrs, Paths.READINESS_INSUFFICIENT_BATTERY_LEVEL_WARNING)
+
+    @property
+    def connection_warning_insufficient_battery_level_warning_last_updated(
+        self,
+    ) -> datetime:
+        return datetime.now(UTC)
+
+    @property
+    def is_connection_warning_insufficient_battery_level_warning_supported(
+        self,
+    ) -> bool:
+        """Return true if connection state dailyPowerBudgetAvailable is supported."""
+        return is_valid_path(
+            self.attrs, Paths.READINESS_INSUFFICIENT_BATTERY_LEVEL_WARNING
+        )
+
+    @property
+    def connection_warning_daily_power_budget_warning(self) -> str:
+        """Return dailyPowerBudgetAvailable status."""
+        return find_path(self.attrs, Paths.READINESS_DAILY_POWER_BUDGET_WARNING)
+
+    @property
+    def connection_warning_daily_power_budget_warning_last_updated(self) -> datetime:
+        return datetime.now(UTC)
+
+    @property
+    def is_connection_warning_daily_power_budget_warning_supported(self) -> bool:
+        """Return true if connection state dailyPowerBudgetAvailable is supported."""
+        return is_valid_path(self.attrs, Paths.READINESS_DAILY_POWER_BUDGET_WARNING)
+
     # Connection status
     @property
     def last_connected(self) -> datetime:
@@ -1037,6 +1138,35 @@ class Vehicle:
 
     @property
     def is_charging_supported(self) -> bool:
+        """Return true if charging is supported."""
+        return is_valid_path(self.attrs, Paths.CHARGING_STATE)
+
+    @property
+    def charging_state(self) -> bool:
+        """Return charging state."""
+        charging_state = find_path(self.attrs, Paths.CHARGING_STATE)
+        state_map = {
+            "off": "Off",
+            "readyForCharging": "Ready",
+            "notReadyForCharging": "Not ready",
+            "conservation": "Conservation",
+            "chargePurposeReachedAndNotConservationCharging": "Charge purpose reached and not conservation charging",
+            "chargePurposeReachedAndConservation": "Charge purpose reached and conservation charging",
+            "charging": "Charging",
+            "error": "Error",
+            "unsupported": "Unsupported",
+            "discharging": "Discharging",
+        }
+
+        return state_map.get(charging_state, "Unknown")
+
+    @property
+    def charging_state_last_updated(self) -> datetime:
+        """Return attribute last updated timestamp."""
+        return find_path(self.attrs, Paths.CHARGING_TS)
+
+    @property
+    def is_charging_state_supported(self) -> bool:
         """Return true if charging is supported."""
         return is_valid_path(self.attrs, Paths.CHARGING_STATE)
 

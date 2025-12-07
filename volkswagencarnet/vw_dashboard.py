@@ -1579,7 +1579,7 @@ _INSTRUMENT_DEFS = [
         [],
         {
             "attr": "charging_power",
-            "name": "Charging Power",
+            "name": "Charging power",
             "icon": "mdi:transmission-tower",
             "unit": "kW",
             "device_class": VWDeviceClass.POWER,
@@ -1591,7 +1591,7 @@ _INSTRUMENT_DEFS = [
         [],
         {
             "attr": "charging_rate",
-            "name": "Charging Rate",
+            "name": "Charging rate",
             "icon": "mdi:ev-station",
             "unit": "km/h",
             "device_class": VWDeviceClass.SPEED,
@@ -1603,8 +1603,18 @@ _INSTRUMENT_DEFS = [
         [],
         {
             "attr": "charger_type",
-            "name": "Charger Type",
+            "name": "Charger type",
             "icon": "mdi:ev-plug-type1",
+            "unit": "",
+        },
+    ),
+    (
+        Sensor,
+        [],
+        {
+            "attr": "charging_state",
+            "name": "Charging state",
+            "icon": "mdi:car-turbocharger",
             "unit": "",
         },
     ),
@@ -2252,6 +2262,27 @@ _INSTRUMENT_DEFS = [
             "entity_type": "diag",
         },
     ),
+    # Sensors - Readiness
+    (
+        Sensor,
+        [],
+        {
+            "attr": "connection_state_battery_power_level",
+            "name": "Battery power level",
+            "icon": "mdi:battery-medium",
+            "unit": "",
+        },
+    ),
+    (
+        Sensor,
+        [],
+        {
+            "attr": "connection_state_daily_power_budget_available",
+            "name": "Daily power budget",
+            "icon": "mdi:cash-multiple",
+            "unit": "",
+        },
+    ),
     # Binary sensors - doors/windows/locks/charging/etc.
     (
         BinarySensor,
@@ -2502,6 +2533,45 @@ _INSTRUMENT_DEFS = [
             "name": "Request in progress",
             "device_class": VWDeviceClass.CONNECTIVITY,
             "entity_type": "diag",
+        },
+    ),
+    # Binary sensors - Readiness
+    (
+        BinarySensor,
+        [],
+        {
+            "attr": "connection_state_is_online",
+            "name": "Connection online",
+            "device_class": VWDeviceClass.CONNECTIVITY,
+            "icon": "mdi:lan-connect",
+        },
+    ),
+    (
+        BinarySensor,
+        [],
+        {
+            "attr": "connection_state_is_active",
+            "name": "Connection active",
+            "device_class": VWDeviceClass.CONNECTIVITY,
+            "icon": "mdi:swap-horizontal",
+        },
+    ),
+    (
+        BinarySensor,
+        [],
+        {
+            "attr": "connection_warning_insufficient_battery_level_warning",
+            "name": "Insufficient battery level warning",
+            "icon": "mdi:battery-alert",
+        },
+    ),
+    (
+        BinarySensor,
+        [],
+        {
+            "attr": "connection_warning_daily_power_budget_warning",
+            "name": "Daily power budget warning",
+            "icon": "mdi:alert-circle-outline",
         },
     ),
 ]
