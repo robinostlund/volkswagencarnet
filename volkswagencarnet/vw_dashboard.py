@@ -1369,6 +1369,41 @@ class ZoneFrontRight(Switch):
         return {"last_result": self.vehicle.climater_action_status}
 
 
+class TurnSignals(Switch):
+    """Turn on signals."""
+
+    def __init__(self) -> None:
+        """Init."""
+        super().__init__(
+            attr="honk_and_flash", name="Turn signals", icon="mdi:car-emergency"
+        )
+
+    @property
+    def state(self):
+        """Return current state."""
+        return self.vehicle.honk_and_flash
+
+    async def turn_on(self):
+        """Turn on."""
+        await self.vehicle.set_honk_and_flash()
+        await self.vehicle.update()
+        if self.callback is not None:
+            self.callback()
+
+    async def turn_off(self):
+        """Turn off."""
+
+    @property
+    def assumed_state(self) -> bool:
+        """Don't assume state."""
+        return False
+
+    @property
+    def attributes(self) -> dict:
+        """Return attributes."""
+        return {"last_result": self.vehicle.honk_and_flash_action_status}
+
+
 class RequestResults(Sensor):
     """Request results sensor class."""
 
@@ -1415,6 +1450,7 @@ _INSTRUMENT_DEFS = [
     (AutomaticWindowHeating, [], {}),
     (ZoneFrontLeft, [], {}),
     (ZoneFrontRight, [], {}),
+    (TurnSignals, [], {}),
     (ElectricClimatisation, [], {}),
     (AuxiliaryClimatisation, [], {}),
     (Charging, [], {}),
@@ -2175,6 +2211,17 @@ _INSTRUMENT_DEFS = [
         Sensor,
         [],
         {
+            "attr": "active_ventilation_remaining_time",
+            "name": "Active ventilation remaining time",
+            "icon": "mdi:fan-clock",
+            "unit": "min",
+            "device_class": VWDeviceClass.DURATION,
+        },
+    ),
+    (
+        Sensor,
+        [],
+        {
             "attr": "climatisation_target_temperature",
             "name": "Climatisation target temperature",
             "icon": "mdi:thermometer",
@@ -2284,6 +2331,15 @@ _INSTRUMENT_DEFS = [
         },
     ),
     # Binary sensors - doors/windows/locks/charging/etc.
+    (
+        BinarySensor,
+        [],
+        {
+            "attr": "active_ventilation",
+            "name": "Active ventilation",
+            "icon": "mdi:fan",
+        },
+    ),
     (
         BinarySensor,
         [],
@@ -2572,6 +2628,16 @@ _INSTRUMENT_DEFS = [
             "attr": "connection_warning_daily_power_budget_warning",
             "name": "Daily power budget warning",
             "icon": "mdi:alert-circle-outline",
+        },
+    ),
+    (
+        BinarySensor,
+        [],
+        {
+            "attr": "safety_status",
+            "name": "Safety Status",
+            "device_class": VWDeviceClass.SAFETY,
+            "icon": "mdi:shield-lock",
         },
     ),
 ]

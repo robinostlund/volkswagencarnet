@@ -1040,6 +1040,26 @@ class Connection:
         except Exception as e:
             raise APIError(f"Unknown error during setLock: {str(e)}") from e
 
+    async def setHonkAndFlash(self, vin, position):
+        """Remote Honk and Flash actions."""
+        await self.check_spin_state()
+        try:
+            response_raw = await self.post(
+                f"{BASE_API}/vehicle/v1/vehicles/{vin}/honkandflash",
+                json={
+                    "userPosition": {
+                        "longitude": position["lng"],
+                        "latitude": position["lat"],
+                    },
+                    "mode": "flash",
+                    "duration_s": 15,
+                },
+                return_raw=True,
+            )
+            return await self._handle_action_result(response_raw)
+        except Exception as e:
+            raise APIError(f"Unknown error during setHonkAndFlash: {str(e)}") from e
+
     # Token handling #
     async def validate_tokens(self) -> bool:
         """Validate expiry of tokens."""
