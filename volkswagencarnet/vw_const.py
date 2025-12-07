@@ -284,6 +284,17 @@ class Paths:
     )
     CLIMATISATION_REM_TIME = f"{Services.CLIMATISATION}.climatisationStatus.value.remainingClimatisationTime_min"
 
+    # Active ventilation (combustion cars without auxiliary heating)
+    ACTIVE_VENTILATION_STATE = (
+        f"{Services.CLIMATISATION}.activeVentilationStatus.value.climatisationState"
+    )
+    ACTIVE_VENTILATION_TS = (
+        f"{Services.CLIMATISATION}.activeVentilationStatus.value.carCapturedTimestamp"
+    )
+    ACTIVE_VENTILATION_REM_TIME = (
+        f"{Services.CLIMATISATION}.activeVentilationStatus.value.remainingClimatisationTime_min"
+    )
+
     # Climatisation Settings
     CLIMATISATION_SETTINGS_TS = (
         f"{Services.CLIMATISATION}.climatisationSettings.value.carCapturedTimestamp"

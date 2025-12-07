@@ -11,7 +11,7 @@ import pytest
 from volkswagencarnet import vw_connection
 
 try:
-    from credentials import password, spin, username, vin
+    from tests.credentials import password, spin, username, vin
 except ImportError:
     username = password = spin = vin = None
 

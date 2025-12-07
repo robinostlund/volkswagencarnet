@@ -2175,6 +2175,26 @@ _INSTRUMENT_DEFS = [
         Sensor,
         [],
         {
+            "attr": "active_ventilation",
+            "name": "Active ventilation",
+            "icon": "mdi:fan",
+        },
+    ),
+    (
+        Sensor,
+        [],
+        {
+            "attr": "active_ventilation_remaining_time",
+            "name": "Active ventilation remaining time",
+            "icon": "mdi:fan-clock",
+            "unit": "min",
+            "device_class": VWDeviceClass.DURATION,
+        },
+    ),
+    (
+        Sensor,
+        [],
+        {
             "attr": "climatisation_target_temperature",
             "name": "Climatisation target temperature",
             "icon": "mdi:thermometer",
