@@ -132,6 +132,7 @@ class Services:
     DEPARTURE_TIMERS = "departureTimers"
     FUEL_STATUS = "fuelStatus"
     MEASUREMENTS = "measurements"
+    READINESS = "readiness"
     USER_CAPABILITIES = "userCapabilities"
     VEHICLE_LIGHTS = "vehicleLights"
     VEHICLE_HEALTH_INSPECTION = "vehicleHealthInspection"
@@ -372,3 +373,17 @@ class Paths:
     PARKING_LAT = "parkingposition.lat"
     PARKING_LON = "parkingposition.lon"
     PARKING_TS = "parkingposition.carCapturedTimestamp"
+
+    # Readiness
+    READINESS_IS_ONLINE = (
+        f"{Services.READINESS}.readinessStatus.value.connectionState.isOnline"
+    )
+    READINESS_IS_ACTIVE = (
+        f"{Services.READINESS}.readinessStatus.value.connectionState.isActive"
+    )
+    READINESS_BATTERY_POWER_LEVEL = (
+        f"{Services.READINESS}.readinessStatus.value.connectionState.batteryPowerLevel"
+    )
+    READINESS_DAILY_POWER_BUDGET_AVAILABLE = f"{Services.READINESS}.readinessStatus.value.connectionState.dailyPowerBudgetAvailable"
+    READINESS_INSUFFICIENT_BATTERY_LEVEL_WARNING = f"{Services.READINESS}.readinessStatus.value.connectionWarning.insufficientBatteryLevelWarning"
+    READINESS_DAILY_POWER_BUDGET_WARNING = f"{Services.READINESS}.readinessStatus.value.connectionWarning.insufficientBatteryLevelWarning"

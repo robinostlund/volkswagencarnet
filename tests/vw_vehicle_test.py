@@ -57,6 +57,7 @@ class VehicleTest(IsolatedAsyncioTestCase):
                 Services.MEASUREMENTS: {"active": False},
                 Services.PARKING_POSITION: {"active": False},
                 Services.TRIP_STATISTICS: {"active": False},
+                Services.READINESS: {"active": False},
                 Services.USER_CAPABILITIES: {"active": False},
                 Services.PARAMETERS: {},
             }
