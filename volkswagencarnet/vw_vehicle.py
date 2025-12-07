@@ -1891,7 +1891,7 @@ class Vehicle:
     def active_ventilation_remaining_time(self) -> int:
         """Return remaining time for active ventilation."""
         return find_path(self.attrs, Paths.ACTIVE_VENTILATION_REM_TIME)
-    
+
     @property
     def active_ventilation_remaining_time_last_updated(self) -> datetime:
         """Return timestamp of last active ventilation remaining time update."""
@@ -1902,7 +1902,6 @@ class Vehicle:
         """Return true if active ventilation remaining time is supported."""
         return is_valid_path(self.attrs, Paths.ACTIVE_VENTILATION_REM_TIME)
 
-
     @property
     def active_ventilation_last_updated(self) -> datetime:
         """Return timestamp of last active ventilation update."""
@@ -1912,7 +1911,7 @@ class Vehicle:
     def is_active_ventilation_supported(self) -> bool:
         """Return true if active ventilation is available in the vehicle."""
         return is_valid_path(self.attrs, Paths.ACTIVE_VENTILATION_STATE)
-    
+
     @property
     def auxiliary_climatisation(self) -> bool:
         """Return status of auxiliary climatisation."""

@@ -2175,15 +2175,6 @@ _INSTRUMENT_DEFS = [
         Sensor,
         [],
         {
-            "attr": "active_ventilation",
-            "name": "Active ventilation",
-            "icon": "mdi:fan",
-        },
-    ),
-    (
-        Sensor,
-        [],
-        {
             "attr": "active_ventilation_remaining_time",
             "name": "Active ventilation remaining time",
             "icon": "mdi:fan-clock",
@@ -2304,6 +2295,15 @@ _INSTRUMENT_DEFS = [
         },
     ),
     # Binary sensors - doors/windows/locks/charging/etc.
+    (
+        BinarySensor,
+        [],
+        {
+            "attr": "active_ventilation",
+            "name": "Active ventilation",
+            "icon": "mdi:fan",
+        },
+    ),
     (
         BinarySensor,
         [],
