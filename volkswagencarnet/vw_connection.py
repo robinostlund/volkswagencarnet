@@ -6,7 +6,6 @@ from __future__ import annotations
 import asyncio
 from datetime import UTC, datetime, timedelta
 import hashlib
-from json import dumps as to_json
 import logging
 from random import randint, random
 from urllib.parse import parse_qs, urljoin, urlparse
