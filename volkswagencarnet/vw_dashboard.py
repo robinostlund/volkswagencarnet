@@ -1898,7 +1898,7 @@ _INSTRUMENT_DEFS = [
             "icon": "mdi:car-battery",
             "unit": "kWh",
             "device_class": VWDeviceClass.ENERGY,
-            "state_class": VWStateClass.MEASUREMENT,
+            "state_class": VWStateClass.TOTAL,
         },
     ),
     (
@@ -1910,7 +1910,7 @@ _INSTRUMENT_DEFS = [
             "icon": "mdi:fuel",
             "unit": "L",
             "device_class": VWDeviceClass.VOLUME,
-            "state_class": VWStateClass.TOTAL_INCREASING,
+            "state_class": VWStateClass.TOTAL,
         },
     ),
     (
@@ -2028,7 +2028,7 @@ _INSTRUMENT_DEFS = [
             "icon": "mdi:car-battery",
             "unit": "kWh",
             "device_class": VWDeviceClass.ENERGY,
-            "state_class": VWStateClass.MEASUREMENT,
+            "state_class": VWStateClass.TOTAL,
         },
     ),
     (
@@ -2040,7 +2040,7 @@ _INSTRUMENT_DEFS = [
             "icon": "mdi:fuel",
             "unit": "L",
             "device_class": VWDeviceClass.VOLUME,
-            "state_class": VWStateClass.TOTAL_INCREASING,
+            "state_class": VWStateClass.TOTAL,
         },
     ),
     (
@@ -2158,7 +2158,7 @@ _INSTRUMENT_DEFS = [
             "icon": "mdi:car-battery",
             "unit": "kWh",
             "device_class": VWDeviceClass.ENERGY,
-            "state_class": VWStateClass.MEASUREMENT,
+            "state_class": VWStateClass.TOTAL,
         },
     ),
     (
@@ -2170,7 +2170,7 @@ _INSTRUMENT_DEFS = [
             "icon": "mdi:fuel",
             "unit": "L",
             "device_class": VWDeviceClass.VOLUME,
-            "state_class": VWStateClass.TOTAL_INCREASING,
+            "state_class": VWStateClass.TOTAL,
         },
     ),
     # Sensors - auxiliary / timers / misc
