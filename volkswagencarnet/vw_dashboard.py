@@ -1910,7 +1910,7 @@ _INSTRUMENT_DEFS = [
             "icon": "mdi:fuel",
             "unit": "L",
             "device_class": VWDeviceClass.VOLUME,
-            "state_class": VWStateClass.MEASUREMENT,
+            "state_class": VWStateClass.TOTAL_INCREASING,
         },
     ),
     (
@@ -2040,7 +2040,7 @@ _INSTRUMENT_DEFS = [
             "icon": "mdi:fuel",
             "unit": "L",
             "device_class": VWDeviceClass.VOLUME,
-            "state_class": VWStateClass.MEASUREMENT,
+            "state_class": VWStateClass.TOTAL_INCREASING,
         },
     ),
     (
@@ -2170,7 +2170,7 @@ _INSTRUMENT_DEFS = [
             "icon": "mdi:fuel",
             "unit": "L",
             "device_class": VWDeviceClass.VOLUME,
-            "state_class": VWStateClass.MEASUREMENT,
+            "state_class": VWStateClass.TOTAL_INCREASING,
         },
     ),
     # Sensors - auxiliary / timers / misc
