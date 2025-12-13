@@ -337,10 +337,13 @@ class ElectricClimatisationClimate(Climate):
     def target_temperature(self):
         return self.vehicle.climatisation_target_temperature
 
-    async def set_temperature(self, temperature):
-        await self.vehicle.set_climatisation_settings(
-            "climatisation_target_temperature", temperature
-        )
+    async def set_temperature(self, temperature=None, **kwargs):
+        if temperature is None:
+            temperature = kwargs.get("temperature")
+        if temperature is not None:
+            await self.vehicle.set_climatisation_settings(
+                "climatisation_target_temperature", temperature
+            )
 
     async def set_hvac_mode(self, hvac_mode):
         if hvac_mode:
@@ -369,10 +372,13 @@ class CombustionClimatisationClimate(Climate):
     def target_temperature(self):
         return self.vehicle.climatisation_target_temperature
 
-    async def set_temperature(self, temperature):
-        await self.vehicle.set_climatisation_settings(
-            "climatisation_target_temperature", temperature
-        )
+    async def set_temperature(self, temperature=None, **kwargs):
+        if temperature is None:
+            temperature = kwargs.get("temperature")
+        if temperature is not None:
+            await self.vehicle.set_climatisation_settings(
+                "climatisation_target_temperature", temperature
+            )
 
     async def set_hvac_mode(self, hvac_mode):
         if hvac_mode:
