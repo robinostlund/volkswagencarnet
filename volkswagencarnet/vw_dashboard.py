@@ -302,6 +302,89 @@ class Switch(Instrument):
         return True
 
 
+class Climate(Instrument):
+    def __init__(self, attr, name, icon):
+        super().__init__(component="climate", attr=attr, name=name, icon=icon)
+
+    @property
+    def hvac_mode(self):
+        pass
+
+    @property
+    def target_temperature(self):
+        pass
+
+    def set_temperature(self, **kwargs):
+        pass
+
+    def set_hvac_mode(self, hvac_mode):
+        pass
+
+
+class ElectricClimatisationClimate(Climate):
+    def __init__(self):
+        super().__init__(
+            attr="electric_climatisation",
+            name="Electric Climatisation",
+            icon="mdi:radiator",
+        )
+
+    @property
+    def hvac_mode(self):
+        return self.vehicle.electric_climatisation
+
+    @property
+    def target_temperature(self):
+        return self.vehicle.climatisation_target_temperature
+
+    async def set_temperature(self, temperature):
+        await self.vehicle.set_climatisation_settings(
+            "climatisation_target_temperature", temperature
+        )
+
+    async def set_hvac_mode(self, hvac_mode):
+        if hvac_mode:
+            await self.vehicle.set_climatisation("start")
+        else:
+            await self.vehicle.set_climatisation("stop")
+
+
+class CombustionClimatisationClimate(Climate):
+    def __init__(self):
+        super().__init__(
+            attr="pheater_heating",
+            name="Parking Heater Climatisation",
+            icon="mdi:radiator",
+        )
+
+    def configurate(self, **config):
+        self.spin = config.get("spin", "")
+        self.duration = config.get("combustionengineheatingduration", 30)
+
+    @property
+    def hvac_mode(self):
+        return self.vehicle.pheater_heating
+
+    @property
+    def target_temperature(self):
+        return self.vehicle.climatisation_target_temperature
+
+    async def set_temperature(self, temperature):
+        await self.vehicle.set_climatisation_settings(
+            "climatisation_target_temperature", temperature
+        )
+
+    async def set_hvac_mode(self, hvac_mode):
+        if hvac_mode:
+            await self.vehicle.set_auxiliary_climatisation(
+                action="start", spin=self.spin
+            )
+        else:
+            await self.vehicle.set_auxiliary_climatisation(
+                action="stop", spin=self.spin
+            )
+
+
 class Number(Instrument):
     """Number instrument."""
 
@@ -1439,7 +1522,7 @@ _INSTRUMENT_DEFS = [
     # Core/custom classes (class, args, kwargs)
     (Position, [], {}),
     (BatteryTargetSOC, [], {}),
-    (ClimatisationTargetTemperature, [], {}),
+    # (ClimatisationTargetTemperature, [], {}),
     (DoorLock, [], {}),
     (TrunkLock, [], {}),
     (ChargeMaxACAmpere, [], {}),
@@ -1451,7 +1534,9 @@ _INSTRUMENT_DEFS = [
     (ZoneFrontLeft, [], {}),
     (ZoneFrontRight, [], {}),
     (TurnSignals, [], {}),
-    (ElectricClimatisation, [], {}),
+    # (ElectricClimatisation, [], {}),
+    (ElectricClimatisationClimate, [], {}),
+    (CombustionClimatisationClimate, [], {}),
     (AuxiliaryClimatisation, [], {}),
     (Charging, [], {}),
     (ReducedACCharging, [], {}),
