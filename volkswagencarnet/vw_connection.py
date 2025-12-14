@@ -36,6 +36,7 @@ from .vw_exceptions import (
     SPINError,
     RedirectError,
     RequestError,
+    TermsAndConditionsError,
 )
 
 from .vw_utilities import json_loads
@@ -260,6 +261,24 @@ class Connection:
             response = await session.get(
                 url=ref, headers=self._session_auth_headers, allow_redirects=False
             )
+
+            # Check if we hit a terms and conditions page (HTTP 200 with no redirect)
+            if response.status == 200 and "Location" not in response.headers:
+                page_content = await response.text()
+                if (
+                    "termsAndConditions" in page_content
+                    or '"page":"termsAndConditions"' in page_content
+                ):
+                    _LOGGER.error(
+                        "Terms and Conditions acceptance required. "
+                        "Please log in to https://www.myvolkswagen.net/ and accept the updated terms."
+                    )
+                    raise TermsAndConditionsError(
+                        "Terms and Conditions must be accepted. "
+                        "Please visit https://www.myvolkswagen.net/ to accept the updated terms and conditions, "
+                        "then try logging in again."
+                    )
+
             if "Location" not in response.headers:
                 _LOGGER.warning("Failed to find next redirect location")
                 raise RedirectError("Failed to find next redirect location")

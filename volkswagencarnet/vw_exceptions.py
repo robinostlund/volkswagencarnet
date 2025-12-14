@@ -35,3 +35,9 @@ class RequestError(VWError):
     """Request execution failed."""
 
     pass
+
+
+class TermsAndConditionsError(AuthenticationError):
+    """Terms and Conditions need to be accepted."""
+
+    pass
