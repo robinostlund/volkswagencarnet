@@ -344,12 +344,14 @@ class ElectricClimatisationClimate(Climate):
             await self.vehicle.set_climatisation_settings(
                 "climatisation_target_temperature", temperature
             )
+            await self.vehicle.update()
 
     async def set_hvac_mode(self, hvac_mode):
         if hvac_mode:
             await self.vehicle.set_climatisation("start")
         else:
             await self.vehicle.set_climatisation("stop")
+        await self.vehicle.update()
 
 
 class AuxiliaryClimatisationClimate(Climate):
@@ -380,12 +382,14 @@ class AuxiliaryClimatisationClimate(Climate):
             await self.vehicle.set_climatisation_settings(
                 "climatisation_target_temperature", temperature
             )
+            await self.vehicle.update()
 
     async def set_hvac_mode(self, hvac_mode):
         if hvac_mode:
             await self.vehicle.set_auxiliary_climatisation("start", self.spin)
         else:
             await self.vehicle.set_auxiliary_climatisation("stop", self.spin)
+        await self.vehicle.update()
 
 
 class Number(Instrument):
@@ -1167,7 +1171,7 @@ class DepartureTimer(Switch):
     def attributes(self):
         """Timer attributes."""
         data = self.vehicle.timer_attributes(self._id)
-        return dict(data)
+        return dict(data) if data is not None else {}
 
 
 class ACDepartureTimer(Switch):
@@ -1207,7 +1211,7 @@ class ACDepartureTimer(Switch):
     def attributes(self):
         """Timer attributes."""
         data = self.vehicle.ac_timer_attributes(self._id)
-        return dict(data)
+        return dict(data) if data is not None else {}
 
 
 class WindowHeater(Switch):
