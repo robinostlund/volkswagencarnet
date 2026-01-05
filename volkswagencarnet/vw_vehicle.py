@@ -344,7 +344,7 @@ class Vehicle:
             if setting == "reduced_ac_charging" and value not in ["reduced", "maximum"]:
                 _LOGGER.error('Charging setting "%s" is not supported', value)
                 raise Exception(f'Charging setting "{value}" is not supported.')
-            if setting == "max_charge_amperage" and int(value) not in [5, 10, 13, 32]:
+            if setting == "max_charge_amperage" and int(value) not in [5, 10, 13, 16, 32]:
                 _LOGGER.error(
                     "Setting maximum charge amperage to %s is not supported", value
                 )
