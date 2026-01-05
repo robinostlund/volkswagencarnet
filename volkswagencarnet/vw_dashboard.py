@@ -344,29 +344,32 @@ class ElectricClimatisationClimate(Climate):
             await self.vehicle.set_climatisation_settings(
                 "climatisation_target_temperature", temperature
             )
+            await self.vehicle.update()
 
     async def set_hvac_mode(self, hvac_mode):
         if hvac_mode:
             await self.vehicle.set_climatisation("start")
         else:
             await self.vehicle.set_climatisation("stop")
+        await self.vehicle.update()
 
 
-class CombustionClimatisationClimate(Climate):
+class AuxiliaryClimatisationClimate(Climate):
     def __init__(self):
         super().__init__(
-            attr="pheater_heating",
-            name="Parking Heater Climatisation",
+            attr="auxiliary_climatisation",
+            name="Auxiliary Climatisation",
             icon="mdi:radiator",
         )
+        self.spin = ""
 
     def configurate(self, **config):
+        """Configure spin."""
         self.spin = config.get("spin", "")
-        self.duration = config.get("combustionengineheatingduration", 30)
 
     @property
     def hvac_mode(self):
-        return self.vehicle.pheater_heating
+        return self.vehicle.auxiliary_climatisation
 
     @property
     def target_temperature(self):
@@ -379,16 +382,14 @@ class CombustionClimatisationClimate(Climate):
             await self.vehicle.set_climatisation_settings(
                 "climatisation_target_temperature", temperature
             )
+            await self.vehicle.update()
 
     async def set_hvac_mode(self, hvac_mode):
         if hvac_mode:
-            await self.vehicle.set_auxiliary_climatisation(
-                action="start", spin=self.spin
-            )
+            await self.vehicle.set_auxiliary_climatisation("start", self.spin)
         else:
-            await self.vehicle.set_auxiliary_climatisation(
-                action="stop", spin=self.spin
-            )
+            await self.vehicle.set_auxiliary_climatisation("stop", self.spin)
+        await self.vehicle.update()
 
 
 class Number(Instrument):
@@ -809,7 +810,7 @@ class ChargeMaxACAmpere(Select):
     @property
     def options(self) -> dict:
         """Return options."""
-        return ["5", "10", "13", "32"]
+        return ["5", "10", "13", "16", "32"]
 
     async def set_value(self, ampere: str):
         """Set value."""
@@ -1170,7 +1171,7 @@ class DepartureTimer(Switch):
     def attributes(self):
         """Timer attributes."""
         data = self.vehicle.timer_attributes(self._id)
-        return dict(data)
+        return dict(data) if data is not None else {}
 
 
 class ACDepartureTimer(Switch):
@@ -1210,7 +1211,7 @@ class ACDepartureTimer(Switch):
     def attributes(self):
         """Timer attributes."""
         data = self.vehicle.ac_timer_attributes(self._id)
-        return dict(data)
+        return dict(data) if data is not None else {}
 
 
 class WindowHeater(Switch):
@@ -1542,8 +1543,8 @@ _INSTRUMENT_DEFS = [
     (TurnSignals, [], {}),
     # (ElectricClimatisation, [], {}),
     (ElectricClimatisationClimate, [], {}),
-    (CombustionClimatisationClimate, [], {}),
-    (AuxiliaryClimatisation, [], {}),
+    (AuxiliaryClimatisationClimate, [], {}),
+    # (AuxiliaryClimatisation, [], {}),
     (Charging, [], {}),
     (ReducedACCharging, [], {}),
     (AutoReleaseACConnector, [], {}),
@@ -2319,6 +2320,26 @@ _INSTRUMENT_DEFS = [
             "unit": TEMP_CELSIUS,
             "device_class": VWDeviceClass.TEMPERATURE,
             "state_class": VWStateClass.MEASUREMENT,
+        },
+    ),
+    (
+        Sensor,
+        [],
+        {
+            "attr": "active_ventilation_state",
+            "name": "Active ventilation state",
+            "icon": "mdi:fan",
+            "unit": "",
+        },
+    ),
+    (
+        Sensor,
+        [],
+        {
+            "attr": "climatisation_state",
+            "name": "Climatisation state",
+            "icon": "mdi:thermostat",
+            "unit": "",
         },
     ),
     # Sensors - API / diagnostics
