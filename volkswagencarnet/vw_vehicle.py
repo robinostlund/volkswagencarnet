@@ -2020,21 +2020,11 @@ class Vehicle:
     @property
     def is_climatisation_state_supported(self) -> bool:
         """Return true if vehicle has climatisation state."""
-        if is_valid_path(
-            self.attrs,
-            Paths.CLIMATISATION_AUX_STATE,
-        ):
-            return True
-        if is_valid_path(self.attrs, Paths.USER_CAPABILITIES):
-            capabilities = find_path(self.attrs, Paths.USER_CAPABILITIES)
-            for capability in capabilities:
-                if capability.get("id", None) == "hybridCarAuxiliaryHeating":
-                    if 1007 in capability.get("status", []):
-                        return False
-                    return True
-        if self.is_electric_climatisation_supported:
-            return True
-        return False
+        return (
+            self.is_climatisation_supported
+            or self.is_auxiliary_climatisation_supported
+            or self.is_electric_climatisation_supported
+        )
 
     @property
     def auxiliary_duration(self) -> int:
