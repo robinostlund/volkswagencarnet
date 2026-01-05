@@ -2322,6 +2322,26 @@ _INSTRUMENT_DEFS = [
             "state_class": VWStateClass.MEASUREMENT,
         },
     ),
+    (
+        Sensor,
+        [],
+        {
+            "attr": "active_ventilation_state",
+            "name": "Active ventilation state",
+            "icon": "mdi:fan",
+            "unit": "",
+        },
+    ),
+    (
+        Sensor,
+        [],
+        {
+            "attr": "climatisation_state",
+            "name": "Climatisation state",
+            "icon": "mdi:thermostat",
+            "unit": "",
+        },
+    ),
     # Sensors - API / diagnostics
     (
         Sensor,

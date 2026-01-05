@@ -344,7 +344,13 @@ class Vehicle:
             if setting == "reduced_ac_charging" and value not in ["reduced", "maximum"]:
                 _LOGGER.error('Charging setting "%s" is not supported', value)
                 raise Exception(f'Charging setting "{value}" is not supported.')
-            if setting == "max_charge_amperage" and int(value) not in [5, 10, 13, 16, 32]:
+            if setting == "max_charge_amperage" and int(value) not in [
+                5,
+                10,
+                13,
+                16,
+                32,
+            ]:
                 _LOGGER.error(
                     "Setting maximum charge amperage to %s is not supported", value
                 )
@@ -1913,6 +1919,16 @@ class Vehicle:
         return state not in ["off", "invalid"]
 
     @property
+    def active_ventilation_last_updated(self) -> datetime:
+        """Return timestamp of last active ventilation update."""
+        return find_path(self.attrs, Paths.ACTIVE_VENTILATION_TS)
+
+    @property
+    def is_active_ventilation_supported(self) -> bool:
+        """Return true if active ventilation is available in the vehicle."""
+        return is_valid_path(self.attrs, Paths.ACTIVE_VENTILATION_STATE)
+
+    @property
     def active_ventilation_remaining_time(self) -> int:
         """Return remaining time for active ventilation."""
         return find_path(self.attrs, Paths.ACTIVE_VENTILATION_REM_TIME)
@@ -1928,12 +1944,19 @@ class Vehicle:
         return is_valid_path(self.attrs, Paths.ACTIVE_VENTILATION_REM_TIME)
 
     @property
-    def active_ventilation_last_updated(self) -> datetime:
+    def active_ventilation_state(self) -> bool:
+        """Return state of active ventilation."""
+        state = find_path(self.attrs, Paths.ACTIVE_VENTILATION_STATE)
+
+        return state
+
+    @property
+    def active_ventilation_state_last_updated(self) -> datetime:
         """Return timestamp of last active ventilation update."""
         return find_path(self.attrs, Paths.ACTIVE_VENTILATION_TS)
 
     @property
-    def is_active_ventilation_supported(self) -> bool:
+    def is_active_ventilation_state_supported(self) -> bool:
         """Return true if active ventilation is available in the vehicle."""
         return is_valid_path(self.attrs, Paths.ACTIVE_VENTILATION_STATE)
 
@@ -1973,6 +1996,44 @@ class Vehicle:
                     if 1007 in capability.get("status", []):
                         return False
                     return True
+        return False
+
+    @property
+    def climatisation_state(self) -> str | None:
+        """Return state of climatisation."""
+        climatisation_state = None
+        if is_valid_path(self.attrs, Paths.CLIMATISATION_AUX_STATE):
+            climatisation_state = find_path(self.attrs, Paths.CLIMATISATION_AUX_STATE)
+        if is_valid_path(self.attrs, Paths.CLIMATISATION_STATE):
+            climatisation_state = find_path(self.attrs, Paths.CLIMATISATION_STATE)
+        return climatisation_state
+
+    @property
+    def climatisation_state_last_updated(self) -> datetime:
+        """Return state of climatisation last updated."""
+        if is_valid_path(self.attrs, Paths.CLIMATISATION_AUX_TS):
+            return find_path(self.attrs, Paths.CLIMATISATION_AUX_TS)
+        if is_valid_path(self.attrs, Paths.CLIMATISATION_STATUS_TS):
+            return find_path(self.attrs, Paths.CLIMATISATION_STATUS_TS)
+        return None
+
+    @property
+    def is_climatisation_state_supported(self) -> bool:
+        """Return true if vehicle has climatisation state."""
+        if is_valid_path(
+            self.attrs,
+            Paths.CLIMATISATION_AUX_STATE,
+        ):
+            return True
+        if is_valid_path(self.attrs, Paths.USER_CAPABILITIES):
+            capabilities = find_path(self.attrs, Paths.USER_CAPABILITIES)
+            for capability in capabilities:
+                if capability.get("id", None) == "hybridCarAuxiliaryHeating":
+                    if 1007 in capability.get("status", []):
+                        return False
+                    return True
+        if self.is_electric_climatisation_supported:
+            return True
         return False
 
     @property
