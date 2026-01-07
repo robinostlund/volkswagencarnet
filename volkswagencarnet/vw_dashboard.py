@@ -815,7 +815,7 @@ class ScanInterval(Number):
     @property
     def min_value(self):
         """Return min value."""
-        return 1
+        return 0
 
     @property
     def max_value(self):
