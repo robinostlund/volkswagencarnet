@@ -556,11 +556,11 @@ class Connection:
                 await asyncio.sleep(delay)
                 return await self.get(url, vin, tries + 1)
             elif error.status == 500:
-                _LOGGER.info(
+                _LOGGER.debug(
                     "Got HTTP 500 from server, service might be temporarily unavailable"
                 )
             elif error.status == 502:
-                _LOGGER.info(
+                _LOGGER.debug(
                     "Got HTTP 502 from server, this request might not be supported for this vehicle"
                 )
             else:

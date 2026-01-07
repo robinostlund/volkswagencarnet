@@ -781,6 +781,73 @@ class ClimatisationTargetTemperature(Number):
         return {"last_result": self.vehicle.climater_action_status}
 
 
+class ScanInterval(Number):
+    """Scan interval configuration number."""
+
+    def __init__(self) -> None:
+        """Initialize scan interval number."""
+        super().__init__(
+            attr="scan_interval",
+            name="Scan Interval",
+            icon="mdi:timer-cog",
+            unit="min",
+            entity_type="config",
+            device_class=None,
+            state_class=None,
+        )
+
+    def setup(self, vehicle: Vehicle, **config):
+        """Setup scan interval instrument."""
+        # Always available - not dependent on vehicle capabilities
+        self.vehicle = vehicle
+        return True
+
+    @property
+    def is_supported(self) -> bool:
+        """Scan interval is always supported."""
+        return True
+
+    @property
+    def last_refresh(self) -> datetime | None:
+        """Return last refresh time - use current time for config entities."""
+        return datetime.now()
+
+    @property
+    def min_value(self):
+        """Return min value."""
+        return 1
+
+    @property
+    def max_value(self):
+        """Return max value."""
+        return 60
+
+    @property
+    def native_step(self):
+        """Return native step."""
+        return 1
+
+    @property
+    def state(self):
+        """Return current scan interval from coordinator.
+
+        This will be set by the integration coordinator.
+        Default to a reasonable value if not set.
+        """
+        # The coordinator will set this value
+        return getattr(self, "_current_interval", 5)
+
+    async def set_value(self, value: float):
+        """Set scan interval value.
+
+        This method will be called by the integration to update the interval.
+        The actual implementation will be handled in the number.py entity.
+        """
+        # Store the value temporarily - will be overridden by coordinator
+        self._current_interval = int(value)
+        return True
+
+
 # Select
 
 
@@ -1529,6 +1596,7 @@ _INSTRUMENT_DEFS = [
     # Core/custom classes (class, args, kwargs)
     (Position, [], {}),
     (BatteryTargetSOC, [], {}),
+    (ScanInterval, [], {}),
     # (ClimatisationTargetTemperature, [], {}),
     (DoorLock, [], {}),
     (TrunkLock, [], {}),

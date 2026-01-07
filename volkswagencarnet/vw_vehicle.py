@@ -633,6 +633,48 @@ class Vehicle:
         _LOGGER.error("Departure timers are not supported")
         raise Exception("Departure timers are not supported.")
 
+    async def update_departure_timer(self, timer_id, spin, timer_data) -> bool:
+        """Turn on/off departure timer."""
+        if self.is_departure_timer_supported(timer_id):
+            if timer_data is None:
+                _LOGGER.error("Charging departure timers setting is not supported")
+                raise Exception("Charging departure timers setting is not supported.")
+            data = None
+            response = None
+            if is_valid_path(
+                self.attrs, Paths.DEPARTURE_PROFILES_TIMERS
+            ) and is_valid_path(self.attrs, Paths.DEPARTURE_PROFILES_PROFILES):
+                timers = find_path(self.attrs, Paths.DEPARTURE_PROFILES_TIMERS)
+                profiles = find_path(self.attrs, Paths.DEPARTURE_PROFILES_PROFILES)
+                for index, timer in enumerate(timers):
+                    if timer.get("id", 0) == timer_id:
+                        timers[index] = timer_data
+                data = {"timers": timers, "profiles": profiles}
+                response = await self._connection.setDepartureProfiles(self.vin, data)
+            if is_valid_path(self.attrs, Paths.AUXILIARY_HEATING_TIMERS):
+                timers = find_path(self.attrs, Paths.AUXILIARY_HEATING_TIMERS)
+                for index, timer in enumerate(timers):
+                    if timer.get("id", 0) == timer_id:
+                        timers[index] = timer_data
+                data = {"spin": spin, "timers": timers}
+                response = await self._connection.setAuxiliaryHeatingTimers(
+                    self.vin, data
+                )
+            if is_valid_path(self.attrs, Paths.DEPARTURE_TIMERS):
+                timers = find_path(self.attrs, Paths.DEPARTURE_TIMERS)
+                for index, timer in enumerate(timers):
+                    if timer.get("id", 0) == timer_id:
+                        timers[index] = timer_data
+                data = {"timers": timers}
+                response = await self._connection.setDepartureTimers(self.vin, data)
+            return await self._handle_response(
+                response=response,
+                topic="departuretimer",
+                error_msg="Failed to change departure timers setting.",
+            )
+        _LOGGER.error("Departure timers are not supported")
+        raise Exception("Departure timers are not supported.")
+
     async def set_ac_departure_timer(self, timer_id, enable) -> bool:
         """Turn on/off ac departure timer."""
         if self.is_ac_departure_timer_supported(timer_id):
