@@ -2759,6 +2759,9 @@ class Vehicle:
             data["climatisation_enabled"] = timer.get("climatisation", False)
         if timer.get("preferredChargingTimes", None):
             preferred_charging_times = timer.get("preferredChargingTimes", None)[0]
+            data["preferred_charging_times_enabled"] = preferred_charging_times.get(
+                "enabled", None
+            )
             data["preferred_charging_start_time"] = preferred_charging_times.get(
                 "startTimeLocal", None
             )
