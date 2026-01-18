@@ -699,6 +699,32 @@ class Vehicle:
         _LOGGER.error("Climatisation departure timers are not supported")
         raise Exception("Climatisation departure timers are not supported.")
 
+    async def update_ac_departure_timer(self, timer_id, timer_data) -> bool:
+        """Turn on/off ac departure timer."""
+        if self.is_ac_departure_timer_supported(timer_id):
+            if timer_data is None:
+                _LOGGER.error(
+                    "Charging climatisation departure timers setting is not supported"
+                )
+                raise Exception(
+                    "Charging climatisation departure timers setting is not supported."
+                )
+            data = None
+            response = None
+            timers = find_path(self.attrs, Paths.CLIMATISATION_TIMERS)
+            for index, timer in enumerate(timers):
+                if timer.get("id", 0) == timer_id:
+                    timers[index] = timer_data
+            data = {"timers": timers}
+            response = await self._connection.setClimatisationTimers(self.vin, data)
+            return await self._handle_response(
+                response=response,
+                topic="departuretimer",
+                error_msg="Failed to change climatisation departure timers setting.",
+            )
+        _LOGGER.error("Climatisation departure timers are not supported")
+        raise Exception("Climatisation departure timers are not supported.")
+
     # Lock (RLU)
     async def set_lock(self, action, spin):
         """Remote lock and unlock actions."""
@@ -949,7 +975,7 @@ class Vehicle:
         """Return true if parking light is on."""
         lights = find_path(self.attrs, Paths.LIGHTS) or []
         lights_on_count = sum(1 for light in lights if light.get("status") == "on")
-        return lights_on_count == 2
+        return lights_on_count > 0
 
     @property
     def parking_light_last_updated(self) -> datetime:
