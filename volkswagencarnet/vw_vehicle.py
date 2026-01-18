@@ -711,7 +711,6 @@ class Vehicle:
                 )
             data = None
             response = None
-
             timers = find_path(self.attrs, Paths.CLIMATISATION_TIMERS)
             for index, timer in enumerate(timers):
                 if timer.get("id", 0) == timer_id:
