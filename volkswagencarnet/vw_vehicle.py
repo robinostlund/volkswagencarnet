@@ -6,7 +6,6 @@ from __future__ import annotations
 import asyncio
 from collections import OrderedDict
 from datetime import UTC, datetime, timedelta, date
-from gc import enable
 from json import dumps as to_json
 from typing import Any
 import logging
