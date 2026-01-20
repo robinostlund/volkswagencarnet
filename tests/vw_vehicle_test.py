@@ -96,7 +96,7 @@ class VehicleTest(IsolatedAsyncioTestCase):
 
         vehicle._discovered = False
         vehicle.deactivated = False
-        
+
         # Mock _services with active services for dynamic service checking
         vehicle._services = {
             Services.ACCESS: {"active": True},
@@ -116,7 +116,7 @@ class VehicleTest(IsolatedAsyncioTestCase):
             Services.PARKING_POSITION: {"active": True},
             Services.TRIP_STATISTICS: {"active": True},
         }
-        
+
         await vehicle.update()
 
         vehicle.discover.assert_called_once()
