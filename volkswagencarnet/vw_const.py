@@ -124,6 +124,7 @@ class Services:
     # callable via `selectivestatus`
     ACCESS = "access"
     AUTOMATION = "automation"
+    AUXILIARY_HEATING = "auxiliaryHeating"
     BATTERY_CHARGING_CARE = "batteryChargingCare"
     BATTERY_SUPPORT = "batterySupport"
     CHARGING = "charging"
