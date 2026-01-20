@@ -197,31 +197,46 @@ class Vehicle:
         if not self._discovered:
             await self.discover()
         if not self.deactivated:
-            await asyncio.gather(
-                self.get_selectivestatus(
+            # Build list of active services to fetch
+            active_services = [
+                service_name
+                for service_name in [
+                    Services.ACCESS,
+                    Services.BATTERY_CHARGING_CARE,
+                    Services.BATTERY_SUPPORT,
+                    Services.CHARGING,
+                    Services.CLIMATISATION,
+                    Services.CLIMATISATION_TIMERS,
+                    Services.DEPARTURE_PROFILES,
+                    Services.DEPARTURE_TIMERS,
+                    Services.FUEL_STATUS,
+                    Services.MEASUREMENTS,
+                    Services.READINESS,
+                    Services.VEHICLE_LIGHTS,
+                    Services.VEHICLE_HEALTH_INSPECTION,
+                    Services.USER_CAPABILITIES,
+                ]
+                if self._services.get(service_name, {}).get("active", False)
+            ]
+
+            # Only fetch if there are active services
+            tasks = [self.get_vehicle()]
+            if active_services:
+                tasks.insert(0, self.get_selectivestatus(active_services))
+
+            # Add conditional service calls
+            if self._services.get(Services.PARKING_POSITION, {}).get("active", False):
+                tasks.append(self.get_parkingposition())
+            if self._services.get(Services.TRIP_STATISTICS, {}).get("active", False):
+                tasks.extend(
                     [
-                        Services.ACCESS,
-                        Services.BATTERY_CHARGING_CARE,
-                        Services.BATTERY_SUPPORT,
-                        Services.CHARGING,
-                        Services.CLIMATISATION,
-                        Services.CLIMATISATION_TIMERS,
-                        Services.DEPARTURE_PROFILES,
-                        Services.DEPARTURE_TIMERS,
-                        Services.FUEL_STATUS,
-                        Services.MEASUREMENTS,
-                        Services.READINESS,
-                        Services.VEHICLE_LIGHTS,
-                        Services.VEHICLE_HEALTH_INSPECTION,
-                        Services.USER_CAPABILITIES,
+                        self.get_trip_last(),
+                        self.get_trip_refuel(),
+                        self.get_trip_longterm(),
                     ]
-                ),
-                self.get_vehicle(),
-                self.get_parkingposition(),
-                self.get_trip_last(),
-                self.get_trip_refuel(),
-                self.get_trip_longterm(),
-            )
+                )
+
+            await asyncio.gather(*tasks)
             await asyncio.gather(self.get_service_status())
         else:
             _LOGGER.info("Vehicle with VIN %s is deactivated", self.vin)

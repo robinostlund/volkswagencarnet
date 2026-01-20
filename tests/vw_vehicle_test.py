@@ -96,6 +96,27 @@ class VehicleTest(IsolatedAsyncioTestCase):
 
         vehicle._discovered = False
         vehicle.deactivated = False
+
+        # Mock _services with active services for dynamic service checking
+        vehicle._services = {
+            Services.ACCESS: {"active": True},
+            Services.BATTERY_CHARGING_CARE: {"active": True},
+            Services.BATTERY_SUPPORT: {"active": True},
+            Services.CHARGING: {"active": True},
+            Services.CLIMATISATION: {"active": True},
+            Services.CLIMATISATION_TIMERS: {"active": True},
+            Services.DEPARTURE_PROFILES: {"active": True},
+            Services.DEPARTURE_TIMERS: {"active": True},
+            Services.FUEL_STATUS: {"active": True},
+            Services.MEASUREMENTS: {"active": True},
+            Services.READINESS: {"active": True},
+            Services.VEHICLE_LIGHTS: {"active": True},
+            Services.VEHICLE_HEALTH_INSPECTION: {"active": True},
+            Services.USER_CAPABILITIES: {"active": True},
+            Services.PARKING_POSITION: {"active": True},
+            Services.TRIP_STATISTICS: {"active": True},
+        }
+
         await vehicle.update()
 
         vehicle.discover.assert_called_once()
@@ -103,9 +124,12 @@ class VehicleTest(IsolatedAsyncioTestCase):
         vehicle.get_vehicle.assert_called_once()
         vehicle.get_parkingposition.assert_called_once()
         vehicle.get_trip_last.assert_called_once()
+        vehicle.get_trip_refuel.assert_called_once()
+        vehicle.get_trip_longterm.assert_called_once()
         vehicle.get_service_status.assert_called_once()
 
-        # Verify that only the expected functions above were called
+        # 8 method calls: discover, get_vehicle, get_selectivestatus, get_parkingposition,
+        # get_trip_last, get_trip_refuel, get_trip_longterm, get_service_status
         assert len(vehicle.method_calls) == 8, (
             f"Wrong number of methods called. Expected 8, got {len(vehicle.method_calls)}"
         )
