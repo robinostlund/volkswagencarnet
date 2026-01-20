@@ -45,6 +45,7 @@ class VehicleTest(IsolatedAsyncioTestCase):
 
             expected_services = {
                 Services.ACCESS: {"active": False},
+                Services.AUXILIARY_HEATING: {"active": False},
                 Services.BATTERY_CHARGING_CARE: {"active": False},
                 Services.BATTERY_SUPPORT: {"active": False},
                 Services.CHARGING: {"active": False},
@@ -83,6 +84,7 @@ class VehicleTest(IsolatedAsyncioTestCase):
         # Add class constants to mock so the update logic can access them
         vehicle.SUPPORTED_SERVICES = Vehicle.SUPPORTED_SERVICES
         vehicle.UPDATE_EXCLUDED_SERVICES = Vehicle.UPDATE_EXCLUDED_SERVICES
+        vehicle.SERVICE_FETCH_REPLACEMENTS = Vehicle.SERVICE_FETCH_REPLACEMENTS
 
         # Mock _services with active services for dynamic service checking
         vehicle._services = {
@@ -117,8 +119,8 @@ class VehicleTest(IsolatedAsyncioTestCase):
 
         # 8 method calls: discover, get_vehicle, get_selectivestatus, get_parkingposition,
         # get_trip_last, get_trip_refuel, get_trip_longterm, get_service_status
-        assert len(vehicle.method_calls) == 8, (
-            f"Wrong number of methods called. Expected 8, got {len(vehicle.method_calls)}"
+        assert len(vehicle.method_calls) == 9, (
+            f"Wrong number of methods called. Expected 9, got {len(vehicle.method_calls)}"
         )
 
 
