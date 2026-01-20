@@ -40,6 +40,34 @@ DEFAULT_TARGET_TEMP = 24
 class Vehicle:
     """Vehicle contains the state of sensors and methods for interacting with the car."""
 
+    # Single source of truth for all supported services
+    SUPPORTED_SERVICES = [
+        Services.ACCESS,
+        Services.BATTERY_CHARGING_CARE,
+        Services.BATTERY_SUPPORT,
+        Services.CHARGING,
+        Services.CLIMATISATION,
+        Services.CLIMATISATION_TIMERS,
+        Services.DEPARTURE_PROFILES,
+        Services.DEPARTURE_TIMERS,
+        Services.FUEL_STATUS,
+        Services.HONK_AND_FLASH,
+        Services.MEASUREMENTS,
+        Services.PARKING_POSITION,
+        Services.READINESS,
+        Services.TRIP_STATISTICS,
+        Services.USER_CAPABILITIES,
+        Services.VEHICLE_LIGHTS,
+        Services.VEHICLE_HEALTH_INSPECTION,
+    ]
+
+    # Services that should not be queried during regular updates
+    UPDATE_EXCLUDED_SERVICES = [
+        Services.PARKING_POSITION,  # Has dedicated method call
+        Services.TRIP_STATISTICS,  # Has dedicated method calls
+        Services.HONK_AND_FLASH,  # Action service, not data service
+    ]
+
     def __init__(self, conn, url) -> None:
         """Initialize the Vehicle with default values."""
         self._connection = conn
@@ -58,24 +86,12 @@ class Vehicle:
         }
 
         # API Endpoints that might be enabled for car (that we support)
+        # Initialize from SUPPORTED_SERVICES constant
         self._services: dict[str, dict[str, object]] = {
-            Services.ACCESS: {"active": False},
-            Services.BATTERY_CHARGING_CARE: {"active": False},
-            Services.BATTERY_SUPPORT: {"active": False},
-            Services.CHARGING: {"active": False},
-            Services.CLIMATISATION: {"active": False},
-            Services.CLIMATISATION_TIMERS: {"active": False},
-            Services.DEPARTURE_PROFILES: {"active": False},
-            Services.DEPARTURE_TIMERS: {"active": False},
-            Services.FUEL_STATUS: {"active": False},
-            Services.HONK_AND_FLASH: {"active": False},
-            Services.MEASUREMENTS: {"active": False},
-            Services.PARKING_POSITION: {"active": False},
-            Services.READINESS: {"active": False},
-            Services.TRIP_STATISTICS: {"active": False},
-            Services.USER_CAPABILITIES: {"active": False},
-            Services.PARAMETERS: {},
+            service: {"active": False} for service in self.SUPPORTED_SERVICES
         }
+        # Add PARAMETERS as special case
+        self._services[Services.PARAMETERS] = {}
 
     def _in_progress(self, topic: str, unknown_offset: int = 0) -> bool:
         """Check if request is already in progress."""
@@ -200,23 +216,9 @@ class Vehicle:
             # Build list of active services to fetch
             active_services = [
                 service_name
-                for service_name in [
-                    Services.ACCESS,
-                    Services.BATTERY_CHARGING_CARE,
-                    Services.BATTERY_SUPPORT,
-                    Services.CHARGING,
-                    Services.CLIMATISATION,
-                    Services.CLIMATISATION_TIMERS,
-                    Services.DEPARTURE_PROFILES,
-                    Services.DEPARTURE_TIMERS,
-                    Services.FUEL_STATUS,
-                    Services.MEASUREMENTS,
-                    Services.READINESS,
-                    Services.VEHICLE_LIGHTS,
-                    Services.VEHICLE_HEALTH_INSPECTION,
-                    Services.USER_CAPABILITIES,
-                ]
-                if self._services.get(service_name, {}).get("active", False)
+                for service_name in self.SUPPORTED_SERVICES
+                if service_name not in self.UPDATE_EXCLUDED_SERVICES
+                and self._services.get(service_name, {}).get("active", False)
             ]
 
             # Only fetch if there are active services
