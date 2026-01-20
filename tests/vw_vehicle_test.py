@@ -128,9 +128,10 @@ class VehicleTest(IsolatedAsyncioTestCase):
         vehicle.get_trip_longterm.assert_called_once()
         vehicle.get_service_status.assert_called_once()
 
-        # Updated: Now expects 10 method calls (added get_trip_refuel and get_trip_longterm)
-        assert len(vehicle.method_calls) == 10, (
-            f"Wrong number of methods called. Expected 10, got {len(vehicle.method_calls)}"
+        # 8 method calls: discover, get_vehicle, get_selectivestatus, get_parkingposition,
+        # get_trip_last, get_trip_refuel, get_trip_longterm, get_service_status
+        assert len(vehicle.method_calls) == 8, (
+            f"Wrong number of methods called. Expected 8, got {len(vehicle.method_calls)}"
         )
 
 
