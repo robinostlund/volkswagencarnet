@@ -87,13 +87,8 @@ class Connection:
         self._session._cookie_jar._cookies.clear()  # pylint: disable=protected-access
 
     # API Login
-    async def doLogin(self, tries: int = 1, vin: str = None):
-        """Login method, clean login.
-
-        Args:
-            tries: Number of login attempts
-            vin: Optional VIN to load only a specific vehicle. If None, loads all vehicles.
-        """
+    async def doLogin(self, tries: int = 1):
+        """Login method, clean login."""
         async with self._login_lock:
             _LOGGER.debug("Initiating new login")
 
@@ -115,42 +110,18 @@ class Connection:
             _LOGGER.debug("Fetching vehicles associated with account")
             self._session_headers.pop("Content-Type", None)
             loaded_vehicles = await self.get(url=f"{BASE_API}/vehicle/v2/vehicles")
-
-            # Add Vehicle class object for all or specific VIN-numbers from account
+            # Add Vehicle class object for all VIN-numbers from account
             if loaded_vehicles.get("data") is not None:
+                _LOGGER.debug("Found vehicle(s) associated with account")
                 self._vehicles = []
-
-                if vin:
-                    # Only load the specified vehicle
-                    vin_upper = vin.upper()
-                    _LOGGER.debug("Looking for vehicle with VIN %s", vin_upper)
-                    for vehicle_data in loaded_vehicles.get("data"):
-                        if vehicle_data.get("vin").upper() == vin_upper:
-                            self._vehicles.append(
-                                Vehicle(self, vehicle_data.get("vin"))
-                            )
-                            _LOGGER.debug("Loaded vehicle with VIN %s", vin_upper)
-                            break
-
-                    if not self._vehicles:
-                        _LOGGER.warning(
-                            "Vehicle with VIN %s not found in account", vin_upper
-                        )
-                        self._session_logged_in = False
-                        return False
-
-                    _LOGGER.info("Found configured vehicle in account")
-                else:
-                    # Load all vehicles (default behavior for config flow)
-                    _LOGGER.debug("Found vehicle(s) associated with account")
-                    for vehicle_data in loaded_vehicles.get("data"):
-                        self._vehicles.append(Vehicle(self, vehicle_data.get("vin")))
+                for vehicle in loaded_vehicles.get("data"):
+                    self._vehicles.append(Vehicle(self, vehicle.get("vin")))
             else:
                 _LOGGER.warning("Failed to login to Volkswagen Connect API")
                 self._session_logged_in = False
                 return False
 
-            # Update all loaded vehicles data before returning
+            # Update all vehicles data before returning
             await self.update()
             return True
 

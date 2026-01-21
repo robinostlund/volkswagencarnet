@@ -45,7 +45,6 @@ class VehicleTest(IsolatedAsyncioTestCase):
 
             expected_services = {
                 Services.ACCESS: {"active": False},
-                Services.AUXILIARY_HEATING: {"active": False},
                 Services.BATTERY_CHARGING_CARE: {"active": False},
                 Services.BATTERY_SUPPORT: {"active": False},
                 Services.CHARGING: {"active": False},
@@ -60,8 +59,6 @@ class VehicleTest(IsolatedAsyncioTestCase):
                 Services.TRIP_STATISTICS: {"active": False},
                 Services.READINESS: {"active": False},
                 Services.USER_CAPABILITIES: {"active": False},
-                Services.VEHICLE_HEALTH_INSPECTION: {"active": False},
-                Services.VEHICLE_LIGHTS: {"active": False},
                 Services.PARAMETERS: {},
             }
 
@@ -73,6 +70,25 @@ class VehicleTest(IsolatedAsyncioTestCase):
         vehicle = Vehicle(None, "XYZ1234567890")
         assert str(vehicle) == "XYZ1234567890"
 
+    def test_discover(self):
+        """Test the discovery process."""
+
+    @pytest.mark.asyncio
+    async def test_update_deactivated(self):
+        """Test that calling update on a deactivated Vehicle does nothing."""
+        vehicle = MagicMock(spec=Vehicle, name="MockDeactivatedVehicle")
+        vehicle.update = lambda: Vehicle.update(vehicle)
+        vehicle._discovered = True
+        vehicle._deactivated = True
+
+        await vehicle.update()
+
+        vehicle.discover.assert_not_called()
+        # Verify that no other methods were called
+        assert len(vehicle.method_calls) == 0, (
+            f"Expected none, got {vehicle.method_calls}"
+        )
+
     async def test_update(self):
         """Test that update calls the wanted methods and nothing else."""
         vehicle = MagicMock(spec=Vehicle, name="MockUpdateVehicle")
@@ -80,32 +96,6 @@ class VehicleTest(IsolatedAsyncioTestCase):
 
         vehicle._discovered = False
         vehicle.deactivated = False
-
-        # Add class constants to mock so the update logic can access them
-        vehicle.SUPPORTED_SERVICES = Vehicle.SUPPORTED_SERVICES
-        vehicle.UPDATE_EXCLUDED_SERVICES = Vehicle.UPDATE_EXCLUDED_SERVICES
-        vehicle.SERVICE_FETCH_REPLACEMENTS = Vehicle.SERVICE_FETCH_REPLACEMENTS
-
-        # Mock _services with active services for dynamic service checking
-        vehicle._services = {
-            Services.ACCESS: {"active": True},
-            Services.BATTERY_CHARGING_CARE: {"active": True},
-            Services.BATTERY_SUPPORT: {"active": True},
-            Services.CHARGING: {"active": True},
-            Services.CLIMATISATION: {"active": True},
-            Services.CLIMATISATION_TIMERS: {"active": True},
-            Services.DEPARTURE_PROFILES: {"active": True},
-            Services.DEPARTURE_TIMERS: {"active": True},
-            Services.FUEL_STATUS: {"active": True},
-            Services.MEASUREMENTS: {"active": True},
-            Services.READINESS: {"active": True},
-            Services.VEHICLE_LIGHTS: {"active": True},
-            Services.VEHICLE_HEALTH_INSPECTION: {"active": True},
-            Services.USER_CAPABILITIES: {"active": True},
-            Services.PARKING_POSITION: {"active": True},
-            Services.TRIP_STATISTICS: {"active": True},
-        }
-
         await vehicle.update()
 
         vehicle.discover.assert_called_once()
@@ -113,12 +103,9 @@ class VehicleTest(IsolatedAsyncioTestCase):
         vehicle.get_vehicle.assert_called_once()
         vehicle.get_parkingposition.assert_called_once()
         vehicle.get_trip_last.assert_called_once()
-        vehicle.get_trip_refuel.assert_called_once()
-        vehicle.get_trip_longterm.assert_called_once()
         vehicle.get_service_status.assert_called_once()
 
-        # 8 method calls: discover, get_vehicle, get_selectivestatus, get_parkingposition,
-        # get_trip_last, get_trip_refuel, get_trip_longterm, get_service_status
+        # Verify that only the expected functions above were called
         assert len(vehicle.method_calls) == 8, (
             f"Wrong number of methods called. Expected 8, got {len(vehicle.method_calls)}"
         )
