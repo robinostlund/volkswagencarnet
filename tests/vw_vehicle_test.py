@@ -45,7 +45,6 @@ class VehicleTest(IsolatedAsyncioTestCase):
 
             expected_services = {
                 Services.ACCESS: {"active": False},
-                Services.AUXILIARY_HEATING: {"active": False},
                 Services.BATTERY_CHARGING_CARE: {"active": False},
                 Services.BATTERY_SUPPORT: {"active": False},
                 Services.CHARGING: {"active": False},
@@ -84,7 +83,6 @@ class VehicleTest(IsolatedAsyncioTestCase):
         # Add class constants to mock so the update logic can access them
         vehicle.SUPPORTED_SERVICES = Vehicle.SUPPORTED_SERVICES
         vehicle.UPDATE_EXCLUDED_SERVICES = Vehicle.UPDATE_EXCLUDED_SERVICES
-        vehicle.SERVICE_FETCH_REPLACEMENTS = Vehicle.SERVICE_FETCH_REPLACEMENTS
 
         # Mock _services with active services for dynamic service checking
         vehicle._services = {

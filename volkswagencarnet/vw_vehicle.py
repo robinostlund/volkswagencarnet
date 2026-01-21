@@ -43,7 +43,6 @@ class Vehicle:
     # Single source of truth for all supported services
     SUPPORTED_SERVICES = [
         Services.ACCESS,
-        Services.AUXILIARY_HEATING,
         Services.BATTERY_CHARGING_CARE,
         Services.BATTERY_SUPPORT,
         Services.CHARGING,
@@ -68,11 +67,6 @@ class Vehicle:
         Services.TRIP_STATISTICS,  # Has dedicated method calls
         Services.HONK_AND_FLASH,  # Action service, not data service
     ]
-
-    # Service replacements - when fetching data, replace key with value
-    SERVICE_FETCH_REPLACEMENTS = {
-        Services.AUXILIARY_HEATING: Services.CLIMATISATION,
-    }
 
     def __init__(self, conn, url) -> None:
         """Initialize the Vehicle with default values."""
@@ -226,13 +220,6 @@ class Vehicle:
                 if service_name not in self.UPDATE_EXCLUDED_SERVICES
                 and self._services.get(service_name, {}).get("active", False)
             ]
-
-            # Apply service fetch replacements
-            for original, replacement in self.SERVICE_FETCH_REPLACEMENTS.items():
-                if original in active_services:
-                    active_services.remove(original)
-                    if replacement not in active_services:
-                        active_services.append(replacement)
 
             # Only fetch if there are active services
             tasks = [self.get_vehicle()]
