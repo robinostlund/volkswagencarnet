@@ -74,11 +74,6 @@ class Vehicle:
         Services.AUXILIARY_HEATING: Services.CLIMATISATION,
     }
 
-    # Services that must always be included in updates regardless of active status
-    MANDATORY_FETCH_SERVICES = [
-        Services.ACCESS,
-    ]
-
     def __init__(self, conn, url) -> None:
         """Initialize the Vehicle with default values."""
         self._connection = conn
@@ -231,14 +226,6 @@ class Vehicle:
                 if service_name not in self.UPDATE_EXCLUDED_SERVICES
                 and self._services.get(service_name, {}).get("active", False)
             ]
-
-            # Add mandatory services that must always be fetched
-            for service in self.MANDATORY_FETCH_SERVICES:
-                if (
-                    service not in active_services
-                    and service not in self.UPDATE_EXCLUDED_SERVICES
-                ):
-                    active_services.append(service)
 
             # Apply service fetch replacements
             for original, replacement in self.SERVICE_FETCH_REPLACEMENTS.items():
