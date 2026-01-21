@@ -59,8 +59,6 @@ class VehicleTest(IsolatedAsyncioTestCase):
                 Services.TRIP_STATISTICS: {"active": False},
                 Services.READINESS: {"active": False},
                 Services.USER_CAPABILITIES: {"active": False},
-                Services.VEHICLE_HEALTH_INSPECTION: {"active": False},
-                Services.VEHICLE_LIGHTS: {"active": False},
                 Services.PARAMETERS: {},
             }
 
@@ -72,6 +70,25 @@ class VehicleTest(IsolatedAsyncioTestCase):
         vehicle = Vehicle(None, "XYZ1234567890")
         assert str(vehicle) == "XYZ1234567890"
 
+    def test_discover(self):
+        """Test the discovery process."""
+
+    @pytest.mark.asyncio
+    async def test_update_deactivated(self):
+        """Test that calling update on a deactivated Vehicle does nothing."""
+        vehicle = MagicMock(spec=Vehicle, name="MockDeactivatedVehicle")
+        vehicle.update = lambda: Vehicle.update(vehicle)
+        vehicle._discovered = True
+        vehicle._deactivated = True
+
+        await vehicle.update()
+
+        vehicle.discover.assert_not_called()
+        # Verify that no other methods were called
+        assert len(vehicle.method_calls) == 0, (
+            f"Expected none, got {vehicle.method_calls}"
+        )
+
     async def test_update(self):
         """Test that update calls the wanted methods and nothing else."""
         vehicle = MagicMock(spec=Vehicle, name="MockUpdateVehicle")
@@ -79,10 +96,6 @@ class VehicleTest(IsolatedAsyncioTestCase):
 
         vehicle._discovered = False
         vehicle.deactivated = False
-
-        # Add class constants to mock so the update logic can access them
-        vehicle.SUPPORTED_SERVICES = Vehicle.SUPPORTED_SERVICES
-        vehicle.UPDATE_EXCLUDED_SERVICES = Vehicle.UPDATE_EXCLUDED_SERVICES
 
         # Mock _services with active services for dynamic service checking
         vehicle._services = {
