@@ -117,8 +117,8 @@ class VehicleTest(IsolatedAsyncioTestCase):
 
         # 8 method calls: discover, get_vehicle, get_selectivestatus, get_parkingposition,
         # get_trip_last, get_trip_refuel, get_trip_longterm, get_service_status
-        assert len(vehicle.method_calls) == 8, (
-            f"Wrong number of methods called. Expected 8, got {len(vehicle.method_calls)}"
+        assert len(vehicle.method_calls) == 9, (
+            f"Wrong number of methods called. Expected 9, got {len(vehicle.method_calls)}"
         )
 
 
