@@ -2481,6 +2481,18 @@ _INSTRUMENT_DEFS = [
         Sensor,
         [],
         {
+            "attr": "api_subscription_expiration",
+            "name": "API subscription expiration",
+            "icon": "mdi:calendar-alert",
+            "unit": "",
+            "device_class": VWDeviceClass.TIMESTAMP,
+            "entity_type": "diag",
+        },
+    ),
+    (
+        Sensor,
+        [],
+        {
             "attr": "last_data_refresh",
             "name": "Last data refresh",
             "icon": "mdi:clock",
