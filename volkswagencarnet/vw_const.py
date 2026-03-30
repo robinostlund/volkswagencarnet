@@ -248,6 +248,12 @@ class Paths:
     MEASUREMENTS_BAT_TEMP_MIN_K = f"{Services.MEASUREMENTS}.temperatureBatteryStatus.value.temperatureHvBatteryMin_K"
     MEASUREMENTS_BAT_TEMP_MAX_K = f"{Services.MEASUREMENTS}.temperatureBatteryStatus.value.temperatureHvBatteryMax_K"
 
+    # Measurements - Outside Temperature
+    MEASUREMENTS_OUT_TEMP_TS = (
+        f"{Services.MEASUREMENTS}.temperatureOutsideStatus.value.carCapturedTimestamp"
+    )
+    MEASUREMENTS_OUT_TEMP_K = f"{Services.MEASUREMENTS}.temperatureOutsideStatus.value.temperatureOutside_K"
+
     # Vehicle Health Inspection
     VEHICLE_HEALTH_TS = f"{Services.VEHICLE_HEALTH_INSPECTION}.maintenanceStatus.value.carCapturedTimestamp"
     VEHICLE_HEALTH_INSPECTION_DAYS = f"{Services.VEHICLE_HEALTH_INSPECTION}.maintenanceStatus.value.inspectionDue_days"
