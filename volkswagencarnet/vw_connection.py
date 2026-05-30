@@ -8,8 +8,8 @@ from datetime import UTC, datetime, timedelta
 import logging
 from random import randint, random
 import uuid
+import hashlib
 from urllib.parse import parse_qs, urljoin, urlparse
-from typing import Dict, Optional
 
 from aiohttp import ClientTimeout, client_exceptions
 from aiohttp.hdrs import METH_GET, METH_POST, METH_PUT
