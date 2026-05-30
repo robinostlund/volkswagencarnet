@@ -178,12 +178,16 @@ class Connection:
         if "error" in ref:
             parsed_query = parse_qs(urlparse(ref).query)
             error_msg = parsed_query.get("error", ["Unknown error"])[0]
-            error_description = parsed_query.get("error_description", ["No description"])[0]
+            error_description = parsed_query.get(
+                "error_description", ["No description"]
+            )[0]
             _LOGGER.info("Authorization error: %s", error_description)
             raise AuthenticationError(f"{error_msg}: {error_description}")
 
         # Follow the redirect to the actual login page
-        req = await self._session.get(url=ref, headers=self._session_auth_headers, allow_redirects=False)
+        req = await self._session.get(
+            url=ref, headers=self._session_auth_headers, allow_redirects=False
+        )
         if req.status != 200:
             raise AuthenticationError(f"Failed to fetch login page (HTTP {req.status})")
 
@@ -336,7 +340,9 @@ class Connection:
 
         return auth_code, id_token, access_token
 
-    def _build_session_tokens(self, auth_code: str, id_token: str, access_token: str) -> dict:
+    def _build_session_tokens(
+        self, auth_code: str, id_token: str, access_token: str
+    ) -> dict:
         """Build the session token dict from the hybrid OIDC callback values.
 
         The hybrid flow (response_type=code id_token token) already delivers
@@ -375,7 +381,9 @@ class Connection:
             openid_config = await self.get_openid_config()
 
             # Get authorization code and hybrid tokens from login flow
-            auth_code, id_token, access_token = await self._get_authorization_code(openid_config)
+            auth_code, id_token, access_token = await self._get_authorization_code(
+                openid_config
+            )
 
             # Build session tokens from hybrid flow response (no server-side exchange needed)
             tokens = self._build_session_tokens(auth_code, id_token, access_token)
