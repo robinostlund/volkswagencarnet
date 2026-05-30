@@ -6,8 +6,7 @@ COUNTRY = "DE"
 
 # Data used in communication
 CLIENT_ID = "a24fba63-34b3-4d43-b181-942111e6bda8@apps_vw-dilab_com"
-CLIENT_SCOPE = "openid profile badge cars dealers vin"
-CLIENT_TOKEN_TYPES = "code"
+CLIENT_SCOPE = "openid profile badge cars dealers vin offline_access"
 
 USER_AGENT = "Volkswagen/3.61.0-android/14"
 APP_URI = "weconnect://authenticated"
