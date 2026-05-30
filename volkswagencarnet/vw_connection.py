@@ -5,9 +5,9 @@ from __future__ import annotations
 
 import asyncio
 from datetime import UTC, datetime, timedelta
-import hashlib
 import logging
 from random import randint, random
+import uuid
 from urllib.parse import parse_qs, urljoin, urlparse
 from typing import Dict, Optional
 
@@ -23,7 +23,6 @@ from .vw_const import (
     BRAND,
     CLIENT_ID,
     CLIENT_SCOPE,
-    CLIENT_TOKEN_TYPES,
     COUNTRY,
     HEADERS_AUTH,
     HEADERS_SESSION,
@@ -125,7 +124,7 @@ class Connection:
             await self.update()
             return True
 
-    async def get_openid_config(self) -> Dict[str, str]:
+    async def get_openid_config(self) -> dict[str, str]:
         """Get OpenID config."""
         _LOGGER.debug("Requesting openid config")
         req = await self._session.get(
@@ -136,62 +135,61 @@ class Connection:
             raise AuthenticationError(
                 f"OpenID configuration error: status {req.status}"
             )
-        return await req.json()
+        config = await req.json()
+        _LOGGER.debug("OpenID config: %s", config)
+        return config
 
     async def get_authorization_page(self, authorization_endpoint: str) -> str:
-        """Get authorization page (login page)."""
-        # https://identity.vwgroup.io/oidc/v1/authorize?nonce={NONCE}&state={STATE}&response_type={TOKEN_TYPES}&scope={SCOPE}&redirect_uri={APP_URI}&client_id={CLIENT_ID}
-        # https://identity.vwgroup.io/oidc/v1/authorize?client_id={CLIENT_ID}&scope={SCOPE}&response_type={TOKEN_TYPES}&redirect_uri={APP_URI}
+        """Fetch the Auth0 Universal Login page for credential submission.
+
+        Hits the OIDC authorization endpoint with response_type=code id_token token
+        (hybrid flow). Auth0 redirects to the login form; we follow that single
+        redirect and return the HTML so the caller can extract the state token.
+        """
         _LOGGER.debug('Requesting authorization page from "%s"', authorization_endpoint)
         self._session_auth_headers.pop("Referer", None)
         self._session_auth_headers.pop("Origin", None)
-        _LOGGER.debug('Request headers: "%s"', self._session_auth_headers)
 
-        try:
-            req = await self._session.get(
-                url=authorization_endpoint,
-                headers=self._session_auth_headers,
-                allow_redirects=False,
-                params={
-                    "redirect_uri": APP_URI,
-                    "response_type": CLIENT_TOKEN_TYPES,
-                    "client_id": CLIENT_ID,
-                    "scope": CLIENT_SCOPE,
-                },
+        params = {
+            "redirect_uri": APP_URI,
+            # Hybrid flow: Auth0 returns code + id_token + access_token in the
+            # callback so no separate token exchange with the CARIAD BFF is needed.
+            "response_type": "code id_token token",
+            "client_id": CLIENT_ID,
+            "scope": CLIENT_SCOPE,
+            "nonce": uuid.uuid4().hex,
+        }
+
+        req = await self._session.get(
+            url=authorization_endpoint,
+            headers=self._session_auth_headers,
+            allow_redirects=False,
+            params=params,
+        )
+
+        location = req.headers.get("Location")
+        if not location:
+            raise AuthenticationError(
+                f"Missing 'Location' header in authorization response. "
+                f"Status: {req.status}"
             )
 
-            # Check if the response contains a redirect location
-            location = req.headers.get("Location")
-            if not location:
-                raise AuthenticationError(
-                    f"Missing 'Location' header in authorization response. Payload returned: {await req.content.read()}"
-                )
+        ref = urljoin(authorization_endpoint, location)
+        if "error" in ref:
+            parsed_query = parse_qs(urlparse(ref).query)
+            error_msg = parsed_query.get("error", ["Unknown error"])[0]
+            error_description = parsed_query.get("error_description", ["No description"])[0]
+            _LOGGER.info("Authorization error: %s", error_description)
+            raise AuthenticationError(f"{error_msg}: {error_description}")
 
-            ref = urljoin(authorization_endpoint, location)
-            if "error" in ref:
-                parsed_query = parse_qs(urlparse(ref).query)
-                error_msg = parsed_query.get("error", ["Unknown error"])[0]
-                error_description = parsed_query.get(
-                    "error_description", ["No description"]
-                )[0]
-                _LOGGER.info("Authorization error: %s", error_description)
-                raise AuthenticationError(f"{error_msg}: {error_description}")
+        # Follow the redirect to the actual login page
+        req = await self._session.get(url=ref, headers=self._session_auth_headers, allow_redirects=False)
+        if req.status != 200:
+            raise AuthenticationError(f"Failed to fetch login page (HTTP {req.status})")
 
-            # If redirected, fetch the new location
-            req = await self._session.get(
-                url=ref, headers=self._session_auth_headers, allow_redirects=False
-            )
+        return await req.text()
 
-            if req.status != 200:
-                raise AuthenticationError("Failed to fetch authorization endpoint")
-
-            return await req.text()
-
-        except Exception as e:
-            _LOGGER.warning("Error during fetching authorization page: %s", str(e))
-            raise
-
-    def extract_state_token(self, page_content: str) -> Optional[str]:
+    def extract_state_token(self, page_content: str) -> str | None:
         """Extract state token from a page."""
         soup = BeautifulSoup(page_content, "html.parser")
         state_input = soup.select_one('input[name="state"]')
@@ -242,10 +240,6 @@ class Connection:
         # Normal success path
         return await req.text()
 
-    async def handle_login_with_password(self, session, url, auth_headers, form_data):
-        """Handle login with email and password."""
-        return await self.post_form(session, url, auth_headers, form_data, False)
-
     async def follow_redirects(
         self, session, pw_url: str, redirect_location: str
     ) -> str:
@@ -286,29 +280,22 @@ class Connection:
             max_depth -= 1
         return ref
 
-    async def _get_authorization_code(self, openid_config: dict) -> str:
-        """Get authorization code from login flow.
+    async def _get_authorization_code(self, openid_config: dict) -> tuple:
+        """Run the OIDC hybrid login flow and return the callback tokens.
 
-        Args:
-            openid_config: OpenID configuration dictionary containing
-                        authorization_endpoint and issuer
+        Uses response_type=code id_token token so identity.vwgroup.io (Auth0)
+        delivers access_token and id_token directly in the callback — these are
+        usable with the CARIAD BFF without a separate token exchange step.
 
         Returns:
-            Authorization code string
-
-        Raises:
-            AuthenticationError: If authorization fails
+            Tuple of (auth_code_jwt, id_token, access_token)
         """
-        # Get OpenID configuration
         authorization_endpoint = openid_config["authorization_endpoint"]
         auth_issuer = openid_config["issuer"]
 
-        # Get authorization page
         authorization_page = await self.get_authorization_page(authorization_endpoint)
 
-        # Extract form data
         state_token = self.extract_state_token(authorization_page)
-
         if not state_token:
             _LOGGER.error(
                 "Unable to find valid login page. "
@@ -316,11 +303,11 @@ class Connection:
             )
             raise AuthenticationError("Invalid login page - missing state token")
 
-        # Do login
         login_form = {
             "username": self._session_auth_username,
             "password": self._session_auth_password,
             "state": state_token,
+            "action": "default",
         }
         login_url = f"{auth_issuer}/u/login?state={state_token}"
 
@@ -332,42 +319,45 @@ class Connection:
             False,
         )
 
-        # Handle redirects and extract tokens
-        redirect_response = await self.follow_redirects(
+        callback_url = await self.follow_redirects(
             self._session, auth_issuer, redirect_location
         )
 
-        jwt_auth_code = parse_qs(urlparse(redirect_response).query)["code"][0]
-        return jwt_auth_code
+        parsed = urlparse(callback_url)
+        all_params = {**parse_qs(parsed.query), **parse_qs(parsed.fragment)}
+        _LOGGER.debug("Callback params keys: %s", list(all_params.keys()))
 
-    async def _exchange_code_for_tokens(
-        self, auth_code: str, token_endpoint: str
-    ) -> dict:
-        """Exchange authorization code for access tokens.
+        auth_code = all_params.get("code", [None])[0]
+        id_token = all_params.get("id_token", [None])[0]
+        access_token = all_params.get("access_token", [None])[0]
 
-        Args:
-            auth_code: Authorization code from login flow
-            token_endpoint: Token endpoint URL
+        if not auth_code:
+            raise AuthenticationError("No authorization code in callback URL")
 
-        Returns:
-            Dictionary containing tokens
+        return auth_code, id_token, access_token
 
-        Raises:
-            AuthenticationError: If token exchange fails
+    def _build_session_tokens(self, auth_code: str, id_token: str, access_token: str) -> dict:
+        """Build the session token dict from the hybrid OIDC callback values.
+
+        The hybrid flow (response_type=code id_token token) already delivers
+        access_token and id_token directly from identity.vwgroup.io. These
+        Auth0-issued tokens are valid for the CARIAD BFF, which validates them
+        against Auth0's public keys. No separate token exchange is required.
+
+        Note: the authorization code (auth_code) is not used for a server-side
+        exchange — it is decoded here only for debug logging.
         """
-        token_body = {
-            "client_id": CLIENT_ID,
-            "grant_type": "authorization_code",
-            "code": auth_code,
-            "redirect_uri": APP_URI,
+        try:
+            payload = jwt.decode(auth_code, options={"verify_signature": False})
+            _LOGGER.debug("Auth code JWT payload: %s", payload)
+        except Exception:
+            _LOGGER.debug("Auth code is not a JWT, continuing without decode")
+
+        return {
+            "access_token": access_token,
+            "id_token": id_token,
+            "token_type": "Bearer",
         }
-
-        # Token endpoint
-        token_response = await self.post_form(
-            self._session, token_endpoint, self._session_auth_headers, token_body
-        )
-
-        return json_loads(token_response)
 
     async def _login(self) -> bool:
         """Login function.
@@ -381,15 +371,14 @@ class Connection:
             self._session_headers = HEADERS_SESSION.copy()
             self._session_auth_headers = HEADERS_AUTH.copy()
 
-            # Get OpenID configuration for token endpoint
+            # Get OpenID configuration (authorization_endpoint, issuer)
             openid_config = await self.get_openid_config()
-            token_endpoint = openid_config["token_endpoint"]
 
-            # Get authorization code
-            auth_code = await self._get_authorization_code(openid_config)
+            # Get authorization code and hybrid tokens from login flow
+            auth_code, id_token, access_token = await self._get_authorization_code(openid_config)
 
-            # Exchange code for tokens
-            tokens = await self._exchange_code_for_tokens(auth_code, token_endpoint)
+            # Build session tokens from hybrid flow response (no server-side exchange needed)
+            tokens = self._build_session_tokens(auth_code, id_token, access_token)
 
             # Validate token structure
             required_keys = ["access_token", "id_token", "token_type"]
@@ -452,10 +441,7 @@ class Connection:
         self._session_headers.pop("Authorization", None)
 
         if self._session_logged_in:
-            if self._session_headers.get("identity", {}).get("identity_token"):
-                _LOGGER.info("Revoking Identity Access Token")
-
-            if self._session_headers.get("identity", {}).get("refresh_token"):
+            if self._session_tokens.get("identity", {}).get("refresh_token"):
                 _LOGGER.info("Revoking Identity Refresh Token")
                 params = {"token": self._session_tokens["identity"]["refresh_token"]}
                 await self.post(f"{BASE_API}/auth/v1/idk/oidc/revoke", data=params)
@@ -526,7 +512,7 @@ class Connection:
                 return res
         except client_exceptions.ClientResponseError as httperror:
             # Update service status
-            await self.update_service_status(url, httperror.code)
+            await self.update_service_status(url, httperror.status)
             raise httperror from None
         except Exception as error:
             # Update service status
