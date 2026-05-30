@@ -44,14 +44,20 @@ async def test_refresh_token() -> None:
         has_refresh_token = bool(
             connection._session_tokens.get("identity", {}).get("refresh_token")
         )
-        logging.getLogger().info("refresh_token present after login: %s", has_refresh_token)
+        logging.getLogger().info(
+            "refresh_token present after login: %s", has_refresh_token
+        )
 
         if not has_refresh_token:
-            pytest.skip("No refresh_token available from hybrid flow — cannot test refresh")
+            pytest.skip(
+                "No refresh_token available from hybrid flow — cannot test refresh"
+            )
 
         result = await connection.refresh_tokens()
         assert result is True, "refresh_tokens() returned False"
-        assert connection._session_tokens["identity"].get("access_token"), "access_token missing after refresh"
+        assert connection._session_tokens["identity"].get("access_token"), (
+            "access_token missing after refresh"
+        )
         logging.getLogger().info("Token refresh succeeded")
 
 
