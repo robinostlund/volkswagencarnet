@@ -1114,51 +1114,60 @@ class Connection:
 
     async def refresh_tokens(self):
         """Refresh tokens."""
-        try:
-            tHeaders = {
-                "Accept-Encoding": "gzip, deflate, br",
-                "Connection": "keep-alive",
-                "Content-Type": "application/x-www-form-urlencoded",
-                "User-Agent": USER_AGENT,
-                "x-android-package-name": ANDROID_PACKAGE_NAME,
-            }
+        # Token refresh endpoint has been blocked by Volkswagen
+        # Force a relogin instead
+        _LOGGER.warning(
+            "Token refresh is no longer supported by Volkswagen. Triggering relogin."
+        )
+        self._session_logged_in = False
+        return False
 
-            body = {
-                "grant_type": "refresh_token",
-                "refresh_token": self._session_tokens["identity"]["refresh_token"],
-                "client_id": CLIENT_ID,
-            }
-            response = await self._session.post(
-                url=f"{BASE_API}/auth/v1/idk/oidc/token",
-                headers=tHeaders,
-                data=body,
-            )
-            await self.update_service_status("token", response.status)
-            if response.status == 200:
-                tokens = await response.json()
-
-                if not tokens or "access_token" not in tokens:
-                    _LOGGER.error("Invalid refresh token response: %s", tokens)
-                    return False
-                for token in tokens:
-                    self._session_tokens["identity"][token] = tokens[token]
-                self._session_headers["Authorization"] = (
-                    "Bearer " + self._session_tokens["identity"]["access_token"]
-                )
-                _LOGGER.debug("Successfully refreshed and updated tokens")
-            else:
-                response_text = await response.text()
-                _LOGGER.warning(
-                    "Token refresh failed with status %s: %s",
-                    response.status,
-                    response_text,
-                )
-                return False
-        except Exception as error:  # pylint: disable=broad-exception-caught
-            _LOGGER.warning("Could not refresh tokens: %s", error)
-            return False
-        else:
-            return True
+        # Original token refresh code (disabled):
+        # try:
+        #     tHeaders = {
+        #         "Accept-Encoding": "gzip, deflate, br",
+        #         "Connection": "keep-alive",
+        #         "Content-Type": "application/x-www-form-urlencoded",
+        #         "User-Agent": USER_AGENT,
+        #         "x-android-package-name": ANDROID_PACKAGE_NAME,
+        #     }
+        #
+        #     body = {
+        #         "grant_type": "refresh_token",
+        #         "refresh_token": self._session_tokens["identity"]["refresh_token"],
+        #         "client_id": CLIENT_ID,
+        #     }
+        #     response = await self._session.post(
+        #         url=f"{BASE_API}/auth/v1/idk/oidc/token",
+        #         headers=tHeaders,
+        #         data=body,
+        #     )
+        #     await self.update_service_status("token", response.status)
+        #     if response.status == 200:
+        #         tokens = await response.json()
+        #
+        #         if not tokens or "access_token" not in tokens:
+        #             _LOGGER.error("Invalid refresh token response: %s", tokens)
+        #             return False
+        #         for token in tokens:
+        #             self._session_tokens["identity"][token] = tokens[token]
+        #         self._session_headers["Authorization"] = (
+        #             "Bearer " + self._session_tokens["identity"]["access_token"]
+        #         )
+        #         _LOGGER.debug("Successfully refreshed and updated tokens")
+        #     else:
+        #         response_text = await response.text()
+        #         _LOGGER.warning(
+        #             "Token refresh failed with status %s: %s",
+        #             response.status,
+        #             response_text,
+        #         )
+        #         return False
+        # except Exception as error:  # pylint: disable=broad-exception-caught
+        #     _LOGGER.warning("Could not refresh tokens: %s", error)
+        #     return False
+        # else:
+        #     return True
 
     async def update_service_status(self, url, response_code):
         """Update service status."""
