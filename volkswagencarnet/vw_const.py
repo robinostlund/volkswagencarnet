@@ -6,10 +6,9 @@ COUNTRY = "DE"
 
 # Data used in communication
 CLIENT_ID = "a24fba63-34b3-4d43-b181-942111e6bda8@apps_vw-dilab_com"
-CLIENT_SCOPE = "openid profile badge cars dealers vin"
-CLIENT_TOKEN_TYPES = "code"
+CLIENT_SCOPE = "openid profile badge cars dealers vin offline_access"
 
-USER_AGENT = "Volkswagen/3.51.1-android/14"
+USER_AGENT = "Volkswagen/3.61.0-android/14"
 APP_URI = "weconnect://authenticated"
 ANDROID_PACKAGE_NAME = "com.volkswagen.weconnect"
 
@@ -20,7 +19,6 @@ HEADERS_SESSION = {
     "Accept-charset": "UTF-8",
     "Accept": "application/json",
     "User-Agent": USER_AGENT,
-    "tokentype": "IDK_TECHNICAL",
     "x-android-package-name": ANDROID_PACKAGE_NAME,
 }
 
@@ -30,6 +28,7 @@ HEADERS_AUTH = {
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9",
     "Accept-Encoding": "gzip, deflate",
     "Content-Type": "application/x-www-form-urlencoded",
+    "User-Agent": USER_AGENT,
     "x-android-package-name": ANDROID_PACKAGE_NAME,
 }
 

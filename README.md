@@ -2,8 +2,6 @@
 
 [![buy me a coffee](https://www.buymeacoffee.com/assets/img/custom_images/yellow_img.png)](https://www.buymeacoffee.com/robinostlund)
 
-[![buy me a coffee](https://raw.githubusercontent.com/robinostlund/homeassistant-volkswagencarnet/master/resources/stickpin_kofi.jpeg)](https://ko-fi.com/stickpin)
-
 ![Release](https://img.shields.io/github/workflow/status/robinostlund/volkswagencarnet/Release)
 ![PyPi](https://img.shields.io/pypi/v/volkswagencarnet)
 ![Version](https://img.shields.io/github/v/release/robinostlund/volkswagencarnet)
