@@ -1121,7 +1121,7 @@ class Connection:
         )
         self._session_logged_in = False
         return False
-        
+
         # Original token refresh code (disabled):
         # try:
         #     tHeaders = {
