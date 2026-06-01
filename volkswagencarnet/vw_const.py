@@ -168,6 +168,7 @@ class Paths:
     CHARGING_POWER = f"{Services.CHARGING}.chargingStatus.value.chargePower_kW"
     CHARGING_RATE = f"{Services.CHARGING}.chargingStatus.value.chargeRate_kmph"
     CHARGING_TYPE = f"{Services.CHARGING}.chargingStatus.value.chargeType"
+    CHARGING_STATUS_CHARGE_MODE = f"{Services.CHARGING}.chargingStatus.value.chargeMode"
     CHARGING_TIME_LEFT = (
         f"{Services.CHARGING}.chargingStatus.value.remainingChargingTimeToComplete_min"
     )
@@ -198,6 +199,10 @@ class Paths:
     CHARGING_SET_AUTO_UNLOCK_PLUG = (
         f"{Services.CHARGING}.chargingSettings.value.autoUnlockPlugWhenChargedAC"
     )
+
+    CHARGE_MODE = f"{Services.CHARGING}.chargeMode.value"
+    CHARGE_MODE_PREFERRED = f"{Services.CHARGING}.chargeMode.value.preferredChargeMode"
+    CHARGE_MODE_AVAILABLE = f"{Services.CHARGING}.chargeMode.value.availableChargeModes"
 
     # Measurements - Odometer
     MEASUREMENTS_ODO = f"{Services.MEASUREMENTS}.odometerStatus.value.odometer"
