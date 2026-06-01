@@ -3031,6 +3031,14 @@ class Vehicle:
         return self._is_trip_supported(Services.TRIP_LAST, "mileage_km")
 
     @property
+    def last_trip_start_km(self):
+        return self._get_trip_value(Services.TRIP_LAST, "startMileage_km")
+
+    @property
+    def is_last_trip_start_km_supported(self):
+        return self._is_trip_supported(Services.TRIP_LAST, "startMileage_km")
+
+    @property
     def last_trip_average_recuperation(self):
         return self._get_trip_value(Services.TRIP_LAST, "averageRecuperation")
 
