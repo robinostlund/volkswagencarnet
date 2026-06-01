@@ -1168,6 +1168,7 @@ class Connection:
 
     async def refresh_tokens(self):
         """Refresh tokens."""
+        """CURRENTLY NOT IN USE, as token refresh is handled via re-login in validate_tokens()"""
         try:
             tHeaders = {
                 "Accept-Encoding": "gzip, deflate, br",
