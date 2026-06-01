@@ -1074,46 +1074,101 @@ class Connection:
 
     # Token handling #
     async def validate_tokens(self) -> bool:
-        """Validate expiry of tokens."""
+        """Validate expiry of tokens and relogin if needed."""
         try:
             idtoken = self._session_tokens["identity"]["id_token"]
             atoken = self._session_tokens["identity"]["access_token"]
         except KeyError as error:
             _LOGGER.warning("Token validation failed - missing token data: %s", error)
             return False
-        id_exp = jwt.decode(
-            idtoken,
-            options={"verify_signature": False, "verify_aud": False},
-            algorithms=JWT_ALGORITHMS,
-        ).get("exp", None)
-        at_exp = jwt.decode(
-            atoken,
-            options={"verify_signature": False, "verify_aud": False},
-            algorithms=JWT_ALGORITHMS,
-        ).get("exp", None)
-        id_dt = datetime.fromtimestamp(int(id_exp))
-        at_dt = datetime.fromtimestamp(int(at_exp))
-        now = datetime.now()
-        later = now + self._session_refresh_interval
 
-        # Check if tokens have expired, or expires now
-        if now >= id_dt or now >= at_dt:
-            _LOGGER.debug("Tokens have expired. Try to fetch new tokens")
-            if await self.refresh_tokens():
-                _LOGGER.debug("Successfully refreshed tokens")
-            else:
-                return False
-        # Check if tokens expires before next update
-        elif later >= id_dt or later >= at_dt:
-            _LOGGER.debug("Tokens about to expire. Try to fetch new tokens")
-            if await self.refresh_tokens():
-                _LOGGER.debug("Successfully refreshed tokens")
-            else:
-                return False
-        return True
+        try:
+            id_exp = jwt.decode(
+                idtoken,
+                options={"verify_signature": False, "verify_aud": False},
+                algorithms=JWT_ALGORITHMS,
+            ).get("exp", None)
+            at_exp = jwt.decode(
+                atoken,
+                options={"verify_signature": False, "verify_aud": False},
+                algorithms=JWT_ALGORITHMS,
+            ).get("exp", None)
+            id_dt = datetime.fromtimestamp(int(id_exp))
+            at_dt = datetime.fromtimestamp(int(at_exp))
+            now = datetime.now()
+            later = now + self._session_refresh_interval
+
+            # Check if tokens have expired or will expire soon
+            if now >= id_dt or now >= at_dt or later >= id_dt or later >= at_dt:
+                # Use the login lock to prevent multiple concurrent relogins
+                async with self._login_lock:
+                    # Double-check: re-verify token expiry after acquiring lock
+                    # (another thread may have already logged in and refreshed tokens)
+                    try:
+                        idtoken = self._session_tokens["identity"]["id_token"]
+                        atoken = self._session_tokens["identity"]["access_token"]
+
+                        id_exp = jwt.decode(
+                            idtoken,
+                            options={"verify_signature": False, "verify_aud": False},
+                            algorithms=JWT_ALGORITHMS,
+                        ).get("exp", None)
+                        at_exp = jwt.decode(
+                            atoken,
+                            options={"verify_signature": False, "verify_aud": False},
+                            algorithms=JWT_ALGORITHMS,
+                        ).get("exp", None)
+                        id_dt = datetime.fromtimestamp(int(id_exp))
+                        at_dt = datetime.fromtimestamp(int(at_exp))
+                        now = datetime.now()
+                        later = now + self._session_refresh_interval
+
+                        # If tokens are now valid, another thread already refreshed them
+                        if (
+                            now < id_dt
+                            and now < at_dt
+                            and later < id_dt
+                            and later < at_dt
+                        ):
+                            _LOGGER.debug(
+                                "Tokens were refreshed by another thread, skipping relogin"
+                            )
+                            return True
+                    except (KeyError, Exception):
+                        # Token check failed after lock, proceed with relogin
+                        pass
+
+                    _LOGGER.debug("Tokens expired or expiring soon, triggering relogin")
+                    # Call _login() directly (we already have the lock)
+                    if await self._login():
+                        _LOGGER.debug("Successfully relogged in with fresh tokens")
+                        self._session_logged_in = True
+
+                        # Fetch vehicles list
+                        _LOGGER.debug("Fetching vehicles associated with account")
+                        self._session_headers.pop("Content-Type", None)
+                        loaded_vehicles = await self.get(
+                            url=f"{BASE_API}/vehicle/v2/vehicles"
+                        )
+                        if loaded_vehicles.get("data") is not None:
+                            _LOGGER.debug("Found vehicle(s) associated with account")
+                            # Don't replace vehicles, just validate they're still there
+                            _LOGGER.debug("Token refresh complete")
+
+                        return True
+                    else:
+                        _LOGGER.warning("Relogin failed after token expiration")
+                        self._session_logged_in = False
+                        return False
+
+            return True
+        except Exception as error:
+            _LOGGER.error("Error validating tokens: %s", error)
+            return False
 
     async def refresh_tokens(self):
         """Refresh tokens."""
+        """CURRENTLY NOT IN USE, as token refresh is handled via re-login in validate_tokens()"""
         try:
             tHeaders = {
                 "Accept-Encoding": "gzip, deflate, br",
