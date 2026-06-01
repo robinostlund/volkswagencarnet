@@ -249,9 +249,7 @@ class VehiclePropertyTest(IsolatedAsyncioTestCase):
         """Test that charge mode data is exposed from selectivestatus."""
         vehicle = Vehicle(conn=None, url="dummy34")
         vehicle._states[Services.CHARGING] = {
-            "chargingStatus": {
-                "value": {"chargeMode": "timer"}
-            },
+            "chargingStatus": {"value": {"chargeMode": "timer"}},
             "chargeMode": {
                 "value": {
                     "preferredChargeMode": "preferredChargingTimes",
@@ -267,7 +265,10 @@ class VehiclePropertyTest(IsolatedAsyncioTestCase):
 
         assert vehicle.charging_status_charge_mode == "timer"
         assert vehicle.is_charging_status_charge_mode_supported
-        assert vehicle.charge_mode == vehicle._states[Services.CHARGING]["chargeMode"]["value"]
+        assert (
+            vehicle.charge_mode
+            == vehicle._states[Services.CHARGING]["chargeMode"]["value"]
+        )
         assert vehicle.preferred_charge_mode == "preferredChargingTimes"
         assert vehicle.available_charge_modes == [
             "manual",
