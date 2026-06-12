@@ -5,12 +5,59 @@ BRAND = "VW"
 COUNTRY = "DE"
 
 # Data used in communication
-CLIENT_ID = "a24fba63-34b3-4d43-b181-942111e6bda8@apps_vw-dilab_com"
+CLIENT_ID = "a24fba63-34b3-4d43-b181-942111e6bda8@apps_vw-dilab_com"  # EMEA
+CLIENT_ID_US = "59992128-69a9-42c3-8621-7942041ba824_MYVW_ANDROID"  # North America (confirmed from APK 2026)
 CLIENT_SCOPE = "openid profile badge cars dealers vin offline_access"
 
-USER_AGENT = "Volkswagen/3.61.0-android/14"
+# X-QMAuth HMAC-SHA256 shared secret (VW Group apps)
+# Original obfuscated notation from decompiled app: [26, 256-74, 256-103, 37, ...]
+XQMAUTH_SECRET = bytes(
+    [
+        26,
+        182,
+        153,
+        37,
+        172,
+        23,
+        154,
+        170,
+        78,
+        131,
+        171,
+        230,
+        113,
+        169,
+        71,
+        109,
+        23,
+        100,
+        24,
+        184,
+        91,
+        215,
+        6,
+        241,
+        67,
+        108,
+        161,
+        91,
+        230,
+        71,
+        152,
+        156,
+    ]
+)
+XQMAUTH_PREFIX = "v1:01da27b0:"
+CLIENT_TOKEN_TYPES = "code"
+
+APP_VERSION = "2025.12.10-8414"  # x-app-version header value (from APK manifest)
+APP_VERSION_SHORT = "3.61.0"  # Short version for User-Agent and MBB registration
+USER_AGENT = f"Volkswagen/{APP_VERSION_SHORT}-android/14"
 APP_URI = "weconnect://authenticated"
 ANDROID_PACKAGE_NAME = "com.volkswagen.weconnect"
+MBB_BRAND_CONFIG = "myvw"  # VW brand identifier for Brand/MBB token exchanges
+MAX_REDIRECT_DEPTH = 10  # Maximum redirects during OAuth login flow
+COUNTRY_TO_LOCALE = {"US": "en-US", "CA": "en-CA", "GB": "en-GB"}
 
 # Used when fetching data
 HEADERS_SESSION = {
@@ -31,6 +78,101 @@ HEADERS_AUTH = {
     "User-Agent": USER_AGENT,
     "x-android-package-name": ANDROID_PACKAGE_NAME,
 }
+
+# Region configuration
+REGION_CONFIGS = {
+    "EMEA": {
+        "base_api": "https://emea.bff.cariad.digital",
+        "homeregion": "https://msg.volkswagen.de",
+        "client_id": CLIENT_ID,
+        "response_type": "code id_token token",  # OIDC hybrid flow: code+id_token+access_token in callback
+        "redirect_uri": APP_URI,
+        "scope": CLIENT_SCOPE,
+    },
+    "NA": {  # North America
+        "base_api": "https://b-h-s.spr.us00.p.con-veh.net",  # Confirmed working 2026
+        "homeregion": None,  # Discovered during login
+        "client_id": CLIENT_ID_US,
+        # Auth/token flow (confirmed from APK decompilation + traffic analysis 2026):
+        # - authorize URL is built from base_api (b-h-s...) in the app's WebView
+        # - base_api/oidc/v1/authorize redirects → identity.na.vwgroup.io login form
+        # - form POSTs must go to identity.na.vwgroup.io (relative form action paths live there)
+        # - token exchange goes to base_api/oidc/v1/token as public PKCE client (no client_secret)
+        "identity_endpoint": "https://identity.na.vwgroup.io",  # form POST base URL (relative paths)
+        "auth_endpoint": "https://b-h-s.spr.us00.p.con-veh.net/oidc/v1/authorize",  # redirects to identity
+        "token_endpoint": "https://b-h-s.spr.us00.p.con-veh.net/oidc/v1/token",  # public PKCE client
+        "scope": "openid",  # Confirmed from LoginFragment.java: addQueryParameter("scope", "openid")
+        "redirect_uri": "kombi:///login",  # Confirmed from LoginFragment.java (custom URI scheme)
+        "response_type": "code",  # PKCE plain auth-code flow — NOT hybrid (no id_token in callback)
+        "use_pkce": True,  # PKCE required: AzsChallenge holds code_verifier + code_challenge
+        "mbb_oauth_base_url": "https://mbboauth-1d.prd.ece.vwg-connect.com/mbbcoauth",
+        "brand_token_path": "/login/v1/volkswagen/token",
+        # base_api_candidates left empty: b-h-s.spr.us00.p.con-veh.net does not respond to
+        # /login/v1/idk/openid-configuration (the discovery endpoint), so discovery would
+        # wrongly pick na.bff.cariad.digital which lacks the vehicle API. Hardcoded base_api
+        # is the confirmed correct endpoint from APK decompilation 2026.
+        "base_api_candidates": [],
+        "homeregion_candidates": [
+            "https://msg.vw.com",
+            "https://msg.volkswagen.com",
+            "https://msg.vw.us",
+        ],
+    },
+}
+
+# Country to region mapping
+COUNTRY_TO_REGION = {
+    # North America
+    "US": "NA",
+    "CA": "NA",
+    # EMEA
+    "DE": "EMEA",
+    "FR": "EMEA",
+    "UK": "EMEA",
+    "GB": "EMEA",
+    "IT": "EMEA",
+    "ES": "EMEA",
+    "NL": "EMEA",
+    "BE": "EMEA",
+    "AT": "EMEA",
+    "CH": "EMEA",
+    "SE": "EMEA",
+    "NO": "EMEA",
+    "DK": "EMEA",
+    "FI": "EMEA",
+    "PL": "EMEA",
+    "CZ": "EMEA",
+    "PT": "EMEA",
+    "IE": "EMEA",
+    "LU": "EMEA",
+}
+
+DEFAULT_REGION = "EMEA"
+
+
+def get_region_from_country(country: str) -> str:
+    """Get region identifier from country code.
+
+    Args:
+        country: Two-letter country code (e.g., 'US', 'DE')
+
+    Returns:
+        Region identifier ('EMEA', 'NA', etc.)
+    """
+    return COUNTRY_TO_REGION.get(country.upper(), DEFAULT_REGION)
+
+
+def get_region_config(region: str) -> dict:
+    """Get configuration for a specific region.
+
+    Args:
+        region: Region identifier ('EMEA', 'NA', etc.)
+
+    Returns:
+        Dictionary with region configuration
+    """
+    return REGION_CONFIGS.get(region, REGION_CONFIGS[DEFAULT_REGION])
+
 
 TEMP_CELSIUS: str = "°C"
 
@@ -73,7 +215,7 @@ class VehicleStatusParameter:
     FRONT_LEFT_DOOR_LOCK = "0x0301040001"
     FRONT_RIGHT_DOOR_LOCK = "0x0301040007"
     REAR_LEFT_DOOR_LOCK = "0x0301040004"
-    READ_RIGHT_DOOR_LOCK = "0x030104000A"
+    REAR_RIGHT_DOOR_LOCK = "0x030104000A"
 
     FRONT_LEFT_DOOR_CLOSED = "0x0301040002"
     FRONT_RIGHT_DOOR_CLOSED = "0x0301040008"
@@ -401,4 +543,4 @@ class Paths:
     )
     READINESS_DAILY_POWER_BUDGET_AVAILABLE = f"{Services.READINESS}.readinessStatus.value.connectionState.dailyPowerBudgetAvailable"
     READINESS_INSUFFICIENT_BATTERY_LEVEL_WARNING = f"{Services.READINESS}.readinessStatus.value.connectionWarning.insufficientBatteryLevelWarning"
-    READINESS_DAILY_POWER_BUDGET_WARNING = f"{Services.READINESS}.readinessStatus.value.connectionWarning.insufficientBatteryLevelWarning"
+    READINESS_DAILY_POWER_BUDGET_WARNING = f"{Services.READINESS}.readinessStatus.value.connectionWarning.dailyPowerBudgetWarning"

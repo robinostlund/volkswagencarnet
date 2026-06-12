@@ -1,0 +1,54 @@
+{
+  "capabilities": [
+    {
+      "id": "charging",
+      "status": [200],
+      "expirationDate": "2028-12-31T23:59:59Z"
+    },
+    {
+      "id": "climatisation",
+      "status": [200],
+      "expirationDate": "2028-12-31T23:59:59Z"
+    },
+    {
+      "id": "parkingposition",
+      "status": [200],
+      "expirationDate": "2028-12-31T23:59:59Z"
+    },
+    {
+      "id": "trips",
+      "status": [200],
+      "expirationDate": "2028-12-31T23:59:59Z"
+    },
+    {
+      "id": "fuelStatus",
+      "status": [200],
+      "expirationDate": "2028-12-31T23:59:59Z"
+    },
+    {
+      "id": "vehicleLights",
+      "status": [200],
+      "expirationDate": "2028-12-31T23:59:59Z"
+    },
+    {
+      "id": "lvBattery",
+      "status": [200],
+      "expirationDate": "2028-12-31T23:59:59Z"
+    },
+    {
+      "id": "measurements",
+      "status": [200],
+      "expirationDate": "2028-12-31T23:59:59Z"
+    },
+    {
+      "id": "access",
+      "status": [200],
+      "expirationDate": "2028-12-31T23:59:59Z"
+    },
+    {
+      "id": "vehicleHealthWarnings",
+      "status": [200],
+      "expirationDate": "2028-12-31T23:59:59Z"
+    }
+  ]
+}

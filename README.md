@@ -158,6 +158,62 @@ if __name__ == "__main__":
     loop.run_until_complete(main())
 ```
 
+## North America (US/CA)
+
+This library supports North America (US and Canadian) VW Car-Net accounts. Region is auto-detected from the `country` parameter: pass `country="US"` or `country="CA"` to enable NA mode. If no `country` is passed, the library defaults to EMEA — existing EMEA integrations are unaffected.
+
+```python
+#!/usr/bin/env python3
+import asyncio
+from aiohttp import ClientSession
+from volkswagencarnet.vw_connection import Connection
+
+async def main():
+    async with ClientSession(headers={"Connection": "keep-alive"}) as session:
+        connection = Connection(session, "user@example.com", "password", country="US")
+        if await connection.doLogin():
+            await connection.update()
+            for vehicle in connection.vehicles:
+                print(f"VIN: {vehicle.vin}")
+                print(f"Position: {vehicle.position}")
+                print(f"Doors locked: {vehicle.door_locked}")
+
+asyncio.run(main())
+```
+
+### Supported features
+
+- OAuth2 + PKCE authentication (NA identity provider: `identity.na.vwgroup.io`)
+- Vehicle data retrieval: GPS location, door/lock status, EV battery, trip statistics, vehicle health
+- Automatic token refresh (includes required PKCE code_verifier on refresh)
+- Note: some EMEA-specific endpoints (Brand token, MBB token, selectivestatus) are not available in NA
+
+### Testing
+
+End-to-end tests for North America live in `tests/e2e/` and are excluded from CI via `norecursedirs` in `pyproject.toml`. To run them locally, export your VW Car-Net credentials:
+
+```sh
+export VW_TEST_USERNAME="your.email@example.com"
+export VW_TEST_PASSWORD="your-password"
+pytest tests/e2e/ -v
+```
+
+### EMEA vs NA Comparison
+
+| Feature | EMEA | North America |
+|---------|------|---------------|
+| Auth level | IDK + Brand + MBB | IDK only |
+| Vehicle data | selectivestatus | RVS endpoints |
+| Token types | 3 (IDK, Brand, MBB) | 1 (IDK) |
+| PKCE required | No | Yes |
+
+### Architecture Notes
+
+- **Region auto-detection**: The `country` parameter determines the region. US and CA route to North America; everything else defaults to EMEA.
+- **Single token**: NA uses OAuth2 with PKCE and a single IDK token. Brand and MBB token endpoints are not available on the NA Car-Net platform.
+- **RVS data source**: Vehicle data (GPS location, lock status) comes from RVS (Remote Vehicle Status) endpoints, not the EMEA selectivestatus API.
+- **PKCE code_verifier on refresh**: IDK token refresh requires the original PKCE code_verifier from the initial login, a non-standard OAuth extension specific to VW's NA server.
+
 ## Development
 I'd strongly advise installing the git pre-commit hook using `pre-commit install`. See [pre-commit.com](https://pre-commit.com/) for details.
 Some basic checks are performed before you commit the code, so code style issues

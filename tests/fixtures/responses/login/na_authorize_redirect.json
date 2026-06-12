@@ -1,0 +1,14 @@
+{
+  "description": "NA OAuth authorize redirect chain - final redirect contains code parameter",
+  "redirect_chain": [
+    {
+      "status": 302,
+      "location": "https://identity.na.vwgroup.io/oidc/v1/authorize?client_id=59992128-69a9-42c3-8621-7942041ba824_MYVW_ANDROID&response_type=code&redirect_uri=kombi:///login&scope=openid&code_challenge=abc123&code_challenge_method=S256"
+    },
+    {
+      "status": 302,
+      "location": "kombi:///login?code=fake-na-auth-code-12345&state=fake-state"
+    }
+  ],
+  "final_code": "fake-na-auth-code-12345"
+}

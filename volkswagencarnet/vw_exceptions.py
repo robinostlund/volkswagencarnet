@@ -41,3 +41,9 @@ class TermsAndConditionsError(AuthenticationError):
     """Terms and Conditions need to be accepted."""
 
     pass
+
+
+class UnsupportedOperationError(VWError):
+    """Requested operation is not supported by this vehicle or configuration."""
+
+    pass

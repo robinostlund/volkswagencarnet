@@ -6,6 +6,7 @@ from datetime import datetime
 import logging
 
 from .vw_const import TEMP_CELSIUS, VWDeviceClass, VWStateClass
+from .vw_exceptions import VWError
 from .vw_utilities import camel2slug
 from .vw_vehicle import Vehicle
 
@@ -572,7 +573,7 @@ class DoorLock(Instrument):
             await self.vehicle.update()
             if self.callback is not None:
                 self.callback()
-        except Exception as e:  # pylint: disable=broad-exception-caught
+        except VWError as e:
             _LOGGER.error("Lock failed: %s", e.args[0])
             return False
         else:
@@ -585,7 +586,7 @@ class DoorLock(Instrument):
             await self.vehicle.update()
             if self.callback is not None:
                 self.callback()
-        except Exception as e:  # pylint: disable=broad-exception-caught
+        except VWError as e:
             _LOGGER.error("Unlock failed: %s", e.args[0])
             return False
         else:
