@@ -1,0 +1,42 @@
+{
+  "currentMileage": 12500,
+  "currentMileageTimestamp": "2026-01-15T08:00:00Z",
+  "timestamp": "2026-01-15T14:30:00Z",
+  "exteriorStatus": {
+    "secure": "LOCKED",
+    "doorStatus": {
+      "frontLeft": "CLOSED",
+      "frontRight": "CLOSED",
+      "rearLeft": "CLOSED",
+      "rearRight": "CLOSED",
+      "rear": "CLOSED",
+      "trunk": "CLOSED",
+      "hood": "CLOSED",
+      "leftCargo": "NOTAVAILABLE",
+      "rightCargo": "NOTAVAILABLE",
+      "doorStatusTimestamp": "2026-01-15T14:30:00Z"
+    },
+    "doorLockStatus": {
+      "frontLeft": "LOCKED",
+      "frontRight": "LOCKED",
+      "rearLeft": "LOCKED",
+      "rearRight": "LOCKED",
+      "doorLockStatusTimestamp": "2026-01-15T14:30:00Z"
+    },
+    "windowStatus": {},
+    "lightStatus": {}
+  },
+  "powerStatus": {
+    "cruiseRange": 280,
+    "fuelPercentRemaining": 75,
+    "cruiseRangeUnits": "MI",
+    "cruiseRangeFirst": null,
+    "cruiseRangeSecond": null,
+    "parkingBrakeStatus": null
+  },
+  "instrumentCluserTime": "14:30",
+  "platform": "VW_NA",
+  "lockStatus": "LOCKED",
+  "clampState": null,
+  "clampStateTimestamp": null
+}

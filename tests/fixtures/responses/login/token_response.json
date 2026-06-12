@@ -1,0 +1,8 @@
+{
+  "access_token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.fake-access-token-payload.fake-signature",
+  "refresh_token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.fake-refresh-token-payload.fake-signature",
+  "id_token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.fake-id-token-payload.fake-signature",
+  "token_type": "Bearer",
+  "expires_in": 3600,
+  "scope": "openid"
+}

@@ -1,0 +1,7 @@
+{
+  "batteryPercentageAvailable": 60,
+  "chargingStatus": "CHARGING",
+  "plugStatus": "CHARGING",
+  "remainingChargingTime": 45,
+  "electricRange": 120
+}

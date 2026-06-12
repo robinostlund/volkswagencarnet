@@ -1,0 +1,9 @@
+{
+  "eventTimeStamp": "2026-01-15T14:30:00Z",
+  "location": {
+    "latitude": 37.7749295,
+    "longitude": -122.4194155
+  },
+  "parked": true,
+  "vehicleStatusReason": 0
+}

@@ -1,15 +1,53 @@
+# IDE and OS
 .idea
 .DS_Store
+.vscode
+/volkswagencarnet.iml
+
+# Python
 __pycache__
+*.pyc
+*.pyo
 build
 dist
 *.egg-info
-*vw.conf
-.coverage
 .eggs
-.vscode
-/tests/credentials.py
 /venv/
 /volkswagencarnet/version.py
-/volkswagencarnet.iml
+
+# Tool caches
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+
+# Coverage
+.coverage
 htmlcov
+
+# Logs
+*.log
+
+# Credential files — never commit
+testing_creds.env
+
+# Credentials and secrets
+*.env
+.env*
+!.env.example
+*vw.conf
+/tests/credentials.py
+credentials*.json
+*.key
+*.pem
+*.crt
+*.pid
+
+# Planning (local only)
+.planning/
+
+# Local research, APK analysis, and debug artifacts
+App-APK/
+.VW_NA_Auth_Analysis/
+docs/
+tests/debug_na_login.py
+tests/e2e/debug_auth_page.html

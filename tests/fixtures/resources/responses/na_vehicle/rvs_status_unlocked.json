@@ -1,0 +1,24 @@
+{
+  "currentMileage": 12500,
+  "timestamp": "2026-01-15T14:30:00Z",
+  "exteriorStatus": {
+    "secure": "UNLOCKED",
+    "doorStatus": {},
+    "doorLockStatus": {},
+    "windowStatus": {},
+    "lightStatus": {}
+  },
+  "powerStatus": {
+    "cruiseRange": 280,
+    "fuelPercentRemaining": 75,
+    "cruiseRangeUnits": "MI",
+    "cruiseRangeFirst": null,
+    "cruiseRangeSecond": null,
+    "parkingBrakeStatus": null
+  },
+  "instrumentCluserTime": "14:30",
+  "platform": "VW_NA",
+  "lockStatus": "UNLOCKED",
+  "clampState": null,
+  "clampStateTimestamp": null
+}

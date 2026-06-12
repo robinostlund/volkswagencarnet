@@ -8,6 +8,35 @@ import re
 
 _LOGGER = logging.getLogger(__name__)
 
+
+def redact(value: str | None) -> str:
+    """Redact a credential value for safe logging.
+
+    Returns the first 8 characters followed by '...' for non-empty strings.
+    Returns '(none)' for None or empty string inputs.
+    For strings shorter than 8 characters, returns all characters followed by '...'.
+
+    Args:
+        value: The credential string to redact (token, code, secret, VIN, etc.)
+
+    Returns:
+        Redacted string safe for log output.
+
+    Examples:
+        >>> redact("eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.payload")
+        'eyJhbGci...'
+        >>> redact(None)
+        '(none)'
+        >>> redact("")
+        '(none)'
+        >>> redact("abc")
+        'abc...'
+    """
+    if not value:
+        return "(none)"
+    return value[:8] + "..."
+
+
 DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%S%z"
 
 
