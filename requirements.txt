@@ -1,4 +1,4 @@
 aiohttp
 beautifulsoup4
-lxml
+chompjs
 pyjwt
