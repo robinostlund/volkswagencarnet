@@ -1717,6 +1717,18 @@ _INSTRUMENT_DEFS = [
         Sensor,
         [],
         {
+            "attr": "outside_temperature",
+            "name": "Outside temperature",
+            "icon": "mdi:thermometer",
+            "unit": TEMP_CELSIUS,
+            "device_class": VWDeviceClass.TEMPERATURE,
+            "state_class": VWStateClass.MEASUREMENT,
+        },
+    ),
+    (
+        Sensor,
+        [],
+        {
             "attr": "electric_range",
             "name": "Electric range",
             "icon": "mdi:car-electric",
@@ -2188,7 +2200,7 @@ _INSTRUMENT_DEFS = [
             "icon": "mdi:car-battery",
             "unit": "kWh",
             "device_class": VWDeviceClass.ENERGY,
-            "state_class": VWStateClass.TOTAL,
+            "state_class": VWStateClass.TOTAL_INCREASING,
         },
     ),
     (
@@ -2200,7 +2212,7 @@ _INSTRUMENT_DEFS = [
             "icon": "mdi:fuel",
             "unit": "L",
             "device_class": VWDeviceClass.VOLUME,
-            "state_class": VWStateClass.TOTAL,
+            "state_class": VWStateClass.TOTAL_INCREASING,
         },
     ),
     (
@@ -2318,7 +2330,7 @@ _INSTRUMENT_DEFS = [
             "icon": "mdi:car-battery",
             "unit": "kWh",
             "device_class": VWDeviceClass.ENERGY,
-            "state_class": VWStateClass.TOTAL,
+            "state_class": VWStateClass.TOTAL_INCREASING,
         },
     ),
     (
@@ -2330,7 +2342,7 @@ _INSTRUMENT_DEFS = [
             "icon": "mdi:fuel",
             "unit": "L",
             "device_class": VWDeviceClass.VOLUME,
-            "state_class": VWStateClass.TOTAL,
+            "state_class": VWStateClass.TOTAL_INCREASING,
         },
     ),
     # Sensors - auxiliary / timers / misc

@@ -6,6 +6,7 @@ from __future__ import annotations
 import asyncio
 from datetime import UTC, datetime, timedelta
 import logging
+from pathlib import Path
 from random import randint, random
 import uuid
 import hashlib
@@ -32,12 +33,16 @@ from .vw_const import (
 from .vw_exceptions import (
     AuthenticationError,
     APIError,
+    LoginCredentialsError,
+    LoginError,
+    LoginFlowChangedError,
     SPINError,
     RedirectError,
     RequestError,
     TermsAndConditionsError,
 )
 
+from .login import VWLoginFlow
 from .vw_utilities import json_loads
 from .vw_vehicle import Vehicle
 
@@ -63,6 +68,9 @@ class Connection:
         password,
         country=COUNTRY,
         interval=timedelta(minutes=5),
+        auth_cookies_file: str | Path | None = None,
+        auth_debug_dump_dir: str | Path | None = None,
+        use_fake_user_agent: bool = False,
     ) -> None:
         """Initialize."""
         self._session = session
@@ -81,6 +89,14 @@ class Connection:
         self._jarCookie = None
 
         self._service_status = {}
+        self._last_login_error: str | None = None
+        self._auth_cookies_file: Path | None = (
+            Path(auth_cookies_file) if auth_cookies_file else None
+        )
+        self._auth_debug_dump_dir: Path | None = (
+            Path(auth_debug_dump_dir) if auth_debug_dump_dir else None
+        )
+        self._use_fake_user_agent = use_fake_user_agent
 
     def _clear_cookies(self):
         self._session._cookie_jar._cookies.clear()  # pylint: disable=protected-access
@@ -90,14 +106,18 @@ class Connection:
         """Login method, clean login."""
         async with self._login_lock:
             _LOGGER.debug("Initiating new login")
+            self._last_login_error = None
 
             for i in range(tries):
                 self._session_logged_in = await self._login()
                 if self._session_logged_in:
                     break
-                if i > tries:
-                    _LOGGER.error("Login failed after %s tries", tries)
-                    return False
+                _LOGGER.warning(
+                    "Login attempt %s/%s failed: %s",
+                    i + 1,
+                    tries,
+                    self._last_login_error or "unknown reason",
+                )
                 await asyncio.sleep(random() * 5)
 
             if not self._session_logged_in:
@@ -366,11 +386,68 @@ class Connection:
         }
 
     async def _login(self) -> bool:
-        """Login function.
+        """Login using VW device authorization flow."""
+        try:
+            self._clear_cookies()
+            self._session_headers = HEADERS_SESSION.copy()
+            self._session_auth_headers = HEADERS_AUTH.copy()
 
-        Returns:
-            True if login successful, False otherwise
-        """
+            login_flow = VWLoginFlow(
+                html_debug_dir=self._auth_debug_dump_dir,
+                use_fake_user_agent=self._use_fake_user_agent,
+            )
+            token_payload = await login_flow.login(
+                username=self._session_auth_username,
+                password=self._session_auth_password,
+                cookies_file=self._auth_cookies_file,
+            )
+
+            access_token = token_payload.get("access_token")
+            id_token = token_payload.get("id_token")
+            if not access_token or not id_token:
+                raise LoginError("Token response missing access_token or id_token")
+
+            self._session_tokens["identity"] = {
+                "access_token": access_token,
+                "id_token": id_token,
+                "refresh_token": token_payload.get("refresh_token"),
+                "token_type": token_payload.get("token_type") or "Bearer",
+            }
+            self._session_headers["Authorization"] = "Bearer " + access_token
+
+            _LOGGER.debug("Successfully stored authentication tokens")
+            self._session_logged_in = True
+            self._last_login_error = None
+            return True
+
+        except LoginFlowChangedError as error:
+            _LOGGER.error("VW login flow changed: %s", error)
+            self._session_logged_in = False
+            self._last_login_error = str(error)
+            return False
+        except LoginCredentialsError as error:
+            _LOGGER.error("Invalid credentials: %s", error)
+            self._session_logged_in = False
+            self._last_login_error = str(error)
+            return False
+        except (LoginError, AuthenticationError, RequestError, RedirectError) as error:
+            _LOGGER.error("Authentication error during login: %s", error)
+            self._session_logged_in = False
+            self._last_login_error = str(error)
+            return False
+        except client_exceptions.ClientError as error:
+            _LOGGER.error("Network error during login: %s", error)
+            self._session_logged_in = False
+            self._last_login_error = f"Network error: {error}"
+            return False
+        except Exception as error:
+            _LOGGER.exception("Unexpected error during login")
+            self._session_logged_in = False
+            self._last_login_error = f"Unexpected error: {error}"
+            return False
+
+    async def _login_legacy(self) -> bool:
+        """Legacy hybrid-flow login (kept for fallback/reference)."""
         try:
             # Clear cookies and reset headers
             self._clear_cookies()
@@ -448,6 +525,7 @@ class Connection:
         """Logout, revoke tokens."""
         self._session_headers.pop("Authorization", None)
 
+    async def logout_legacy(self):
         if self._session_logged_in:
             if self._session_tokens.get("identity", {}).get("refresh_token"):
                 _LOGGER.info("Revoking Identity Refresh Token")
@@ -1263,6 +1341,11 @@ class Connection:
         Not actually checking anything.
         """
         return self._session_logged_in
+
+    @property
+    def last_login_error(self) -> str | None:
+        """Return last login failure reason, if any."""
+        return self._last_login_error
 
     def vehicle(self, vin):
         """Return vehicle object for given vin."""
