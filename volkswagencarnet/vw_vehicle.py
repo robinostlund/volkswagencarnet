@@ -3791,6 +3791,31 @@ class Vehicle:
         return True
 
     @property
+    def api_subscription_expiration(self) -> datetime:
+        """Check nearest API subscription expiration date."""
+        # Extract the service expiration values if they exist and are not None
+        expirations = [
+            value["expiration"]
+            for value in self._services.values()
+            if isinstance(value, dict)
+            and "expiration" in value
+            and value["expiration"] is not None
+        ]
+
+        # Return the minimum date, or None if the list is empty
+        return min(expirations) if expirations else None
+
+    @property
+    def api_subscription_expiration_last_updated(self) -> datetime:
+        """Return attribute last updated timestamp."""
+        return datetime.now(UTC)
+
+    @property
+    def is_api_subscription_expiration_supported(self):
+        """API subscription expiration is always supported."""
+        return True
+
+    @property
     def last_data_refresh(self) -> datetime:
         """Check when services were refreshed successfully for the last time."""
         last_data_refresh_path = "refreshTimestamp"
