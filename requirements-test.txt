@@ -1,5 +1,5 @@
 -r requirements.txt
-freezegun>=1.0.0
+freezegun>=1.5.5
 pre-commit
 pytest>=7.0.0
 pytest-asyncio
