@@ -1,8 +1,8 @@
 -r requirements.txt
-freezegun>=1.0.0
+freezegun>=1.5.5
 pre-commit
 pytest>=7.0.0
 pytest-asyncio
-pytest-cov>=3.0.0
+pytest-cov>=7.1.0
 pytest-subtests
 setuptools>=65
