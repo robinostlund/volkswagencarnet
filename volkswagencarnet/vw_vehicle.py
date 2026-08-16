@@ -1379,6 +1379,22 @@ class Vehicle:
         return is_valid_path(self.attrs, Paths.MEASUREMENTS_BAT_TEMP_MAX_K)
 
     @property
+    def outside_temperature(self) -> float | None:
+        """Return outside temperature."""
+        temp_k = find_path(self.attrs, Paths.MEASUREMENTS_OUT_TEMP_K)
+        return float(temp_k) - 273.15 if temp_k is not None else None
+
+    @property
+    def outside_temperature_last_updated(self) -> datetime:
+        """Return attribute last updated timestamp."""
+        return find_path(self.attrs, Paths.MEASUREMENTS_OUT_TEMP_TS)
+
+    @property
+    def is_outside_temperature_supported(self) -> bool:
+        """Return true outside temperature is supported."""
+        return is_valid_path(self.attrs, Paths.MEASUREMENTS_OUT_TEMP_K)
+
+    @property
     def charge_max_ac_setting(self) -> str | int | None:
         """Return charger max ampere setting."""
         return find_path(self.attrs, Paths.CHARGING_SET_MAX_CHARGE_AC)
