@@ -1294,6 +1294,16 @@ class Vehicle:
         return is_valid_path(self.attrs, Paths.CHARGING_RATE)
 
     @property
+    def charging_status_charge_mode(self) -> str | None:
+        """Return current charge mode from charging status."""
+        return find_path(self.attrs, Paths.CHARGING_STATUS_CHARGE_MODE)
+
+    @property
+    def is_charging_status_charge_mode_supported(self) -> bool:
+        """Return true if charging status charge mode is supported."""
+        return is_valid_path(self.attrs, Paths.CHARGING_STATUS_CHARGE_MODE)
+
+    @property
     def charger_type(self) -> str:
         ct = find_path(self.attrs, Paths.CHARGING_TYPE)
         return "AC" if ct == "ac" else "DC" if ct == "dc" else "Unknown"
@@ -1400,6 +1410,26 @@ class Vehicle:
     def is_charge_max_ac_ampere_supported(self) -> bool:
         """Return true if Charger Max Ampere is supported."""
         return is_valid_path(self.attrs, Paths.CHARGING_SET_MAX_CHARGE_AC_A)
+
+    @property
+    def charge_mode(self) -> dict[str, object] | None:
+        """Return charge mode configuration from selectivestatus."""
+        return find_path(self.attrs, Paths.CHARGE_MODE)
+
+    @property
+    def preferred_charge_mode(self) -> str | None:
+        """Return preferred charge mode from selectivestatus."""
+        return find_path(self.attrs, Paths.CHARGE_MODE_PREFERRED)
+
+    @property
+    def available_charge_modes(self) -> list[str] | None:
+        """Return available charge modes from selectivestatus."""
+        return find_path(self.attrs, Paths.CHARGE_MODE_AVAILABLE)
+
+    @property
+    def is_charge_mode_supported(self) -> bool:
+        """Return true if charge mode information is supported."""
+        return is_valid_path(self.attrs, Paths.CHARGE_MODE)
 
     @property
     def charging_cable_locked(self) -> bool:
@@ -3029,6 +3059,14 @@ class Vehicle:
     @property
     def is_last_trip_length_supported(self):
         return self._is_trip_supported(Services.TRIP_LAST, "mileage_km")
+
+    @property
+    def last_trip_start_km(self):
+        return self._get_trip_value(Services.TRIP_LAST, "startMileage_km")
+
+    @property
+    def is_last_trip_start_km_supported(self):
+        return self._is_trip_supported(Services.TRIP_LAST, "startMileage_km")
 
     @property
     def last_trip_average_recuperation(self):
