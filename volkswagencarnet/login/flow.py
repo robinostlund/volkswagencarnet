@@ -374,14 +374,15 @@ class VWLoginFlow:
     ) -> list[IdKitStage]:
         if initial_stage == IdKitStage.IDENTIFIER:
             return FULL_ROUTE
-        if initial_stage == IdKitStage.CONFIRM:
+        elif initial_stage == IdKitStage.CONFIRM:
             return QUICK_ROUTE
-        self._raise_flow_changed(
-            "unexpected_initial_stage",
-            current_url,
-            html,
-            f"expected identifier or confirm, got {initial_stage.value!r}",
-        )
+        else:
+            self._raise_flow_changed(
+                "unexpected_initial_stage",
+                current_url,
+                html,
+                f"expected identifier or confirm, got {initial_stage.value!r}",
+            )
 
     async def _poll_token(
         self,
