@@ -287,7 +287,9 @@ class Paths:
     MEASUREMENTS_OUT_TEMP_TS = (
         f"{Services.MEASUREMENTS}.temperatureOutsideStatus.value.carCapturedTimestamp"
     )
-    MEASUREMENTS_OUT_TEMP_K = f"{Services.MEASUREMENTS}.temperatureOutsideStatus.value.temperatureOutside_K"
+    MEASUREMENTS_OUT_TEMP_K = (
+        f"{Services.MEASUREMENTS}.temperatureOutsideStatus.value.temperatureOutside_K"
+    )
 
     # Vehicle Health Inspection
     VEHICLE_HEALTH_TS = f"{Services.VEHICLE_HEALTH_INSPECTION}.maintenanceStatus.value.carCapturedTimestamp"
