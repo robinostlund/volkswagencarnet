@@ -4,7 +4,7 @@ import asyncio
 import json
 import logging
 import re
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -55,7 +55,7 @@ def obj_parser(obj: dict[str, Any]) -> dict[str, Any]:
     """Parse datetime strings to datetime objects."""
     for key, val in obj.items():
         try:
-            obj[key] = datetime.fromisoformat(val)
+            obj[key] = datetime.strptime(val, DATETIME_FORMAT)
         except (TypeError, ValueError):
             pass  # Value is not a datetime string, keep original
     return obj
