@@ -1,14 +1,49 @@
 """Common utility functions."""
 
-from datetime import datetime
-from typing import Any
+import asyncio
 import json
 import logging
 import re
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
 
 _LOGGER = logging.getLogger(__name__)
 
 DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%S%z"
+
+
+def check_str(value: object) -> str | None:
+    """Return value if it is a non-empty string, otherwise None."""
+    return value if isinstance(value, str) and value else None
+
+
+def safe_int(value: object, default: int) -> int:
+    """Convert value to int, returning default on failure."""
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
+async def dump_html_debug(
+    stage: str,
+    html: str,
+    output_dir: Path,
+    url: str | None = None,
+) -> Path | None:
+    """Write an HTML debug snapshot to output_dir; returns the path or None on failure."""
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    safe_stage = re.sub(r"[^a-zA-Z0-9_.-]+", "_", stage)
+    file_path = output_dir / f"{timestamp}_{safe_stage}.html"
+    try:
+        await asyncio.to_thread(output_dir.mkdir, parents=True, exist_ok=True)
+        await asyncio.to_thread(file_path.write_text, html, encoding="utf-8")
+    except OSError as error:
+        _LOGGER.warning("Failed to write HTML dump for %s: %s", stage, error)
+        return None
+    _LOGGER.debug("HTML dump written to %s (url=%s)", file_path, url)
+    return file_path
 
 
 def json_loads(s: str) -> object:
