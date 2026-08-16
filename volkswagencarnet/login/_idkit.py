@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 from urllib.parse import parse_qs, urlparse
 
-import chompjs
+import json5
 from bs4 import BeautifulSoup
 
 from ..vw_utilities import check_str
@@ -39,25 +39,48 @@ class IdKitInfo:
 
     # getters — raise if not yet set
 
-    def get_csrf_token(self) -> str: return self._require("csrf_token")
-    def get_client_id(self) -> str: return self._require("client_id")
-    def get_relay_state(self) -> str: return self._require("relay_state")
-    def get_hmac(self) -> str: return self._require("hmac")
-    def get_user_code(self) -> str: return self._require("user_code")
-    def get_user_id(self) -> str: return self._require("user_id")
-    def get_client_identity_name(self) -> str: return self._require("client_identity_name")
+    def get_csrf_token(self) -> str:
+        return self._require("csrf_token")
+
+    def get_client_id(self) -> str:
+        return self._require("client_id")
+
+    def get_relay_state(self) -> str:
+        return self._require("relay_state")
+
+    def get_hmac(self) -> str:
+        return self._require("hmac")
+
+    def get_user_code(self) -> str:
+        return self._require("user_code")
+
+    def get_user_id(self) -> str:
+        return self._require("user_id")
+
+    def get_client_identity_name(self) -> str:
+        return self._require("client_identity_name")
 
     # sticky setters — raise if value changes after first set
 
-    def set_client_id(self, value: str | None) -> None: self._set_sticky("client_id", value)
-    def set_user_code(self, value: str | None) -> None: self._set_sticky("user_code", value)
-    def set_user_id(self, value: str | None) -> None: self._set_sticky("user_id", value)
-    def set_client_identity_name(self, v: str | None) -> None: self._set_sticky("client_identity_name", v)
+    def set_client_id(self, value: str | None) -> None:
+        self._set_sticky("client_id", value)
+
+    def set_user_code(self, value: str | None) -> None:
+        self._set_sticky("user_code", value)
+
+    def set_user_id(self, value: str | None) -> None:
+        self._set_sticky("user_id", value)
+
+    def set_client_identity_name(self, v: str | None) -> None:
+        self._set_sticky("client_identity_name", v)
 
     # mutable setters — per-request values that rotate between pages
 
-    def set_relay_state(self, value: str | None) -> None: self._set_field("relay_state", value)
-    def set_hmac(self, value: str | None) -> None: self._set_field("hmac", value)
+    def set_relay_state(self, value: str | None) -> None:
+        self._set_field("relay_state", value)
+
+    def set_hmac(self, value: str | None) -> None:
+        self._set_field("hmac", value)
 
     def _require(self, field: str) -> str:
         value = check_str(getattr(self, field))
@@ -77,7 +100,9 @@ class IdKitInfo:
             raise _IdKitError(f"Missing or invalid {field}")
         current = getattr(self, field)
         if current is not None and current != normalized:
-            raise _IdKitError(f"Sticky field changed: {field}: {current!r} -> {normalized!r}")
+            raise _IdKitError(
+                f"Sticky field changed: {field}: {current!r} -> {normalized!r}"
+            )
         setattr(self, field, normalized)
 
 
@@ -119,7 +144,9 @@ class IdKitPageObject:
     @property
     def relay_state(self) -> str | None:
         value = check_str(self.template_model.get("relayState"))
-        return value if value is not None else check_str(self.device_url.get("relayState"))
+        return (
+            value if value is not None else check_str(self.device_url.get("relayState"))
+        )
 
     @property
     def hmac(self) -> str | None:
@@ -187,13 +214,15 @@ class IdKitPageObjectExtractor:
             eq = text.find("=", idx + len(cls._ASSIGNMENT))
             if eq < 0:
                 raise _IdKitError(f"Found {cls._ASSIGNMENT} but no '=' assignment")
-            rhs = text[eq + 1:]
+            rhs = text[eq + 1 :]
             if "{" not in rhs:
                 raise _IdKitError(f"Found {cls._ASSIGNMENT} but no object literal")
             try:
-                parsed = chompjs.parse_js_object(rhs)
-            except ValueError as error:
-                raise _IdKitError(f"Failed to parse {cls._ASSIGNMENT}: {error}") from error
+                parsed = json5.loads(rhs)
+            except (ValueError, json5.JSONDecodeError) as error:
+                raise _IdKitError(
+                    f"Failed to parse {cls._ASSIGNMENT}: {error}"
+                ) from error
             if not isinstance(parsed, dict):
                 raise _IdKitError(f"{cls._ASSIGNMENT} is not an object")
             return IdKitPageObject(parsed)

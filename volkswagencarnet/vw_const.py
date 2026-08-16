@@ -24,8 +24,7 @@ DEVICE_FLOW_CODE_CONFIRMATION_URL = (
 )
 DEVICE_FLOW_BROWSER_HEADERS = {
     "User-Agent": (
-        "volkswagencarnet-auth/1.0"
-        " (+https://github.com/robinostlund/volkswagencarnet)"
+        "volkswagencarnet-auth/1.0 (+https://github.com/robinostlund/volkswagencarnet)"
     ),
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
     "Accept-Language": "en-US,en;q=0.5",

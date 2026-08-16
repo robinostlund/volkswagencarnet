@@ -162,15 +162,21 @@ class VWLoginFlow:
         ) as browser:
             try:
                 _LOGGER.debug("GET %s", verification_uri)
-                async with browser.get(verification_uri, allow_redirects=True) as response:
+                async with browser.get(
+                    verification_uri, allow_redirects=True
+                ) as response:
                     current_url = str(response.url)
                     html = await response.text()
-                _LOGGER.debug("initial landing: HTTP %s url=%s", response.status, current_url)
+                _LOGGER.debug(
+                    "initial landing: HTTP %s url=%s", response.status, current_url
+                )
 
                 try:
                     idk_obj = IdKitPageObjectExtractor.from_html(html)
                 except _IdKitError as error:
-                    self._raise_page_parse_error("initial_landing", current_url, html, error)
+                    self._raise_page_parse_error(
+                        "initial_landing", current_url, html, error
+                    )
 
                 try:
                     initial_stage = idk_obj.stage
@@ -178,7 +184,11 @@ class VWLoginFlow:
                     self._raise_initial_parse_error(current_url, html, error)
 
                 route = self._pick_route(initial_stage, current_url, html)
-                _LOGGER.debug("initial stage=%s route=%s", initial_stage.value, [s.value for s in route])
+                _LOGGER.debug(
+                    "initial stage=%s route=%s",
+                    initial_stage.value,
+                    [s.value for s in route],
+                )
                 idk_info = IdKitInfo()
 
                 for index, expected_stage in enumerate(route[:-1]):
@@ -205,7 +215,9 @@ class VWLoginFlow:
                     )
 
                     self._update_idk_info(idk_info, idk_obj, expected_stage)
-                    request = self._build_request(expected_stage, idk_info, username, password)
+                    request = self._build_request(
+                        expected_stage, idk_info, username, password
+                    )
 
                     self._verifier.verify_request_matches_form(
                         stage=expected_stage,
@@ -215,7 +227,9 @@ class VWLoginFlow:
                         planned_payload=request.payload,
                     )
 
-                    _LOGGER.debug("POST %s (stage=%s)", request.url, expected_stage.value)
+                    _LOGGER.debug(
+                        "POST %s (stage=%s)", request.url, expected_stage.value
+                    )
                     async with browser.post(
                         request.url,
                         data=request.payload,
@@ -227,7 +241,9 @@ class VWLoginFlow:
                     _LOGGER.debug("POST response: HTTP %s url=%s", status, current_url)
 
                     if status >= 400:
-                        raise LoginError(f"HTTP {status} while handling {expected_stage.value}")
+                        raise LoginError(
+                            f"HTTP {status} while handling {expected_stage.value}"
+                        )
 
                     if expected_stage == IdKitStage.CONFIRM:
                         self._check_final_url(current_url)
@@ -298,11 +314,13 @@ class VWLoginFlow:
             )
 
         if stage == IdKitStage.CONFIRM:
-            query = urlencode({
-                "relayState": idk_info.get_relay_state(),
-                "user_id": idk_info.get_user_id(),
-                "hmac": idk_info.get_hmac(),
-            })
+            query = urlencode(
+                {
+                    "relayState": idk_info.get_relay_state(),
+                    "user_id": idk_info.get_user_id(),
+                    "hmac": idk_info.get_hmac(),
+                }
+            )
             return LoginRequest(
                 stage=stage,
                 url=(
@@ -377,7 +395,9 @@ class VWLoginFlow:
 
         while time.monotonic() < deadline:
             await asyncio.sleep(poll_interval)
-            _LOGGER.debug("POST %s (polling, interval=%ss)", DEVICE_FLOW_TOKEN_URL, poll_interval)
+            _LOGGER.debug(
+                "POST %s (polling, interval=%ss)", DEVICE_FLOW_TOKEN_URL, poll_interval
+            )
             async with session.post(
                 DEVICE_FLOW_TOKEN_URL,
                 data={
@@ -395,7 +415,11 @@ class VWLoginFlow:
 
                 try:
                     body = await response.json(content_type=None)
-                except (client_exceptions.ContentTypeError, json.JSONDecodeError, ValueError):
+                except (
+                    client_exceptions.ContentTypeError,
+                    json.JSONDecodeError,
+                    ValueError,
+                ):
                     body = {}
 
                 error_code = body.get("error", "")
@@ -427,19 +451,26 @@ class VWLoginFlow:
         error_val = parse_qs(urlparse(url).query).get("error", [None])[0]
         if not error_val:
             return
-        message = _VW_AUTH_ERROR_MESSAGES.get(error_val) or f"Authentication rejected by VW: {error_val!r}"
+        message = (
+            _VW_AUTH_ERROR_MESSAGES.get(error_val)
+            or f"Authentication rejected by VW: {error_val!r}"
+        )
         raise LoginCredentialsError(message)
 
     def _raise_flow_changed(
         self, stage: str, current_url: str, html: str, reason: str
     ) -> None:
-        _LOGGER.error("Login flow changed (stage=%s, url=%s): %s", stage, current_url, reason)
+        _LOGGER.error(
+            "Login flow changed (stage=%s, url=%s): %s", stage, current_url, reason
+        )
         raise LoginFlowChangedError(stage=stage)
 
     def _raise_page_parse_error(
         self, stage: str, current_url: str, html: str, error: _IdKitError
     ) -> None:
-        _LOGGER.error("IDKit parse failed (stage=%s, url=%s): %s", stage, current_url, error)
+        _LOGGER.error(
+            "IDKit parse failed (stage=%s, url=%s): %s", stage, current_url, error
+        )
         raise LoginPageParseError(
             f"IDKit parse failed at {stage} (url={current_url}): {error}"
         ) from error
@@ -449,7 +480,9 @@ class VWLoginFlow:
         if error_val:
             raise LoginError(f"Code confirmation returned error={error_val!r}")
 
-    async def _dump_and_reraise(self, error: Exception, current_url: str, html: str) -> None:
+    async def _dump_and_reraise(
+        self, error: Exception, current_url: str, html: str
+    ) -> None:
         if not current_url or not html or self._html_debug_dir is None:
             raise error
         if not _LOGGER.isEnabledFor(logging.DEBUG):
@@ -462,7 +495,9 @@ class VWLoginFlow:
         else:
             dump_stage = "login_error"
 
-        dump_path = dump_html_debug(dump_stage, html, self._html_debug_dir, url=current_url)
+        dump_path = dump_html_debug(
+            dump_stage, html, self._html_debug_dir, url=current_url
+        )
         dump_path_str = str(dump_path) if dump_path else None
 
         if isinstance(error, LoginFlowChangedError):
@@ -493,10 +528,14 @@ async def _save_cookies(jar: aiohttp.CookieJar, path: Path) -> None:
         }
         for morsel in jar
     ]
-    await asyncio.to_thread(path.write_text, json.dumps(data, indent=2), encoding="utf-8")
+    await asyncio.to_thread(
+        path.write_text, json.dumps(data, indent=2), encoding="utf-8"
+    )
 
 
-async def _load_cookies(jar: aiohttp.CookieJar, path: Path, default_domain: str) -> None:
+async def _load_cookies(
+    jar: aiohttp.CookieJar, path: Path, default_domain: str
+) -> None:
     if not await asyncio.to_thread(path.exists):
         return
     text = await asyncio.to_thread(path.read_text, encoding="utf-8")

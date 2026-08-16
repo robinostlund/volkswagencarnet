@@ -38,7 +38,9 @@ class LoginVerifier:
         if meta_stage is None:
             self._warn("Meta identitykit stage missing or unknown")
         elif meta_stage != stage:
-            self._warn(f"Meta stage {meta_stage.value!r} differs from IDK stage {stage.value!r}")
+            self._warn(
+                f"Meta stage {meta_stage.value!r} differs from IDK stage {stage.value!r}"
+            )
 
         if idk_obj.client_id and idk_obj.client_id != configured_client_id:
             self._warn(
@@ -49,7 +51,9 @@ class LoginVerifier:
             ("client_id", idk_obj.client_id, idk_info.client_id),
         ):
             if page_val and info_val and page_val != info_val:
-                self._warn(f"Sticky field deviation: {field}: page={page_val!r}, info={info_val!r}")
+                self._warn(
+                    f"Sticky field deviation: {field}: page={page_val!r}, info={info_val!r}"
+                )
 
         if stage == IdKitStage.PASSWORD:
             page_email = idk_obj.email
@@ -73,7 +77,10 @@ class LoginVerifier:
             return
 
         if stage == IdKitStage.IDENTIFIER:
-            selector, required = "form#emailPasswordForm", ["_csrf", "relayState", "hmac", "email"]
+            selector, required = (
+                "form#emailPasswordForm",
+                ["_csrf", "relayState", "hmac", "email"],
+            )
         else:
             selector, required = "form#allowAccess", ["_csrf", "client_identity_name"]
 
@@ -85,7 +92,9 @@ class LoginVerifier:
         form_action, form_payload = form_data
         actual_url = urljoin(current_url, form_action)
         if actual_url != planned_url:
-            self._warn(f"Form action {actual_url!r} differs from planned URL {planned_url!r}")
+            self._warn(
+                f"Form action {actual_url!r} differs from planned URL {planned_url!r}"
+            )
 
         missing = [f for f in required if f not in form_payload]
         if missing:
