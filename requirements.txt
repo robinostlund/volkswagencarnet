@@ -1,5 +1,4 @@
 aiohttp
 beautifulsoup4
-chompjs
 pyjwt
 json5
