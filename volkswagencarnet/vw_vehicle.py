@@ -1294,6 +1294,16 @@ class Vehicle:
         return is_valid_path(self.attrs, Paths.CHARGING_RATE)
 
     @property
+    def charging_status_charge_mode(self) -> str | None:
+        """Return current charge mode from charging status."""
+        return find_path(self.attrs, Paths.CHARGING_STATUS_CHARGE_MODE)
+
+    @property
+    def is_charging_status_charge_mode_supported(self) -> bool:
+        """Return true if charging status charge mode is supported."""
+        return is_valid_path(self.attrs, Paths.CHARGING_STATUS_CHARGE_MODE)
+
+    @property
     def charger_type(self) -> str:
         ct = find_path(self.attrs, Paths.CHARGING_TYPE)
         return "AC" if ct == "ac" else "DC" if ct == "dc" else "Unknown"
@@ -1369,6 +1379,22 @@ class Vehicle:
         return is_valid_path(self.attrs, Paths.MEASUREMENTS_BAT_TEMP_MAX_K)
 
     @property
+    def outside_temperature(self) -> float | None:
+        """Return outside temperature."""
+        temp_k = find_path(self.attrs, Paths.MEASUREMENTS_OUT_TEMP_K)
+        return float(temp_k) - 273.15 if temp_k is not None else None
+
+    @property
+    def outside_temperature_last_updated(self) -> datetime:
+        """Return attribute last updated timestamp."""
+        return find_path(self.attrs, Paths.MEASUREMENTS_OUT_TEMP_TS)
+
+    @property
+    def is_outside_temperature_supported(self) -> bool:
+        """Return true outside temperature is supported."""
+        return is_valid_path(self.attrs, Paths.MEASUREMENTS_OUT_TEMP_K)
+
+    @property
     def charge_max_ac_setting(self) -> str | int | None:
         """Return charger max ampere setting."""
         return find_path(self.attrs, Paths.CHARGING_SET_MAX_CHARGE_AC)
@@ -1400,6 +1426,26 @@ class Vehicle:
     def is_charge_max_ac_ampere_supported(self) -> bool:
         """Return true if Charger Max Ampere is supported."""
         return is_valid_path(self.attrs, Paths.CHARGING_SET_MAX_CHARGE_AC_A)
+
+    @property
+    def charge_mode(self) -> dict[str, object] | None:
+        """Return charge mode configuration from selectivestatus."""
+        return find_path(self.attrs, Paths.CHARGE_MODE)
+
+    @property
+    def preferred_charge_mode(self) -> str | None:
+        """Return preferred charge mode from selectivestatus."""
+        return find_path(self.attrs, Paths.CHARGE_MODE_PREFERRED)
+
+    @property
+    def available_charge_modes(self) -> list[str] | None:
+        """Return available charge modes from selectivestatus."""
+        return find_path(self.attrs, Paths.CHARGE_MODE_AVAILABLE)
+
+    @property
+    def is_charge_mode_supported(self) -> bool:
+        """Return true if charge mode information is supported."""
+        return is_valid_path(self.attrs, Paths.CHARGE_MODE)
 
     @property
     def charging_cable_locked(self) -> bool:
@@ -3031,6 +3077,14 @@ class Vehicle:
         return self._is_trip_supported(Services.TRIP_LAST, "mileage_km")
 
     @property
+    def last_trip_start_km(self):
+        return self._get_trip_value(Services.TRIP_LAST, "startMileage_km")
+
+    @property
+    def is_last_trip_start_km_supported(self):
+        return self._is_trip_supported(Services.TRIP_LAST, "startMileage_km")
+
+    @property
     def last_trip_average_recuperation(self):
         return self._get_trip_value(Services.TRIP_LAST, "averageRecuperation")
 
@@ -3734,6 +3788,31 @@ class Vehicle:
     @property
     def is_api_token_status_supported(self):
         """Parkingposition API status is always supported."""
+        return True
+
+    @property
+    def api_subscription_expiration(self) -> datetime:
+        """Check nearest API subscription expiration date."""
+        # Extract the service expiration values if they exist and are not None
+        expirations = [
+            value["expiration"]
+            for value in self._services.values()
+            if isinstance(value, dict)
+            and "expiration" in value
+            and value["expiration"] is not None
+        ]
+
+        # Return the minimum date, or None if the list is empty
+        return min(expirations) if expirations else None
+
+    @property
+    def api_subscription_expiration_last_updated(self) -> datetime:
+        """Return attribute last updated timestamp."""
+        return datetime.now(UTC)
+
+    @property
+    def is_api_subscription_expiration_supported(self):
+        """API subscription expiration is always supported."""
         return True
 
     @property
