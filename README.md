@@ -1,5 +1,11 @@
 # Volkswagen Carnet
 
+
+> [!WARNING]
+> **This library is currently non-functional.**
+> 
+> Volkswagen has blocked the authentication mechanism once again. Please follow issue [#989](https://github.com/robinostlund/homeassistant-volkswagencarnet/issues/989) for details, workarounds, and status updates.
+
 [![buy me a coffee](https://www.buymeacoffee.com/assets/img/custom_images/yellow_img.png)](https://www.buymeacoffee.com/robinostlund)
 
 ![Release](https://img.shields.io/github/workflow/status/robinostlund/volkswagencarnet/Release)
